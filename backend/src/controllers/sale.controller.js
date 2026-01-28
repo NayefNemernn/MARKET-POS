@@ -13,8 +13,8 @@ export const createSale = async (req, res) => {
     }
 
     let total = 0;
+    const saleItems = [];
 
-    // Validate stock & calculate total
     for (const item of items) {
       const product = await Product.findById(item.productId);
 
@@ -28,24 +28,35 @@ export const createSale = async (req, res) => {
         });
       }
 
-      total += product.price * item.quantity;
+      const subtotal = product.price * item.quantity;
+      total += subtotal;
+
+      saleItems.push({
+        productId: product._id,
+        name: product.name,
+        price: product.price,
+        quantity: item.quantity,
+        subtotal
+      });
     }
 
-    // Reduce stock
-    for (const item of items) {
+    // Reduce stock (atomic updates)
+    for (const item of saleItems) {
       await Product.findByIdAndUpdate(item.productId, {
         $inc: { stock: -item.quantity }
       });
     }
 
-    // Save sale
     const sale = await Sale.create({
-      items,
+      items: saleItems,
       total,
       paymentMethod
     });
 
-    res.status(201).json(sale);
+    res.status(201).json({
+      message: "Sale completed",
+      sale
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -57,4 +68,17 @@ export const createSale = async (req, res) => {
 export const getSales = async (req, res) => {
   const sales = await Sale.find().sort({ createdAt: -1 });
   res.json(sales);
+};
+
+/**
+ * Get single sale (receipt)
+ */
+export const getSaleById = async (req, res) => {
+  const sale = await Sale.findById(req.params.id);
+
+  if (!sale) {
+    return res.status(404).json({ message: "Sale not found" });
+  }
+
+  res.json(sale);
 };
