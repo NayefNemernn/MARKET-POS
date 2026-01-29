@@ -3,16 +3,19 @@ import { getProductByBarcode } from "../api/product.api";
 import { createSale } from "../api/sale.api";
 import { useCart } from "../hooks/useCart";
 import { useAuth } from "../context/AuthContext";
+import Receipt from "./Receipt";
 
 export default function POS() {
   const [barcode, setBarcode] = useState("");
   const [error, setError] = useState("");
+  const [lastSale, setLastSale] = useState(null);
 
   const { logout } = useAuth();
   const { cart, addToCart, clearCart, total } = useCart();
 
   const inputRef = useRef(null);
 
+  // Auto focus barcode input
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -20,20 +23,25 @@ export default function POS() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Disable shortcuts while receipt is open
+      if (lastSale) return;
+
       if (e.key === "F9") {
         handleCheckout();
       }
 
       if (e.key === "Escape") {
         clearCart();
-        window.location.reload();
+        setBarcode("");
+        inputRef.current?.focus();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [cart, clearCart]);
+  }, [cart, lastSale]);
 
+  // Scan barcode
   const handleScan = async (e) => {
     e.preventDefault();
     setError("");
@@ -53,30 +61,49 @@ export default function POS() {
     }
   };
 
+  // Checkout
   const handleCheckout = async () => {
-    if (cart.length === 0) return;
+  if (cart.length === 0) return;
 
-    try {
-      await createSale({
-        items: cart.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity
-        })),
-        paymentMethod: "cash"
-      });
+  try {
+    const response = await createSale({
+      items: cart.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity
+      })),
+      paymentMethod: "cash"
+    });
 
-      clearCart();
-      alert("Sale completed");
-      window.location.reload(); // FORCE RESET POS
-    } catch {
-      alert("Checkout failed");
-    }
-  };
+    // 🔑 THIS LINE IS THE KEY
+    setLastSale(response.sale);
+
+    clearCart();
+    setBarcode("");
+  } catch (err) {
+    alert("Checkout failed");
+    console.error(err);
+  }
+};
+
 
   const handleLogout = () => {
     logout();
-    window.location.reload(); // FORCE LOGIN SCREEN
+    window.location.reload(); // OK for logout
   };
+
+  // SHOW RECEIPT INSTEAD OF POS
+  if (lastSale) {
+    return (
+      <Receipt
+        sale={lastSale}
+        onClose={() => {
+          setLastSale(null);
+          setBarcode("");
+          inputRef.current?.focus();
+        }}
+      />
+    );
+  }
 
   return (
     <div style={{ padding: 20, maxWidth: 600, position: "relative" }}>
