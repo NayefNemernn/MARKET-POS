@@ -1,10 +1,8 @@
 import express from "express";
+import { login } from "../controllers/auth.controller.js";
 
 const router = express.Router();
 
-// TEMP test route
-router.post("/login", (req, res) => {
-  res.json({ message: "Login route working" });
-});
+router.post("/login", login);
 
 export default router;

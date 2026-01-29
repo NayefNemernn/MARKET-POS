@@ -2,21 +2,22 @@ import React, { useState, useRef, useEffect } from "react";
 import { getProductByBarcode } from "../api/product.api";
 import { createSale } from "../api/sale.api";
 import { useCart } from "../hooks/useCart";
+import { useAuth } from "../context/AuthContext";
 
 export default function POS() {
   const [barcode, setBarcode] = useState("");
   const [error, setError] = useState("");
 
+  const { logout } = useAuth();
   const { cart, addToCart, clearCart, total } = useCart();
 
   const inputRef = useRef(null);
 
-  // Auto-focus barcode input on load
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Keyboard shortcuts (F9 = checkout, ESC = clear cart)
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "F9") {
@@ -25,8 +26,7 @@ export default function POS() {
 
       if (e.key === "Escape") {
         clearCart();
-        setBarcode("");
-        inputRef.current?.focus();
+        window.location.reload();
       }
     };
 
@@ -34,7 +34,6 @@ export default function POS() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [cart, clearCart]);
 
-  // Handle barcode scan
   const handleScan = async (e) => {
     e.preventDefault();
     setError("");
@@ -49,13 +48,11 @@ export default function POS() {
     } catch {
       setError("Product not found");
       setBarcode("");
-
       setTimeout(() => setError(""), 1500);
       inputRef.current?.focus();
     }
   };
 
-  // Checkout
   const handleCheckout = async () => {
     if (cart.length === 0) return;
 
@@ -69,16 +66,28 @@ export default function POS() {
       });
 
       clearCart();
-      setBarcode("");
-      inputRef.current?.focus();
       alert("Sale completed");
+      window.location.reload(); // FORCE RESET POS
     } catch {
       alert("Checkout failed");
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    window.location.reload(); // FORCE LOGIN SCREEN
+  };
+
   return (
-    <div style={{ padding: 20, maxWidth: 600 }}>
+    <div style={{ padding: 20, maxWidth: 600, position: "relative" }}>
+      {/* LOGOUT */}
+      <button
+        onClick={handleLogout}
+        className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded"
+      >
+        Logout
+      </button>
+
       <h1>POS</h1>
 
       <form onSubmit={handleScan}>
