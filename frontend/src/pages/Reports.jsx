@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
+import RequireAdmin from "../components/RequireAdmin";
+
 
 export default function Reports() {
   const [sales, setSales] = useState([]);
@@ -30,6 +32,7 @@ export default function Reports() {
   );
 
   return (
+    <RequireAdmin>
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">
         Sales Reports
@@ -85,5 +88,6 @@ export default function Reports() {
         </table>
       </div>
     </div>
+    </RequireAdmin>
   );
 }
