@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from "react";
-import POS from "./pages/POS";
-import Reports from "./pages/Reports";
-import Products from "./pages/Products";
-import Login from "./pages/Login";
+import React, { useEffect, useState } from "react";
 import { AuthProvider } from "./context/AuthContext";
+
+import DashboardLayout from "./layouts/DashboardLayout";
+import Dashboard from "./pages/Dashboard";
+import POS from "./pages/POS";
+import Products from "./pages/Products";
+import Categories from "./pages/Categories";
+import Reports from "./pages/Reports";
+import Users from "./pages/Users";
+import Login from "./pages/Login";
 
 export default function App() {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user"));
-  const [page, setPage] = useState("pos");
+  const [page, setPage] = useState("dashboard");
 
-  // If not logged in → Login
+  // Not logged in
   if (!token || !user) {
     return (
       <AuthProvider>
@@ -19,47 +24,40 @@ export default function App() {
     );
   }
 
-  // cashier can NEVER access admin pages
+  // Prevent cashier from opening admin pages
   useEffect(() => {
-    if (user.role !== "admin" && (page === "reports" || page === "products")) {
-      setPage("pos");
+    if (
+      user.role !== "admin" &&
+      ["products", "categories", "users", "reports"].includes(page)
+    ) {
+      setPage("dashboard");
     }
   }, [page, user.role]);
 
+  const renderPage = () => {
+    switch (page) {
+      case "dashboard":
+        return <Dashboard setPage={setPage} />; // ✅ FIX
+      case "pos":
+        return <POS />;
+      case "products":
+        return <Products />;
+      case "categories":
+        return <Categories />;
+      case "users":
+        return <Users />;
+      case "reports":
+        return <Reports />;
+      default:
+        return <Dashboard setPage={setPage} />;
+    }
+  };
+
   return (
     <AuthProvider>
-      {/* NAV BAR */}
-      <div className="p-4 flex gap-4 border-b">
-        <button
-          onClick={() => setPage("pos")}
-          className="px-4 py-2 bg-blue-600 text-white rounded"
-        >
-          POS
-        </button>
-
-        {user.role === "admin" && (
-          <>
-            <button
-              onClick={() => setPage("reports")}
-              className="px-4 py-2 bg-gray-600 text-white rounded"
-            >
-              Reports
-            </button>
-
-            <button
-              onClick={() => setPage("products")}
-              className="px-4 py-2 bg-purple-600 text-white rounded"
-            >
-              Products
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* PAGES */}
-      {page === "pos" && <POS />}
-      {page === "reports" && <Reports />}
-      {page === "products" && <Products />}
+      <DashboardLayout page={page} setPage={setPage} user={user}>
+        {renderPage()}
+      </DashboardLayout>
     </AuthProvider>
   );
 }

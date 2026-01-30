@@ -15,90 +15,67 @@ export default function POS() {
 
   const inputRef = useRef(null);
 
-  // Auto focus barcode input
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Disable shortcuts while receipt is open
       if (lastSale) return;
-
-      if (e.key === "F9") {
-        handleCheckout();
-      }
-
+      if (e.key === "F9") handleCheckout();
       if (e.key === "Escape") {
         clearCart();
         setBarcode("");
         inputRef.current?.focus();
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [cart, lastSale]);
 
-  // Scan barcode
   const handleScan = async (e) => {
     e.preventDefault();
     setError("");
-
     if (!barcode) return;
 
     try {
       const product = await getProductByBarcode(barcode);
       addToCart(product);
       setBarcode("");
-      inputRef.current?.focus();
     } catch {
       setError("Product not found");
       setBarcode("");
       setTimeout(() => setError(""), 1500);
-      inputRef.current?.focus();
+    }
+    inputRef.current?.focus();
+  };
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+
+    try {
+      const res = await createSale({
+        items: cart.map((i) => ({
+          productId: i.productId,
+          quantity: i.quantity
+        })),
+        paymentMethod: "cash"
+      });
+
+      setLastSale(res.sale);
+      clearCart();
+      setBarcode("");
+    } catch {
+      alert("Checkout failed");
     }
   };
 
-  // Checkout
-  const handleCheckout = async () => {
-  if (cart.length === 0) return;
-
-  try {
-    const response = await createSale({
-      items: cart.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity
-      })),
-      paymentMethod: "cash"
-    });
-
-    // 🔑 THIS LINE IS THE KEY
-    setLastSale(response.sale);
-
-    clearCart();
-    setBarcode("");
-  } catch (err) {
-    alert("Checkout failed");
-    console.error(err);
-  }
-};
-
-
-  const handleLogout = () => {
-    logout();
-    window.location.reload(); // OK for logout
-  };
-
-  // SHOW RECEIPT INSTEAD OF POS
   if (lastSale) {
     return (
       <Receipt
         sale={lastSale}
         onClose={() => {
           setLastSale(null);
-          setBarcode("");
           inputRef.current?.focus();
         }}
       />
@@ -106,48 +83,89 @@ export default function POS() {
   }
 
   return (
-    <div style={{ padding: 20, maxWidth: 600, position: "relative" }}>
-      {/* LOGOUT */}
-      <button
-        onClick={handleLogout}
-        className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded"
-      >
-        Logout
-      </button>
+    <div className="min-h-screen bg-gray-100 p-6">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">🧾 POS Terminal</h1>
+        <button
+          onClick={logout}
+          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+        >
+          Logout
+        </button>
+      </div>
 
-      <h1>POS</h1>
+      {/* Main Card */}
+      <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
+        {/* Barcode Input */}
+        <form onSubmit={handleScan} className="flex gap-3 mb-4">
+          <input
+            ref={inputRef}
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            placeholder="Scan or enter barcode"
+            className="flex-1 border border-gray-300 rounded px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoComplete="off"
+          />
+          <button className="bg-blue-600 text-white px-6 rounded hover:bg-blue-700">
+            Add
+          </button>
+        </form>
 
-      <form onSubmit={handleScan}>
-        <input
-          ref={inputRef}
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          placeholder="Scan barcode"
-          autoComplete="off"
-        />
-        <button type="submit">Add</button>
-      </form>
+        {error && (
+          <p className="text-red-600 font-medium mb-3">{error}</p>
+        )}
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+        {/* Cart Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-200 text-left">
+                <th className="p-3">Product</th>
+                <th className="p-3 text-center">Qty</th>
+                <th className="p-3 text-right">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cart.map((item) => (
+                <tr key={item.productId} className="border-b">
+                  <td className="p-3">{item.name}</td>
+                  <td className="p-3 text-center">{item.quantity}</td>
+                  <td className="p-3 text-right">
+                    {item.price * item.quantity}
+                  </td>
+                </tr>
+              ))}
+              {cart.length === 0 && (
+                <tr>
+                  <td colSpan="3" className="p-4 text-center text-gray-400">
+                    No items scanned
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
-      <ul>
-        {cart.map((item) => (
-          <li key={item.productId}>
-            {item.name} × {item.quantity} ={" "}
-            {item.price * item.quantity}
-          </li>
-        ))}
-      </ul>
+        {/* Total */}
+        <div className="flex justify-between items-center mt-6">
+          <h2 className="text-2xl font-bold">
+            Total: <span className="text-green-600">{total}</span>
+          </h2>
 
-      <h3>Total: {total}</h3>
+          <button
+            onClick={handleCheckout}
+            className="bg-green-600 text-white px-8 py-4 rounded-lg text-xl font-bold hover:bg-green-700"
+          >
+            Checkout (F9)
+          </button>
+        </div>
 
-      <button onClick={handleCheckout}>
-        Checkout (F9)
-      </button>
-
-      <p style={{ marginTop: 10, fontSize: 12 }}>
-        Shortcuts: <b>F9</b> = Checkout | <b>ESC</b> = Clear cart
-      </p>
+        {/* Shortcuts */}
+        <p className="text-sm text-gray-500 mt-4">
+          Shortcuts: <b>F9</b> Checkout · <b>ESC</b> Clear cart
+        </p>
+      </div>
     </div>
   );
 }

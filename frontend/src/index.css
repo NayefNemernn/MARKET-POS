@@ -21,6 +21,11 @@
     left: 0;
     width: 100%;
   }
+  
+  * {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
 
   @page {
     margin: 0;

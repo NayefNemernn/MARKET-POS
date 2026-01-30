@@ -5,45 +5,64 @@ import {
   updateProduct,
   deleteProduct
 } from "../api/product.api";
-
+import api from "../api/axios";
 
 export default function Products() {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+
   const [form, setForm] = useState({
     name: "",
     barcode: "",
     price: "",
-    stock: ""
+    stock: "",
+    category: ""
   });
 
+  // LOAD DATA
   const loadProducts = async () => {
-  const data = await getAllProducts();
-  setProducts(data);
-};
+    const data = await getAllProducts();
+    setProducts(data);
+  };
 
-  
+  const loadCategories = async () => {
+    const res = await api.get("/categories");
+    setCategories(res.data);
+  };
 
   useEffect(() => {
     loadProducts();
+    loadCategories();
   }, []);
 
+  // ADD PRODUCT
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     await createProduct({
-      name: form.name,
-      barcode: form.barcode,
+      ...form,
       price: Number(form.price),
       stock: Number(form.stock)
     });
-    setForm({ name: "", barcode: "", price: "", stock: "" });
+
+    setForm({
+      name: "",
+      barcode: "",
+      price: "",
+      stock: "",
+      category: ""
+    });
+
     loadProducts();
   };
 
+  // UPDATE INLINE
   const handleUpdate = async (id, field, value) => {
     await updateProduct(id, { [field]: value });
     loadProducts();
   };
 
+  // DELETE
   const handleDelete = async (id) => {
     if (!window.confirm("Delete product?")) return;
     await deleteProduct(id);
@@ -59,7 +78,7 @@ export default function Products() {
       {/* ADD PRODUCT */}
       <form
         onSubmit={handleSubmit}
-        className="grid grid-cols-4 gap-3 mb-6"
+        className="grid grid-cols-5 gap-3 mb-6"
       >
         <input
           placeholder="Name"
@@ -68,7 +87,9 @@ export default function Products() {
             setForm({ ...form, name: e.target.value })
           }
           className="border p-2 rounded"
+          required
         />
+
         <input
           placeholder="Barcode"
           value={form.barcode}
@@ -76,7 +97,9 @@ export default function Products() {
             setForm({ ...form, barcode: e.target.value })
           }
           className="border p-2 rounded"
+          required
         />
+
         <input
           placeholder="Price"
           type="number"
@@ -85,7 +108,9 @@ export default function Products() {
             setForm({ ...form, price: e.target.value })
           }
           className="border p-2 rounded"
+          required
         />
+
         <input
           placeholder="Stock"
           type="number"
@@ -94,11 +119,26 @@ export default function Products() {
             setForm({ ...form, stock: e.target.value })
           }
           className="border p-2 rounded"
+          required
         />
 
-        <button
-          className="col-span-4 bg-green-600 text-white py-2 rounded"
+        <select
+          value={form.category}
+          onChange={(e) =>
+            setForm({ ...form, category: e.target.value })
+          }
+          className="border p-2 rounded"
+          required
         >
+          <option value="">Category</option>
+          {categories.map((c) => (
+            <option key={c._id} value={c._id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+
+        <button className="col-span-5 bg-green-600 text-white py-2 rounded">
           Add Product
         </button>
       </form>
@@ -109,6 +149,7 @@ export default function Products() {
           <tr>
             <th className="p-3">Name</th>
             <th className="p-3">Barcode</th>
+            <th className="p-3">Category</th>
             <th className="p-3">Price</th>
             <th className="p-3">Stock</th>
             <th className="p-3">Actions</th>
@@ -119,6 +160,9 @@ export default function Products() {
             <tr key={p._id} className="border-t">
               <td className="p-3">{p.name}</td>
               <td className="p-3">{p.barcode}</td>
+              <td className="p-3">
+                {p.category?.name || "-"}
+              </td>
               <td className="p-3">
                 <input
                   type="number"
