@@ -4,55 +4,79 @@ export default function Receipt({ sale, onClose }) {
   if (!sale || !sale.items) return null;
 
   return (
-    <div className="print-receipt p-6 max-w-sm mx-auto text-sm print:text-xs">
-        <button
-  onClick={() => window.print()}
-  className="mt-2 w-full bg-green-600 text-white py-2 rounded print:hidden"
->
-  Print
-</button>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 print:bg-white">
+      <div className="bg-white w-full max-w-sm shadow-lg p-6 font-mono text-sm print:shadow-none print:p-0">
+        {/* ACTION BUTTONS */}
+        <div className="flex gap-2 mb-4 print:hidden">
+          <button
+            onClick={() => window.print()}
+            className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700"
+          >
+            🖨 Print
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          >
+            Close
+          </button>
+        </div>
 
-      <h1 className="text-center text-xl font-bold mb-2">
-        Market POS
-      </h1>
+        {/* HEADER */}
+        <div className="text-center mb-4">
+          <h1 className="text-xl font-bold tracking-wide">
+            MARKET POS
+          </h1>
+          <p className="text-xs mt-1">
+            Thank you for your purchase
+          </p>
+        </div>
 
-      <p className="text-center mb-4">
-        Thank you for your purchase
-      </p>
+        {/* INFO */}
+        <div className="text-xs mb-3">
+          <p>
+            Date:{" "}
+            {new Date(sale.createdAt).toLocaleString()}
+          </p>
+          <p className="capitalize">
+            Payment: {sale.paymentMethod}
+          </p>
+        </div>
 
-      <div className="mb-4">
-        <p>Date: {new Date(sale.createdAt).toLocaleString()}</p>
-        <p>Payment: {sale.paymentMethod}</p>
+        <div className="border-t border-dashed my-2" />
+
+        {/* ITEMS */}
+        <div className="mb-3">
+          {sale.items.map((item) => (
+            <div
+              key={item._id}
+              className="flex justify-between text-xs mb-1"
+            >
+              <span className="max-w-[70%] truncate">
+                {item.name} × {item.quantity}
+              </span>
+              <span>
+                ${(item.price * item.quantity).toFixed(2)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-dashed my-2" />
+
+        {/* TOTAL */}
+        <div className="flex justify-between font-bold text-base mb-4">
+          <span>TOTAL</span>
+          <span>${sale.total.toFixed(2)}</span>
+        </div>
+
+        {/* FOOTER */}
+        <div className="text-center text-xs mt-4">
+          <p>--------------------------</p>
+          <p>Powered by Market POS</p>
+          <p>Have a nice day 🙂</p>
+        </div>
       </div>
-
-      <hr className="mb-2" />
-
-      <ul className="mb-4">
-        {sale.items.map((item) => (
-          <li key={item._id} className="flex justify-between">
-            <span>
-              {item.name} × {item.quantity}
-            </span>
-            <span>
-              ${(item.price * item.quantity).toFixed(2)}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <hr className="mb-2" />
-
-      <div className="flex justify-between font-bold mb-4">
-        <span>Total</span>
-        <span>${sale.total.toFixed(2)}</span>
-      </div>
-
-      <button
-        onClick={onClose}
-        className="mt-4 w-full bg-blue-600 text-white py-2 rounded print:hidden"
-      >
-        Close
-      </button>
     </div>
   );
 }
