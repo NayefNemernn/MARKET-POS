@@ -3,11 +3,12 @@ import { getDashboardStats } from "../api/dashboard.api";
 
 /**
  * Props expected:
- * - setPage (function) → from App / Layout
+ * - setPage (function)
  */
 export default function Dashboard({ setPage }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -15,7 +16,8 @@ export default function Dashboard({ setPage }) {
         const data = await getDashboardStats();
         setStats(data);
       } catch (err) {
-        console.error("Dashboard load failed", err);
+        // 403 / not admin / token expired
+        setError("You are not allowed to view the dashboard.");
       } finally {
         setLoading(false);
       }
@@ -25,6 +27,14 @@ export default function Dashboard({ setPage }) {
 
   if (loading) {
     return <div className="p-6">Loading dashboard…</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-red-600">
+        {error}
+      </div>
+    );
   }
 
   return (
@@ -41,26 +51,26 @@ export default function Dashboard({ setPage }) {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <KpiCard
           title="Today Sales"
-          value={`$${stats.todaySales.toFixed(2)}`}
+          value={`$${stats?.todaySales?.toFixed(2) ?? "0.00"}`}
           onClick={() => setPage("reports")}
         />
 
         <KpiCard
           title="Products"
-          value={stats.totalProducts}
+          value={stats?.totalProducts ?? 0}
           onClick={() => setPage("products")}
         />
 
         <KpiCard
           title="Low Stock"
-          value={stats.lowStock}
+          value={stats?.lowStock ?? 0}
           danger
           onClick={() => setPage("products")}
         />
 
         <KpiCard
           title="System Status"
-          value="Online"
+          value={navigator.onLine ? "Online" : "Offline"}
           status
         />
       </div>

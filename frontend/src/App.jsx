@@ -13,7 +13,11 @@ import Login from "./pages/Login";
 export default function App() {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user"));
-  const [page, setPage] = useState("dashboard");
+
+  // ✅ INITIAL PAGE BASED ON ROLE
+  const [page, setPage] = useState(
+    user?.role === "admin" ? "dashboard" : "pos"
+  );
 
   // Not logged in
   if (!token || !user) {
@@ -28,16 +32,16 @@ export default function App() {
   useEffect(() => {
     if (
       user.role !== "admin" &&
-      ["products", "categories", "users", "reports"].includes(page)
+      ["dashboard", "products", "categories", "users", "reports"].includes(page)
     ) {
-      setPage("dashboard");
+      setPage("pos");
     }
   }, [page, user.role]);
 
   const renderPage = () => {
     switch (page) {
       case "dashboard":
-        return <Dashboard setPage={setPage} />; // ✅ FIX
+        return <Dashboard setPage={setPage} />;
       case "pos":
         return <POS />;
       case "products":
@@ -49,7 +53,7 @@ export default function App() {
       case "reports":
         return <Reports />;
       default:
-        return <Dashboard setPage={setPage} />;
+        return <POS />;
     }
   };
 
