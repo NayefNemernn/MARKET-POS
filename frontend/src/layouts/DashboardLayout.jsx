@@ -10,6 +10,7 @@ import {
   Sun,
   Moon,
   ChevronLeft,
+  Clock,
   Menu
 } from "lucide-react";
 
@@ -42,7 +43,8 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     { key: "products", label: "Products", icon: Package, admin: true },
     { key: "categories", label: "Categories", icon: Tags, admin: true },
     { key: "users", label: "Users", icon: Users, admin: true },
-    { key: "reports", label: "Reports", icon: BarChart3, admin: true }
+    { key: "reports", label: "Reports", icon: BarChart3, admin: true },
+    { key: "paylater", label: "Pay Later", icon: Clock, admin: true },
   ];
 
   const SidebarContent = () => (

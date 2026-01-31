@@ -23,10 +23,11 @@ export const createSale = async (req, res) => {
       }
 
       if (product.stock < item.quantity) {
-        return res.status(400).json({
-          message: `Not enough stock for ${product.name}`
-        });
-      }
+  return res.status(400).json({
+    message: `${product.name} has insufficient stock`
+  });
+}
+
 
       const subtotal = product.price * item.quantity;
       total += subtotal;

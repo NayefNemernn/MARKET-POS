@@ -8,6 +8,7 @@ import saleRoutes from "./routes/sale.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import holdSaleRoutes from "./routes/holdSale.routes.js";
 
 dotenv.config();
 
@@ -28,7 +29,7 @@ app.use("/api/sales", saleRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/users", userRoutes);
-
+app.use("/api/hold-sales", holdSaleRoutes);
 /* =======================
    HEALTH CHECK
 ======================= */
