@@ -1,153 +1,225 @@
-import React, { useState, useRef, useEffect } from "react";
-import api from "../api/axios";
-import { getProductByBarcode } from "../api/product.api";
+import React, { useEffect, useRef, useState } from "react";
+import { getAllProducts } from "../api/product.api";
+import { getCategories } from "../api/category.api";
 import { createSale } from "../api/sale.api";
 import { useCart } from "../hooks/useCart";
-import { useAuth } from "../context/AuthContext";
-import Receipt from "./Receipt";
 import useOfflineSales from "../hooks/useOfflineSales";
+import Receipt from "./Receipt";
+import { createHoldSale } from "../api/holdSale.api";
+import { getHoldSaleNames } from "../api/holdSale.api";
 
-export default function POS() {
-  const [barcode, setBarcode] = useState("");
-  const [error, setError] = useState("");
-  const [lastSale, setLastSale] = useState(null);
-
+export default function POS({ setPage, user }) {
+  /* =====================
+     STATE
+  ===================== */
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [barcode, setBarcode] = useState("");
+  const [error, setError] = useState("");
+  const [lastSale, setLastSale] = useState(null);
+  const [customerName, setCustomerName] = useState("");
+  const [nameSuggestions, setNameSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
+  const { cart, addToCart, clearCart, increase, decrease, total } = useCart();
   const { saveOffline, sync } = useOfflineSales();
+
   const [status, setStatus] = useState(
     navigator.onLine ? "ONLINE" : "OFFLINE"
   );
-
-  const { logout } = useAuth();
-  const { cart, addToCart, clearCart, total } = useCart();
+const filteredNames = nameSuggestions.filter(n =>
+  n.toLowerCase().includes(customerName.toLowerCase())
+);
 
   const inputRef = useRef(null);
 
-  /* ======================
-     LOAD PRODUCTS + CATEGORIES
-  ====================== */
+  /* =====================
+     LOAD DATA
+  ===================== */
   useEffect(() => {
-    const load = async () => {
-      const [p, c] = await Promise.all([
-        api.get("/products"),
-        api.get("/categories")
-      ]);
-      setProducts(p.data);
-      setCategories(c.data);
-    };
-    load();
+    getAllProducts().then(setProducts);
+    getCategories().then(setCategories);
   }, []);
 
-  /* ======================
-     OFFLINE / ONLINE SYNC
-  ====================== */
   useEffect(() => {
-    const goOnline = async () => {
+  getHoldSaleNames().then(setNameSuggestions);
+}, []);
+  /* =====================
+     ONLINE / OFFLINE
+  ===================== */
+  useEffect(() => {
+    const online = async () => {
       setStatus("SYNCING");
       await sync();
       setStatus("ONLINE");
     };
-    const goOffline = () => setStatus("OFFLINE");
+    const offline = () => setStatus("OFFLINE");
 
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
+
     return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
     };
-  }, []);
+  }, [sync]);
 
-  /* ======================
-     KEYBOARD SHORTCUTS
-  ====================== */
+  /* =====================
+     AUTO FOCUS
+  ===================== */
   useEffect(() => {
     inputRef.current?.focus();
+  }, []);
 
-    const handleKeyDown = (e) => {
+  /* =====================
+     KEYBOARD SHORTCUTS
+  ===================== */
+  useEffect(() => {
+    const handleKey = (e) => {
       if (lastSale) return;
+
       if (e.key === "F9") handleCheckout();
       if (e.key === "Escape") {
         clearCart();
         setBarcode("");
+        inputRef.current?.focus();
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
   }, [cart, lastSale]);
 
-  /* ======================
+  /* =====================
+     FILTER PRODUCTS (FIXED)
+  ===================== */
+  const filteredProducts =
+    selectedCategory === "all"
+      ? products
+      : products.filter(
+        (p) =>
+          p.category &&
+          p.category._id === selectedCategory
+      );
+
+
+
+
+  /* =====================
      BARCODE SCAN
-  ====================== */
+  ===================== */
   const handleScan = async (e) => {
     e.preventDefault();
-    setError("");
     if (!barcode) return;
 
-    try {
-      const product = await getProductByBarcode(barcode);
-      addToCart(product);
-      setBarcode("");
-    } catch {
+    const product = products.find(
+      (p) => p.barcode === barcode
+    );
+
+    if (!product) {
       setError("Product not found");
       setTimeout(() => setError(""), 1500);
+      return;
     }
+
+    if (product.stock === 0) {
+      alert(`⚠️ ${product.name} is out of stock`);
+    }
+
+    addToCart(product);
+    setBarcode("");
     inputRef.current?.focus();
   };
 
-  /* ======================
+  const outOfStockItems = cart.filter(
+    (item) => item.stock === 0
+  );
+
+  /* =====================
      CHECKOUT
-  ====================== */
+  ===================== */
   const handleCheckout = async () => {
     if (cart.length === 0) return;
 
-    // ⚠️ zero-stock warning (allow)
-    const zeroItem = cart.find(
-      (i) => i.stock !== undefined && i.stock <= 0
+    // 🚫 FRONTEND BLOCK (UX)
+    const outOfStockItems = cart.filter(
+      (item) => item.stock < item.quantity
     );
-    if (zeroItem) {
-      const ok = window.confirm(
-        `"${zeroItem.name}" is out of stock.\n\nContinue anyway?`
+
+    if (outOfStockItems.length > 0) {
+      alert(
+        "Cannot checkout.\nOut of stock:\n" +
+        outOfStockItems.map(i => `• ${i.name}`).join("\n")
       );
-      if (!ok) return;
+      return;
     }
 
     const payload = {
-      items: cart.map((item) => ({
-        productId: item.productId,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity
+      items: cart.map((i) => ({
+        productId: i.productId,
+        quantity: i.quantity
       })),
       paymentMethod: "cash"
     };
 
     try {
+      const res = await createSale(payload);
+      setLastSale(res.sale);
+      clearCart();
+    } catch (err) {
+      // 🧠 IMPORTANT: check error type
+      if (err.response?.status === 400) {
+        alert(err.response.data.message || "Invalid sale");
+        return;
+      }
+
+      // 🌐 ONLY offline / network errors go here
       if (!navigator.onLine) {
         saveOffline(payload);
         setStatus("OFFLINE");
-        setLastSale({
-          ...payload,
-          createdAt: new Date()
-        });
-      } else {
-        const res = await createSale(payload);
-        setLastSale(res.sale);
+        clearCart();
       }
-      clearCart();
-    } catch (err) {
-      alert(
-        err.response?.data?.message ||
-          "Checkout failed. Sale not completed."
-      );
     }
   };
 
-  /* ======================
+
+  /* =====================
+    Pay Later
+ ===================== */
+  const handlePayLater = async () => {
+  if (!customerName.trim()) {
+    alert("Enter customer name");
+    return;
+  }
+
+  const payload = {
+    customerName,
+    items: cart.map(i => ({
+      productId: i.productId,
+      name: i.name,
+      price: i.price,
+      quantity: i.quantity
+    })),
+    total
+  };
+
+  await createHoldSale(payload);
+
+  clearCart();
+  setCustomerName("");
+  setShowSuggestions(false);
+  alert("Saved for Pay Later");
+};
+
+
+
+
+
+
+  /* =====================
      RECEIPT VIEW
-  ====================== */
+  ===================== */
   if (lastSale) {
     return (
       <Receipt
@@ -160,73 +232,70 @@ export default function POS() {
     );
   }
 
-  /* ======================
-     FILTER PRODUCTS
-  ====================== */
-  const filteredProducts = products.filter(
-    (p) =>
-      selectedCategory === "all" ||
-      p.category === selectedCategory
-  );
-
-  /* ======================
-     RENDER
-  ====================== */
+  /* =====================
+     UI
+  ===================== */
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen bg-gray-100 p-6">
       {/* HEADER */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">🧾 POS Terminal</h1>
-        <div className="flex gap-3 items-center">
-          <span
-            className={`text-sm font-semibold ${
-              status === "ONLINE"
-                ? "text-green-600"
-                : status === "SYNCING"
-                ? "text-blue-600"
-                : "text-red-600"
-            }`}
-          >
-            {status}
-          </span>
-          <button
-            onClick={logout}
-            className="bg-red-600 text-white px-4 py-2 rounded"
-          >
-            Logout
-          </button>
+        <div className="flex items-center gap-3">
+          {/* 🔙 BACK TO DASHBOARD (ADMIN ONLY) */}
+          {user?.role === "admin" && (
+            <button
+              onClick={() => setPage("dashboard")}
+              className="p-2 rounded-full hover:bg-gray-200 transition"
+              title="Back to Dashboard"
+            >
+              ←
+            </button>
+          )}
+
+          <h1 className="text-2xl font-bold">🧾 POS Terminal</h1>
         </div>
+
+        <span
+          className={`font-bold ${status === "ONLINE"
+            ? "text-green-600"
+            : status === "SYNCING"
+              ? "text-yellow-600"
+              : "text-red-600"
+            }`}
+        >
+          {status}
+        </span>
       </div>
 
       <div className="grid grid-cols-12 gap-4">
         {/* CATEGORIES */}
-        <aside className="col-span-2 bg-white rounded shadow p-3">
+        <div className="col-span-2 bg-white rounded shadow p-3">
           <button
             onClick={() => setSelectedCategory("all")}
-            className={`w-full text-left px-3 py-2 rounded mb-1 ${
-              selectedCategory === "all" &&
-              "bg-blue-600 text-white"
-            }`}
+            className={`w-full mb-2 px-3 py-2 rounded ${selectedCategory === "all"
+              ? "bg-blue-600 text-white"
+              : "hover:bg-gray-100"
+              }`}
           >
             All
           </button>
+
           {categories.map((c) => (
             <button
               key={c._id}
-              onClick={() => setSelectedCategory(c.name)}
-              className={`w-full text-left px-3 py-2 rounded mb-1 ${
-                selectedCategory === c.name &&
-                "bg-blue-600 text-white"
-              }`}
+              onClick={() => setSelectedCategory(c._id)}
+              className={`w-full mb-2 px-3 py-2 rounded ${selectedCategory === c._id
+                ? "bg-blue-600 text-white"
+                : "hover:bg-gray-100"
+                }`}
             >
               {c.name}
             </button>
           ))}
-        </aside>
+        </div>
 
         {/* PRODUCTS */}
-        <section className="col-span-6 bg-white rounded shadow p-4">
-          <form onSubmit={handleScan} className="flex gap-2 mb-3">
+        <div className="col-span-7 bg-white rounded shadow p-4">
+          <form onSubmit={handleScan} className="flex gap-2 mb-4">
             <input
               ref={inputRef}
               value={barcode}
@@ -240,23 +309,20 @@ export default function POS() {
           </form>
 
           {error && (
-            <p className="text-red-600 text-sm mb-2">
-              {error}
-            </p>
+            <p className="text-red-600 mb-2">{error}</p>
           )}
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {filteredProducts.map((p) => (
               <button
                 key={p._id}
                 onClick={() => addToCart(p)}
-                className={`border rounded-lg p-3 text-left hover:shadow ${
-                  p.stock <= 0 && "opacity-50"
-                }`}
+                className={`border rounded p-3 text-left hover:shadow ${p.stock === 0 ? "opacity-50" : ""
+                  }`}
               >
-                <p className="font-semibold truncate">{p.name}</p>
+                <p className="font-semibold">{p.name}</p>
                 <p className="text-sm">${p.price}</p>
-                {p.stock <= 0 && (
+                {p.stock === 0 && (
                   <p className="text-xs text-red-600">
                     Out of stock
                   </p>
@@ -264,52 +330,115 @@ export default function POS() {
               </button>
             ))}
           </div>
-        </section>
+        </div>
 
         {/* CART */}
-        <aside className="col-span-4 bg-white rounded shadow p-4">
-          <h2 className="font-bold mb-3">Cart</h2>
+        <div className="col-span-3 bg-white rounded shadow p-4">
+          <h2 className="font-bold mb-2">Cart</h2>
+
+          {cart.length === 0 && (
+            <p className="text-gray-400">Cart is empty</p>
+          )}
 
           {cart.map((item) => (
             <div
               key={item.productId}
-              className="flex justify-between mb-2"
+              className="flex justify-between items-center mb-2"
             >
+              {/* PRODUCT INFO */}
               <div>
                 <p className="font-medium">{item.name}</p>
-                {item.stock <= 0 && (
-                  <span className="text-xs text-red-600">
+                {item.stock === 0 && (
+                  <p className="text-xs text-red-600">
                     Out of stock
-                  </span>
+                  </p>
                 )}
               </div>
-              <span>x{item.quantity}</span>
+
+              {/* QUANTITY CONTROLS */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => decrease(item.productId)}
+                  className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                >
+                  −
+                </button>
+
+                <span className="min-w-[20px] text-center">
+                  {item.quantity}
+                </span>
+
+                <button
+                  onClick={() => increase(item.productId)}
+                  className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* ITEM TOTAL */}
+              <span className="font-medium">
+                ${(item.price * item.quantity).toFixed(2)}
+              </span>
             </div>
           ))}
 
-          {cart.length === 0 && (
-            <p className="text-gray-400 text-sm">
-              Cart is empty
-            </p>
-          )}
 
-          <div className="border-t mt-4 pt-4 flex justify-between">
-            <span className="font-bold">Total</span>
-            <span className="font-bold text-green-600">
-              {total}
-            </span>
+
+          <hr className="my-3" />
+
+          <div className="font-bold text-lg mb-3">
+            Total: ${total.toFixed(2)}
           </div>
 
           <button
             onClick={handleCheckout}
             disabled={status === "SYNCING"}
-            className="mt-4 w-full bg-green-600 text-white py-3 rounded text-lg disabled:opacity-50"
+            className="w-full bg-green-600 text-white py-3 rounded disabled:opacity-50"
           >
-            {status === "SYNCING"
-              ? "Syncing…"
-              : "Checkout (F9)"}
+            Checkout (F9)
           </button>
-        </aside>
+<div className="relative mt-3">
+  <input
+    value={customerName}
+    onChange={(e) => {
+      setCustomerName(e.target.value);
+      setShowSuggestions(true);
+    }}
+    placeholder="Customer name"
+    className="w-full border rounded px-3 py-2"
+  />
+
+  {/* SUGGESTIONS */}
+  {showSuggestions && customerName && filteredNames.length > 0 && (
+    <div className="absolute z-10 bg-white border w-full rounded shadow max-h-40 overflow-y-auto">
+      {filteredNames.map((name) => (
+        <div
+          key={name}
+          onClick={() => {
+            setCustomerName(name);
+            setShowSuggestions(false);
+          }}
+          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+        >
+          {name}
+        </div>
+      ))}
+    </div>
+  )}
+</div>
+
+
+
+          <button
+  onClick={handlePayLater}
+  className="bg-yellow-500 text-white px-6 py-4 rounded-lg font-bold"
+>
+  Pay Later
+</button>
+
+
+        </div>
       </div>
     </div>
   );

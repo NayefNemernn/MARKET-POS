@@ -9,6 +9,7 @@ import Categories from "./pages/Categories";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import Login from "./pages/Login";
+import PayLater from "./pages/PayLater";
 
 export default function App() {
   const token = localStorage.getItem("token");
@@ -43,7 +44,7 @@ export default function App() {
       case "dashboard":
         return <Dashboard setPage={setPage} />;
       case "pos":
-        return <POS />;
+        return <POS setPage={setPage} user={user} />;
       case "products":
         return <Products />;
       case "categories":
@@ -52,6 +53,9 @@ export default function App() {
         return <Users />;
       case "reports":
         return <Reports />;
+      case "paylater":
+        return <PayLater />;
+
       default:
         return <POS />;
     }

@@ -22,13 +22,15 @@ const productSchema = new mongoose.Schema(
       required: true,
       min: 0
     },
+
+    // 🔗 REAL RELATION
     category: {
-      type: String
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      required: false
     }
   },
   { timestamps: true }
 );
 
-const Product = mongoose.model("Product", productSchema);
-
-export default Product;
+export default mongoose.model("Product", productSchema);

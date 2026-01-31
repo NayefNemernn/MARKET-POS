@@ -5,7 +5,7 @@ import {
   updateProduct,
   deleteProduct
 } from "../api/product.api";
-import api from "../api/axios";
+import { getCategories } from "../api/category.api";
 
 export default function Products() {
   const [products, setProducts] = useState([]);
@@ -19,15 +19,17 @@ export default function Products() {
     category: ""
   });
 
-  // LOAD DATA
+  /* =======================
+     LOAD DATA
+  ======================= */
   const loadProducts = async () => {
     const data = await getAllProducts();
     setProducts(data);
   };
 
   const loadCategories = async () => {
-    const res = await api.get("/categories");
-    setCategories(res.data);
+    const data = await getCategories();
+    setCategories(data);
   };
 
   useEffect(() => {
@@ -35,8 +37,10 @@ export default function Products() {
     loadCategories();
   }, []);
 
-  // ADD PRODUCT
-  const handleSubmit = async (e) => {
+  /* =======================
+     CREATE PRODUCT
+  ======================= */
+  const handleCreate = async (e) => {
     e.preventDefault();
 
     await createProduct({
@@ -56,13 +60,25 @@ export default function Products() {
     loadProducts();
   };
 
-  // UPDATE INLINE
-  const handleUpdate = async (id, field, value) => {
-    await updateProduct(id, { [field]: value });
-    loadProducts();
+  /* =======================
+     UPDATE FIELD (🔥 FIX)
+  ======================= */
+  const updateField = async (id, field, value) => {
+    await updateProduct(id, {
+      [field]: Number(value)
+    });
+
+    // update UI immediately
+    setProducts((prev) =>
+      prev.map((p) =>
+        p._id === id ? { ...p, [field]: value } : p
+      )
+    );
   };
 
-  // DELETE
+  /* =======================
+     DELETE
+  ======================= */
   const handleDelete = async (id) => {
     if (!window.confirm("Delete product?")) return;
     await deleteProduct(id);
@@ -70,67 +86,64 @@ export default function Products() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">
-        Product Management
-      </h1>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <h1 className="text-3xl font-bold">📦 Product Management</h1>
 
       {/* ADD PRODUCT */}
       <form
-        onSubmit={handleSubmit}
-        className="grid grid-cols-5 gap-3 mb-6"
+        onSubmit={handleCreate}
+        className="grid grid-cols-6 gap-3 bg-white p-4 rounded shadow"
       >
         <input
           placeholder="Name"
+          className="border p-2 rounded"
           value={form.name}
           onChange={(e) =>
             setForm({ ...form, name: e.target.value })
           }
-          className="border p-2 rounded"
           required
         />
 
         <input
           placeholder="Barcode"
+          className="border p-2 rounded"
           value={form.barcode}
           onChange={(e) =>
             setForm({ ...form, barcode: e.target.value })
           }
-          className="border p-2 rounded"
           required
         />
 
         <input
-          placeholder="Price"
           type="number"
+          placeholder="Price"
+          className="border p-2 rounded"
           value={form.price}
           onChange={(e) =>
             setForm({ ...form, price: e.target.value })
           }
-          className="border p-2 rounded"
           required
         />
 
         <input
-          placeholder="Stock"
           type="number"
+          placeholder="Stock"
+          className="border p-2 rounded"
           value={form.stock}
           onChange={(e) =>
             setForm({ ...form, stock: e.target.value })
           }
-          className="border p-2 rounded"
           required
         />
 
         <select
+          className="border p-2 rounded"
           value={form.category}
           onChange={(e) =>
             setForm({ ...form, category: e.target.value })
           }
-          className="border p-2 rounded"
-          required
         >
-          <option value="">Category</option>
+          <option value="">No category</option>
           {categories.map((c) => (
             <option key={c._id} value={c._id}>
               {c.name}
@@ -138,71 +151,82 @@ export default function Products() {
           ))}
         </select>
 
-        <button className="col-span-5 bg-green-600 text-white py-2 rounded">
+        <button className="bg-green-600 text-white rounded">
           Add Product
         </button>
       </form>
 
       {/* PRODUCTS TABLE */}
-      <table className="w-full bg-white shadow rounded">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="p-3">Name</th>
-            <th className="p-3">Barcode</th>
-            <th className="p-3">Category</th>
-            <th className="p-3">Price</th>
-            <th className="p-3">Stock</th>
-            <th className="p-3">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((p) => (
-            <tr key={p._id} className="border-t">
-              <td className="p-3">{p.name}</td>
-              <td className="p-3">{p.barcode}</td>
-              <td className="p-3">
-                {p.category?.name || "-"}
-              </td>
-              <td className="p-3">
-                <input
-                  type="number"
-                  defaultValue={p.price}
-                  onBlur={(e) =>
-                    handleUpdate(
-                      p._id,
-                      "price",
-                      Number(e.target.value)
-                    )
-                  }
-                  className="border p-1 w-20"
-                />
-              </td>
-              <td className="p-3">
-                <input
-                  type="number"
-                  defaultValue={p.stock}
-                  onBlur={(e) =>
-                    handleUpdate(
-                      p._id,
-                      "stock",
-                      Number(e.target.value)
-                    )
-                  }
-                  className="border p-1 w-20"
-                />
-              </td>
-              <td className="p-3">
-                <button
-                  onClick={() => handleDelete(p._id)}
-                  className="text-red-600"
-                >
-                  Delete
-                </button>
-              </td>
+      <div className="bg-white rounded shadow overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-3 text-left">Name</th>
+              <th className="p-3">Barcode</th>
+              <th className="p-3">Category</th>
+              <th className="p-3">Price</th>
+              <th className="p-3">Stock</th>
+              <th className="p-3">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody>
+            {products.map((p) => (
+              <tr key={p._id} className="border-t">
+                <td className="p-3">{p.name}</td>
+                <td className="p-3 text-center">{p.barcode}</td>
+                <td className="p-3 text-center">
+                  {p.category?.name || "-"}
+                </td>
+
+                <td className="p-3 text-center">
+                  <input
+                    type="number"
+                    defaultValue={p.price}
+                    onBlur={(e) =>
+                      updateField(p._id, "price", e.target.value)
+                    }
+                    className="border p-1 w-20"
+                  />
+                </td>
+
+                <td className="p-3 text-center">
+                  <input
+                    type="number"
+                    defaultValue={p.stock}
+                    onBlur={(e) =>
+                      updateField(p._id, "stock", e.target.value)
+                    }
+                    className={`border p-1 w-20 ${
+                      p.stock === 0 ? "border-red-500" : ""
+                    }`}
+                  />
+                </td>
+
+                <td className="p-3 text-center">
+                  <button
+                    onClick={() => handleDelete(p._id)}
+                    className="text-red-600"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+
+            {products.length === 0 && (
+              <tr>
+                <td
+                  colSpan="6"
+                  className="p-6 text-center text-gray-400"
+                >
+                  No products
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
