@@ -1,8 +1,10 @@
 import axios from "axios";
 
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 // 🔓 Public client (NO token)
 export const authApi = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -10,7 +12,7 @@ export const authApi = axios.create({
 
 // 🔐 Protected client (WITH token)
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
