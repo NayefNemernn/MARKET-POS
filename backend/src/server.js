@@ -5,8 +5,10 @@ import { PORT } from "./config/env.js";
 const startServer = async () => {
   await connectDB();
 
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+  const port = process.env.PORT || PORT || 5000;
+
+  app.listen(port, () => {
+    console.log(`🚀 Server running on port ${port}`);
   });
 };
 
