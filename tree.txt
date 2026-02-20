@@ -1,0 +1,97 @@
+.
+├── backend
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── README.md
+│   └── src
+│       ├── app.js
+│       ├── config
+│       │   ├── db.js
+│       │   └── env.js
+│       ├── controllers
+│       │   ├── auth.controller.js
+│       │   ├── category.controller.js
+│       │   ├── holdSale.controller.js
+│       │   ├── product.controller.js
+│       │   └── sale.controller.js
+│       ├── middleware
+│       │   ├── auth.middleware.js
+│       │   ├── error.middleware.js
+│       │   └── role.middleware.js
+│       ├── models
+│       │   ├── Category.js
+│       │   ├── HoldSale.js
+│       │   ├── Product.js
+│       │   ├── Sale.js
+│       │   └── User.js
+│       ├── routes
+│       │   ├── auth.routes.js
+│       │   ├── category.routes.js
+│       │   ├── dashboard.routes.js
+│       │   ├── holdSale.routes.js
+│       │   ├── product.routes.js
+│       │   ├── sale.routes.js
+│       │   └── user.routes.js
+│       ├── server.js
+│       └── utils
+│           └── generateReceipt.js
+├── frontend
+│   ├── index.html
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.cjs
+│   ├── README.md
+│   ├── src
+│   │   ├── api
+│   │   │   ├── auth.api.js
+│   │   │   ├── axios.js
+│   │   │   ├── category.api.js
+│   │   │   ├── dashboard.api.js
+│   │   │   ├── holdSale.api.js
+│   │   │   ├── product.api.js
+│   │   │   ├── sale.api.js
+│   │   │   └── user.api.js
+│   │   ├── App.jsx
+│   │   ├── components
+│   │   │   ├── AppLayout.jsx
+│   │   │   ├── common
+│   │   │   │   ├── Button.jsx
+│   │   │   │   └── Input.jsx
+│   │   │   ├── Navbar.jsx
+│   │   │   ├── pos
+│   │   │   │   ├── BarcodeScanner.jsx
+│   │   │   │   ├── CartItem.jsx
+│   │   │   │   └── Cart.jsx
+│   │   │   ├── ReceiptModal.jsx
+│   │   │   ├── RequireAdmin.jsx
+│   │   │   └── Sidebar.jsx
+│   │   ├── context
+│   │   │   ├── AuthContext.jsx
+│   │   │   ├── CartContext.jsx
+│   │   │   └── ThemeContext.jsx
+│   │   ├── hooks
+│   │   │   ├── useAuth.js
+│   │   │   ├── useCart.js
+│   │   │   ├── useOfflineSales.js
+│   │   │   └── useProducts.js
+│   │   ├── index.css
+│   │   ├── layouts
+│   │   │   └── DashboardLayout.jsx
+│   │   ├── main.jsx
+│   │   ├── pages
+│   │   │   ├── Categories.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── Login.jsx
+│   │   │   ├── PayLater.jsx
+│   │   │   ├── POS.jsx
+│   │   │   ├── Products.jsx
+│   │   │   ├── Receipt.jsx
+│   │   │   ├── Reports.jsx
+│   │   │   └── Users.jsx
+│   │   └── router
+│   │       └── AppRouter.jsx
+│   ├── tailwind.config.js
+│   └── vite.config.js
+└── tree.txt
+
+20 directories, 75 files
