@@ -207,28 +207,25 @@ export default function POS({ setPage, user }) {
         </button>
 
         {categories.map((c) => (
-          <button
-            key={c._id}
-            onClick={() => setSelectedCategory(c._id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow text-sm ${
-              selectedCategory === c._id
-                ? "bg-blue-600 text-white"
-                : "bg-white"
-            }`}
-          >
-            <img
-              src={
-                c.image ||
-                `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-                  c.name
-                )}`
-              }
-              alt={c.name}
-              className="w-6 h-6 rounded"
-            />
-            {c.name}
-          </button>
-        ))}
+  <button
+    key={c._id}
+    onClick={() => setSelectedCategory(c._id)}
+    className={`px-4 py-2 rounded-full shadow text-sm font-medium transition ${
+      selectedCategory === c._id
+        ? "bg-blue-600 text-white"
+        : "bg-white hover:bg-gray-100"
+    }`}
+  >
+    <div className="flex flex-col leading-tight">
+      <span className="text-xs text-gray-400">
+        {c.name}
+      </span>
+      <span className="font-semibold">
+        {c.nameAr}
+      </span>
+    </div>
+  </button>
+))}
       </div>
 
       {/* MAIN GRID */}
