@@ -11,16 +11,19 @@
 │       ├── controllers
 │       │   ├── auth.controller.js
 │       │   ├── category.controller.js
+│       │   ├── dashboard.controller.js
 │       │   ├── holdSale.controller.js
 │       │   ├── product.controller.js
 │       │   └── sale.controller.js
 │       ├── middleware
 │       │   ├── auth.middleware.js
 │       │   ├── error.middleware.js
-│       │   └── role.middleware.js
+│       │   ├── role.middleware.js
+│       │   └── upload.middleware.js
 │       ├── models
 │       │   ├── Category.js
 │       │   ├── HoldSale.js
+│       │   ├── Payment.js
 │       │   ├── Product.js
 │       │   ├── Sale.js
 │       │   └── User.js
@@ -32,10 +35,18 @@
 │       │   ├── product.routes.js
 │       │   ├── sale.routes.js
 │       │   └── user.routes.js
+│       ├── seed
+│       │   └── categories.seed.js
+│       ├── seedAdmin.js
 │       ├── server.js
 │       └── utils
 │           └── generateReceipt.js
 ├── frontend
+│   ├── dist
+│   │   ├── assets
+│   │   │   ├── index-Bix7ZIbI.js
+│   │   │   └── index-DU6xKwZN.css
+│   │   └── index.html
 │   ├── index.html
 │   ├── package.json
 │   ├── package-lock.json
@@ -54,15 +65,23 @@
 │   │   ├── App.jsx
 │   │   ├── components
 │   │   │   ├── AppLayout.jsx
+│   │   │   ├── Avatar.jsx
+│   │   │   ├── CheckoutModal.jsx
 │   │   │   ├── common
 │   │   │   │   ├── Button.jsx
 │   │   │   │   └── Input.jsx
+│   │   │   ├── CustomerInvoices.jsx
+│   │   │   ├── CustomerPaymentsDrawer.jsx
+│   │   │   ├── EditCustomerModal.jsx
 │   │   │   ├── Navbar.jsx
+│   │   │   ├── PaymentsChart.jsx
 │   │   │   ├── pos
 │   │   │   │   ├── BarcodeScanner.jsx
 │   │   │   │   ├── CartItem.jsx
 │   │   │   │   └── Cart.jsx
-│   │   │   ├── ReceiptModal.jsx
+│   │   │   ├── ReceiptPreview.jsx
+│   │   │   ├── ReceivePaymentModal.jsx
+│   │   │   ├── RecentPayments.jsx
 │   │   │   ├── RequireAdmin.jsx
 │   │   │   └── Sidebar.jsx
 │   │   ├── context
@@ -94,4 +113,4 @@
 │   └── vite.config.js
 └── tree.txt
 
-20 directories, 75 files
+23 directories, 91 files

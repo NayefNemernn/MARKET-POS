@@ -6,6 +6,7 @@ import Product from "../models/Product.js";
  */
 export const createSale = async (req, res) => {
   try {
+
     const { items, paymentMethod } = req.body;
 
     if (!items || items.length === 0) {
@@ -16,18 +17,22 @@ export const createSale = async (req, res) => {
     const saleItems = [];
 
     for (const item of items) {
+
       const product = await Product.findById(item.productId);
 
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
 
-      if (product.stock < item.quantity) {
-  return res.status(400).json({
-    message: `${product.name} has insufficient stock`
-  });
-}
+      /* CHECK STOCK */
 
+      if (product.stock < item.quantity) {
+        return res.status(400).json({
+          message: `${product.name} not enough stock`
+        });
+      }
+
+      /* CALCULATE SUBTOTAL */
 
       const subtotal = product.price * item.quantity;
       total += subtotal;
@@ -39,14 +44,18 @@ export const createSale = async (req, res) => {
         quantity: item.quantity,
         subtotal
       });
+
+      /* 🔻 DECREASE STOCK */
+
+      product.stock -= item.quantity;
+      await Product.findByIdAndUpdate(
+  product._id,
+  { $inc: { stock: -item.quantity } }
+);
+
     }
 
-    // Reduce stock (atomic updates)
-    for (const item of saleItems) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: -item.quantity }
-      });
-    }
+    /* CREATE SALE */
 
     const sale = await Sale.create({
       items: saleItems,
@@ -58,11 +67,13 @@ export const createSale = async (req, res) => {
       message: "Sale completed",
       sale
     });
+
   } catch (error) {
+
     res.status(500).json({ message: error.message });
+
   }
 };
-
 /**
  * Get all sales (reports)
  */

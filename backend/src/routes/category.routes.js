@@ -6,7 +6,7 @@ import { isAdmin } from "../middleware/role.middleware.js";
 const router = express.Router();
 
 // GET ALL CATEGORIES
-router.get("/", protect, isAdmin, async (req, res) => {
+router.get("/", protect, async (req, res) => {
   try {
     const categories = await Category.find().sort({ name: 1 });
     res.json(categories);

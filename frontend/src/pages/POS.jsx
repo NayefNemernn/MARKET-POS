@@ -1,387 +1,389 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { getAllProducts } from "../api/product.api";
 import { getCategories } from "../api/category.api";
-import { createSale } from "../api/sale.api";
 import { useCart } from "../hooks/useCart";
-import useOfflineSales from "../hooks/useOfflineSales";
-import Receipt from "./Receipt";
-import { createHoldSale, getHoldSaleNames } from "../api/holdSale.api";
+import CheckoutModal from "../components/CheckoutModal";
+import { useAuth } from "../context/AuthContext";
 
-export default function POS({ setPage, user }) {
-  /* =====================
-     STATE
-  ===================== */
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [search, setSearch] = useState("");
-  const [lastSale, setLastSale] = useState(null);
-  const [customerName, setCustomerName] = useState("");
-  const [nameSuggestions, setNameSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [status, setStatus] = useState(
-    navigator.onLine ? "ONLINE" : "OFFLINE"
-  );
+export default function POS({ setPage }) {
 
-  const { cart, addToCart, clearCart, increase, decrease, total } = useCart();
-  const { saveOffline, sync } = useOfflineSales();
-  const inputRef = useRef(null);
+const [products,setProducts] = useState([]);
+const [categories,setCategories] = useState([]);
+const [selectedCategory,setSelectedCategory] = useState("all");
+const [search,setSearch] = useState("");
+const [openCheckout,setOpenCheckout] = useState(false);
 
-  /* =====================
-     LOAD DATA
-  ===================== */
-  useEffect(() => {
-    getAllProducts().then(setProducts);
-    getCategories().then(setCategories);
-    getHoldSaleNames().then(setNameSuggestions);
-  }, []);
+const {cart,addToCart,increase,decrease,total,clearCart} = useCart();
+const {user,logout} = useAuth();
 
-  /* =====================
-     ONLINE / OFFLINE
-  ===================== */
-  useEffect(() => {
-    const online = async () => {
-      setStatus("SYNCING");
-      await sync();
-      setStatus("ONLINE");
-    };
-    const offline = () => setStatus("OFFLINE");
+useEffect(()=>{
 
-    window.addEventListener("online", online);
-    window.addEventListener("offline", offline);
+load();
 
-    return () => {
-      window.removeEventListener("online", online);
-      window.removeEventListener("offline", offline);
-    };
-  }, [sync]);
+},[]);
 
-  /* =====================
-     FILTER PRODUCTS
-  ===================== */
-  const filteredProducts = products.filter((p) => {
-    const matchesCategory =
-      selectedCategory === "all" ||
-      (p.category && p.category._id === selectedCategory);
+useEffect(()=>{
 
-    const matchesSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.barcode && p.barcode.includes(search));
+const handleEsc = (e)=>{
 
-    return matchesCategory && matchesSearch;
-  });
+if(e.key === "Escape"){
+clearCart();
+}
 
-  /* =====================
-     TOTALS
-  ===================== */
-  const TAX_RATE = 0.11;
-  const subtotal = total;
-  const tax = subtotal * TAX_RATE;
-  const grandTotal = subtotal + tax;
+};
 
-  const getItemQty = (productId) => {
-    const item = cart.find((i) => i.productId === productId);
-    return item ? item.quantity : 0;
-  };
+window.addEventListener("keydown",handleEsc);
 
-  /* =====================
-     CHECKOUT
-  ===================== */
-  const handleCheckout = async (paymentMethod = "cash") => {
-    if (cart.length === 0) return;
+return ()=> window.removeEventListener("keydown",handleEsc);
 
-    const payload = {
-      items: cart.map((i) => ({
-        productId: i.productId,
-        quantity: i.quantity,
-      })),
-      paymentMethod,
-    };
+},[]);
 
-    try {
-      const res = await createSale(payload);
-      setLastSale(res.sale);
-      clearCart();
-    } catch (err) {
-      if (!navigator.onLine) {
-        saveOffline(payload);
-        setStatus("OFFLINE");
-        clearCart();
-      }
-    }
-  };
+const load = async ()=>{
 
-  /* =====================
-     PAY LATER
-  ===================== */
-  const handlePayLater = async () => {
-    if (!customerName.trim()) {
-      alert("Enter customer name");
-      return;
-    }
+const p = await getAllProducts();
+const c = await getCategories();
 
-    const payload = {
-      customerName,
-      items: cart.map((i) => ({
-        productId: i.productId,
-        name: i.name,
-        price: i.price,
-        quantity: i.quantity,
-      })),
-      total,
-    };
+setProducts(p);
+setCategories(c);
 
-    await createHoldSale(payload);
+};
 
-    clearCart();
-    setCustomerName("");
-    setShowSuggestions(false);
-    alert("Saved for Pay Later");
-  };
+const filteredProducts = products.filter(p=>{
 
-  /* =====================
-     RECEIPT
-  ===================== */
-  if (lastSale) {
-    return (
-      <Receipt
-        sale={lastSale}
-        onClose={() => setLastSale(null)}
-      />
-    );
-  }
+const matchCategory =
+selectedCategory === "all" ||
+p.category?._id === selectedCategory;
 
-  /* =====================
-     UI
-  ===================== */
-  return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          {user?.role === "admin" && (
-            <button
-              onClick={() => setPage("dashboard")}
-              className="w-9 h-9 flex items-center justify-center bg-white shadow rounded-full hover:bg-gray-200"
-            >
-              ←
-            </button>
-          )}
-          <h1 className="text-2xl font-bold">Point of Sale</h1>
-        </div>
+const matchSearch =
+p.name.toLowerCase().includes(search.toLowerCase()) ||
+(p.barcode && p.barcode.includes(search));
 
-        <span
-          className={`font-semibold ${
-            status === "ONLINE"
-              ? "text-green-600"
-              : status === "SYNCING"
-              ? "text-yellow-600"
-              : "text-red-600"
-          }`}
-        >
-          {status}
-        </span>
-      </div>
+return matchCategory && matchSearch;
 
-      {/* SEARCH */}
-      <div className="mb-6">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search product by name or barcode..."
-          className="w-full border rounded-xl px-4 py-3 shadow-sm focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
+});
 
-      {/* CATEGORIES */}
-      <div className="flex gap-4 overflow-x-auto mb-6">
-        <button
-          onClick={() => setSelectedCategory("all")}
-          className={`px-4 py-2 rounded-xl shadow text-sm ${
-            selectedCategory === "all"
-              ? "bg-blue-600 text-white"
-              : "bg-white"
-          }`}
-        >
-          All
-        </button>
+return(
 
-        {categories.map((c) => (
-  <button
-    key={c._id}
-    onClick={() => setSelectedCategory(c._id)}
-    className={`px-4 py-2 rounded-full shadow text-sm font-medium transition ${
-      selectedCategory === c._id
-        ? "bg-blue-600 text-white"
-        : "bg-white hover:bg-gray-100"
-    }`}
-  >
-    <div className="flex flex-col leading-tight">
-      <span className="text-xs text-gray-400">
-        {c.name}
-      </span>
-      <span className="font-semibold">
-        {c.nameAr}
-      </span>
-    </div>
-  </button>
+<div className="flex h-screen bg-gray-100">
+
+{/* LEFT SIDE */}
+
+<div className="flex-1 flex flex-col overflow-hidden">
+
+{/* HEADER */}
+
+<div className="p-6 pb-2 flex justify-between items-center">
+
+<div>
+
+<h1 className="text-2xl font-semibold">
+Point of Sale
+</h1>
+
+<p className="text-gray-400 text-sm">
+Ready to serve customers
+</p>
+
+</div>
+
+<div className="flex items-center gap-3">
+
+<span className="text-sm text-gray-500">
+{user?.username}
+</span>
+
+<button
+onClick={()=>setPage("dashboard")}
+className="px-4 py-2 bg-gray-800 text-white rounded-lg"
+>
+
+Dashboard
+
+</button>
+
+<button
+onClick={logout}
+className="px-4 py-2 bg-red-500 text-white rounded-lg"
+>
+
+Logout
+
+</button>
+
+</div>
+
+</div>
+
+{/* SEARCH */}
+
+<div className="px-6 pb-4">
+
+<input
+value={search}
+onChange={(e)=>setSearch(e.target.value)}
+placeholder="Search products or scan barcode..."
+className="w-full border rounded-lg px-4 py-3"
+/>
+
+</div>
+
+{/* CATEGORIES */}
+
+<div className="px-6 flex gap-3 overflow-x-auto pb-4">
+
+<button
+onClick={()=>setSelectedCategory("all")}
+className="px-4 py-2 bg-gray-900 text-white rounded-full text-sm"
+>
+
+All
+
+</button>
+
+{categories.map(c=>(
+<button
+key={c._id}
+onClick={()=>setSelectedCategory(c._id)}
+className="px-4 py-2 bg-white rounded-full border text-sm"
+>
+
+{c.name}
+
+</button>
 ))}
-      </div>
 
-      {/* MAIN GRID */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* PRODUCTS */}
-        <div className="col-span-8">
-          <div className="grid grid-cols-3 gap-6">
-            {filteredProducts.map((p) => {
-  const qty = getItemQty(p._id);
+</div>
 
-  return (
-    <div
-      key={p._id}
-      onClick={() => addToCart(p)} // 🔥 Click card to add
-      className="bg-white rounded-2xl shadow p-4 hover:bg-blue-50 cursor-pointer transition flex flex-col justify-between"
-    >
-      {/* PRODUCT INFO */}
-      <div>
-        <h3 className="font-semibold truncate">
-          {p.name}
-        </h3>
+{/* PRODUCTS */}
 
-        <p className="text-gray-500 text-sm mb-4">
-          ${p.price}
-        </p>
-      </div>
+<div className="flex-1 overflow-y-auto px-6 pb-6">
 
-      {/* QUANTITY CONTROL */}
-      <div
-        className="flex justify-between items-center"
-        onClick={(e) => e.stopPropagation()} // 🚫 prevent card click when pressing + -
-      >
-        <div className="flex items-center gap-3">
+<div className="grid grid-cols-4 gap-5">
 
-          <button
-            onClick={() => decrease(p._id)}
-            className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-full hover:bg-blue-700"
-          >
-            −
-          </button>
+{filteredProducts.map(p=>{
 
-          <span className="font-semibold text-sm min-w-[20px] text-center">
-            {qty}
-          </span>
+const qty =
+cart.find(i=>i.productId === p._id)?.quantity || 0;
 
-          <button
-            onClick={() => addToCart(p)}
-            className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-full hover:bg-blue-700"
-          >
-            +
-          </button>
-        </div>
+const outOfStock = p.stock === 0;
 
-        <span className="text-blue-600 font-semibold text-sm">
-          ${(p.price * qty).toFixed(2)}
-        </span>
-      </div>
-    </div>
-  );
+return(
+
+<div
+key={p._id}
+onClick={()=> !outOfStock && addToCart(p)}
+className={`relative bg-white rounded-xl shadow-sm flex flex-col transition
+${outOfStock
+? "opacity-60 cursor-not-allowed"
+: "hover:shadow-md cursor-pointer"
+}`}
+>
+
+{outOfStock && (
+
+<div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
+
+Out of Stock
+
+</div>
+
+)}
+
+<div className="h-36 flex items-center justify-center bg-gray-50 rounded-t-xl text-3xl">
+
+📦
+
+</div>
+
+<div className="p-3">
+
+<p className="text-sm font-medium">
+{p.name}
+</p>
+
+<p className="text-gray-500 text-xs">
+${p.price}
+</p>
+
+<p className="text-gray-400 text-xs">
+Stock: {p.stock}
+</p>
+
+</div>
+
+<div
+className="px-3 pb-3 flex justify-between items-center"
+onClick={(e)=>e.stopPropagation()}
+>
+
+<div className="flex gap-2 items-center">
+
+<button
+disabled={outOfStock}
+onClick={()=>decrease(p._id)}
+className="w-6 h-6 bg-gray-200 rounded"
+>
+
+-
+
+</button>
+
+<span className="text-sm font-semibold">
+{qty}
+</span>
+
+<button
+disabled={outOfStock}
+onClick={()=>increase(p._id)}
+className="w-6 h-6 bg-gray-200 rounded"
+>
+
++
+
+</button>
+
+</div>
+
+<span className="text-sm font-semibold">
+
+${(p.price * qty).toFixed(2)}
+
+</span>
+
+</div>
+
+</div>
+
+);
+
 })}
-          </div>
-        </div>
 
-        {/* INVOICE */}
-        <div className="col-span-4 bg-white rounded-2xl shadow p-6 flex flex-col">
-          <h2 className="text-lg font-bold mb-4">Invoice</h2>
+</div>
 
-          <div className="flex-1 overflow-y-auto mb-4">
-            {cart.map((item) => (
-              <div key={item.productId} className="flex justify-between mb-3">
-                <div>
-                  <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {item.quantity} × ${item.price}
-                  </p>
-                </div>
-                <p className="text-sm font-semibold">
-                  ${(item.quantity * item.price).toFixed(2)}
-                </p>
-              </div>
-            ))}
-          </div>
+</div>
 
-          <hr className="my-4" />
+</div>
 
-          <div className="space-y-2 text-sm mb-4">
-            <div className="flex justify-between">
-              <span>Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Tax (11%)</span>
-              <span>${tax.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold">
-              <span>Total</span>
-              <span>${grandTotal.toFixed(2)}</span>
-            </div>
-          </div>
+{/* CART PANEL */}
 
-          {/* CUSTOMER SUGGESTIONS */}
-          <div className="relative mb-3">
-            <input
-              value={customerName}
-              onChange={(e) => {
-                setCustomerName(e.target.value);
-                setShowSuggestions(true);
-              }}
-              placeholder="Customer name (Pay Later)"
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-            />
+<div className="w-[360px] bg-white shadow-xl flex flex-col h-screen sticky top-0">
 
-            {showSuggestions && customerName && (
-              <div className="absolute z-10 bg-white border w-full rounded shadow max-h-40 overflow-y-auto">
-                {nameSuggestions
-                  .filter((n) =>
-                    n.toLowerCase().includes(customerName.toLowerCase())
-                  )
-                  .map((name) => (
-                    <div
-                      key={name}
-                      onClick={() => {
-                        setCustomerName(name);
-                        setShowSuggestions(false);
-                      }}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                    >
-                      {name}
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
+<div className="p-4 border-b flex justify-between">
 
-          <button
-            onClick={handlePayLater}
-            className="w-full bg-yellow-500 text-white py-2 rounded-full mb-3"
-          >
-            Pay Later
-          </button>
+<h2 className="font-semibold">
 
-          <button
-            onClick={() => handleCheckout("cash")}
-            className="w-full bg-green-600 text-white py-3 rounded-full mb-2"
-          >
-            Pay Cash
-          </button>
+Current Order
 
-          <button
-            onClick={() => handleCheckout("card")}
-            className="w-full bg-blue-600 text-white py-3 rounded-full"
-          >
-            Pay Credit Card
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+</h2>
+
+<span className="text-xs bg-gray-200 px-2 py-1 rounded">
+
+{cart.length} items
+
+</span>
+
+</div>
+
+{/* CART ITEMS */}
+
+<div className="flex-1 overflow-y-auto p-4 space-y-3">
+
+{cart.map(item=>(
+<div
+key={item.productId}
+className="flex justify-between"
+>
+
+<div>
+
+<p className="text-sm font-medium">
+
+{item.name}
+
+</p>
+
+<p className="text-xs text-gray-400">
+
+${item.price} each
+
+</p>
+
+</div>
+
+<div className="flex items-center gap-2">
+
+<button onClick={()=>decrease(item.productId)}>
+-
+</button>
+
+<span>
+
+{item.quantity}
+
+</span>
+
+<button onClick={()=>increase(item.productId)}>
++
+</button>
+
+<p className="font-semibold">
+
+${(item.price * item.quantity).toFixed(2)}
+
+</p>
+
+</div>
+
+</div>
+))}
+
+</div>
+
+{/* TOTAL */}
+
+<div className="p-4 border-t">
+
+<div className="flex justify-between mb-4">
+
+<span className="font-semibold">
+Total
+</span>
+
+<span className="font-bold text-lg">
+
+${total.toFixed(2)}
+
+</span>
+
+</div>
+
+<button
+onClick={()=>setOpenCheckout(true)}
+className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold"
+>
+
+Checkout
+
+</button>
+
+</div>
+
+</div>
+
+{/* CHECKOUT MODAL */}
+
+{openCheckout && (
+
+<CheckoutModal
+cart={cart}
+total={total}
+close={()=>setOpenCheckout(false)}
+/>
+
+)}
+
+</div>
+
+);
+
 }

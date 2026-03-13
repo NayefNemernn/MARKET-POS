@@ -1,185 +1,271 @@
 import { useEffect, useState } from "react";
-import RequireAdmin from "../components/RequireAdmin";
-import Receipt from "./Receipt";
-
-
-import {
-  getHoldSales,
-  deleteHoldSale
-} from "../api/holdSale.api";
-import { createSale } from "../api/sale.api";
+import api from "../api/axios";
+import ReceivePaymentModal from "../components/ReceivePaymentModal";
+import RecentPayments from "../components/RecentPayments";
+import Avatar from "../components/Avatar";
+import EditCustomerModal from "../components/EditCustomerModal";
 
 export default function PayLater() {
-  const [sales, setSales] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [receipt, setReceipt] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  /* =====================
-     LOAD HOLD SALES
-  ===================== */
-  const load = async () => {
-    try {
-      const data = await getHoldSales();
-      setSales(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
+  const [sales, setSales] = useState([]);
+  const [search, setSearch] = useState("");
+
+  const [selected, setSelected] = useState(null);
+  const [editCustomer, setEditCustomer] = useState(null);
 
   useEffect(() => {
+
     load();
+
   }, []);
 
-  /* =====================
-     CHECKOUT PAY LATER
-  ===================== */
-  const handleCheckout = async (sale) => {
-    // create real sale
-    const res = await createSale({
-      items: sale.items.map(i => ({
-        productId: i.productId,
-        quantity: i.quantity
-      })),
-      paymentMethod: "cash"
-    });
+  const load = async () => {
 
-    // remove hold sale
-    await deleteHoldSale(sale._id);
+    const res = await api.get("/hold-sales");
 
-    setReceipt(res.sale);
-    setSelected(null);
-    load();
+    setSales(res.data);
+
   };
 
-  if (loading) {
-    return (
-      <RequireAdmin>
-        <div className="p-6">Loading Pay Later receipts…</div>
-      </RequireAdmin>
-    );
-  }
+  const filtered = sales.filter(s =>
+    s.customerName.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalOutstanding = filtered.reduce(
+    (sum, s) => sum + s.balance,
+    0
+  );
 
   return (
-    <RequireAdmin>
-      <div className="p-6 max-w-6xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold">
-          🕒 Pay Later Receipts
-        </h1>
+
+    <div className="p-6 grid grid-cols-4 gap-6">
+
+      {/* LEFT SIDE */}
+
+      <div className="col-span-3 space-y-6">
+
+        {/* PAGE HEADER */}
+
+        <div>
+
+          <h1 className="text-2xl font-bold">
+            Pay Later Accounts
+          </h1>
+
+          <p className="text-gray-500 text-sm">
+            Manage customer credit and payments
+          </p>
+
+        </div>
+
+        {/* SUMMARY CARDS */}
+
+        <div className="grid grid-cols-3 gap-4">
+
+          <div className="bg-white rounded-xl p-4 shadow flex items-center gap-4">
+
+            <div className="bg-purple-100 p-3 rounded-full">
+              👤
+            </div>
+
+            <div>
+
+              <p className="text-gray-500 text-sm">
+                Accounts with Debt
+              </p>
+
+              <h2 className="text-xl font-semibold">
+                {filtered.length}
+              </h2>
+
+            </div>
+
+          </div>
+
+          <div className="bg-white rounded-xl p-4 shadow flex items-center gap-4">
+
+            <div className="bg-yellow-100 p-3 rounded-full">
+              $
+            </div>
+
+            <div>
+
+              <p className="text-gray-500 text-sm">
+                Total Outstanding
+              </p>
+
+              <h2 className="text-xl font-semibold">
+                ${totalOutstanding.toFixed(2)}
+              </h2>
+
+            </div>
+
+          </div>
+
+          <div className="bg-white rounded-xl p-4 shadow flex items-center gap-4">
+
+            <div className="bg-green-100 p-3 rounded-full">
+              ✓
+            </div>
+
+            <div>
+
+              <p className="text-gray-500 text-sm">
+                Payments This Month
+              </p>
+
+              <h2 className="text-xl font-semibold">
+                {filtered.length}
+              </h2>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* SEARCH */}
+
+        <div className="bg-white rounded-xl shadow p-4">
+
+          <input
+            placeholder="Search customers..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="border rounded w-full p-2"
+          />
+
+        </div>
 
         {/* TABLE */}
-        <div className="bg-white rounded shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-100">
+
+        <div className="bg-white rounded-xl shadow">
+
+          <table className="w-full text-sm">
+
+            <thead className="bg-gray-50 border-b">
+
               <tr>
-                <th className="p-3 text-left">Customer</th>
-                <th className="p-3 text-center">Total</th>
-                <th className="p-3 text-center">Date</th>
-                <th className="p-3 text-center">Action</th>
+
+                <th className="px-6 py-3 text-left">Customer</th>
+                <th className="px-6 py-3 text-left">Credit Limit</th>
+                <th className="px-6 py-3 text-left">Current Debt</th>
+                <th className="px-6 py-3 text-left">Available</th>
+                <th className="px-6 py-3 text-left">Actions</th>
+
               </tr>
+
             </thead>
 
             <tbody>
-              {sales.map(sale => (
-                <tr key={sale._id} className="border-t">
-                  <td
-                    className="p-3 text-blue-600 cursor-pointer underline"
-                    onClick={() => setSelected(sale)}
-                  >
-                    {sale.customerName}
-                  </td>
 
-                  <td className="p-3 text-center">
-                    ${sale.total.toFixed(2)}
-                  </td>
+              {filtered.map(s => (
 
-                  <td className="p-3 text-center">
-                    {new Date(sale.createdAt).toLocaleString()}
-                  </td>
+                <tr
+                  key={s._id}
+                  className="border-t hover:bg-gray-50"
+                >
 
-                  <td className="p-3 text-center">
+                  <td className="px-6 py-4 flex items-center gap-3">
+
                     <button
-                      onClick={() => handleCheckout(sale)}
-                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                      onClick={() => setEditCustomer(s)}
+                      className="flex items-center gap-3"
                     >
-                      Checkout
+
+                      <Avatar name={s.customerName} />
+
+                      <div>
+
+                        <p className="font-medium hover:underline">
+                          {s.customerName}
+                        </p>
+
+                        {s.phone && (
+
+                          <p className="text-xs text-gray-400">
+                            {s.phone}
+                          </p>
+
+                        )}
+
+                      </div>
+
                     </button>
+
                   </td>
+
+                  <td className="px-6 py-4">
+                    ${(s.creditLimit || 500).toFixed(2)}
+                  </td>
+
+                  <td className="px-6 py-4 text-orange-500 font-medium">
+                    ${s.balance.toFixed(2)}
+                  </td>
+
+                  <td className="px-6 py-4 text-green-600">
+                    ${((s.creditLimit || 500) - s.balance).toFixed(2)}
+                  </td>
+
+                  <td className="px-6 py-4">
+
+                    <button
+                      onClick={() => setSelected(s)}
+                      className="bg-green-100 text-green-700 px-3 py-1 rounded"
+                    >
+
+                      Receive Payment
+
+                    </button>
+
+                  </td>
+
                 </tr>
+
               ))}
 
-              {sales.length === 0 && (
-                <tr>
-                  <td
-                    colSpan="4"
-                    className="p-6 text-center text-gray-400"
-                  >
-                    No pending receipts
-                  </td>
-                </tr>
-              )}
             </tbody>
+
           </table>
+
         </div>
 
-        {/* DETAILS MODAL */}
-        {selected && (
-          <Modal onClose={() => setSelected(null)}>
-            <h2 className="text-xl font-bold mb-4">
-              {selected.customerName}
-            </h2>
-
-            {selected.items.map((i, idx) => (
-              <div
-                key={idx}
-                className="flex justify-between text-sm mb-1"
-              >
-                <span>
-                  {i.name} × {i.quantity}
-                </span>
-                <span>
-                  ${(i.price * i.quantity).toFixed(2)}
-                </span>
-              </div>
-            ))}
-
-            <hr className="my-3" />
-
-            <div className="flex justify-between font-bold">
-              <span>Total</span>
-              <span>${selected.total.toFixed(2)}</span>
-            </div>
-          </Modal>
-        )}
-
-        {/* RECEIPT AFTER CHECKOUT */}
-        {receipt && (
-          <Receipt
-            sale={receipt}
-            onClose={() => setReceipt(null)}
-          />
-        )}
       </div>
-    </RequireAdmin>
-  );
-}
 
-/* =====================
-   MODAL COMPONENT
-===================== */
-function Modal({ children, onClose }) {
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
-        {children}
-        <button
-          onClick={onClose}
-          className="mt-4 w-full bg-gray-200 py-2 rounded"
-        >
-          Close
-        </button>
+      {/* RIGHT SIDE */}
+
+      <div className="space-y-6">
+
+        <RecentPayments />
+
       </div>
+
+      {/* RECEIVE PAYMENT MODAL */}
+
+      {selected && (
+
+        <ReceivePaymentModal
+          sale={selected}
+          close={() => setSelected(null)}
+          reload={load}
+        />
+
+      )}
+
+      {/* EDIT CUSTOMER */}
+
+      {editCustomer && (
+
+        <EditCustomerModal
+          sale={editCustomer}
+          close={() => setEditCustomer(null)}
+          reload={load}
+        />
+
+      )}
+
     </div>
+
   );
+
 }

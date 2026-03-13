@@ -7,28 +7,37 @@ const productSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+
     barcode: {
       type: String,
       required: true,
       unique: true
     },
+
     price: {
       type: Number,
       required: true,
       min: 0
     },
+
     stock: {
       type: Number,
       required: true,
       min: 0
     },
 
-    // 🔗 REAL RELATION
+    // category relation
     category: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
-      required: false
+      ref: "Category"
+    },
+
+    // ⭐ PRODUCT IMAGE
+    image: {
+      type: String,
+      default: ""
     }
+
   },
   { timestamps: true }
 );

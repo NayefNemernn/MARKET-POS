@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.clear();
     setUser(null);
+    window.location.href = "/login";
   };
 
   return (
