@@ -12,7 +12,7 @@ const startServer = async () => {
   const port = process.env.PORT || PORT || 5000;
 
   /* SERVE PRODUCT IMAGES */
-  app.use("/uploads", express.static(path.join(process.cwd(),"uploads")));
+  app.use("/uploads", express.static(path.join(process.cwd(),"backend/uploads")));
 
   app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);
