@@ -1,2 +1,11 @@
+<<<<<<< HEAD
 node_modules/
 README.md
+=======
+README.md
+.env
+backend/.env
+node_modules
+uploads
+dist
+>>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb

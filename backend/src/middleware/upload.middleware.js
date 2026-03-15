@@ -1,4 +1,5 @@
 import multer from "multer";
+<<<<<<< HEAD
 import path from "path";
 
 /* STORAGE CONFIG */
@@ -21,6 +22,14 @@ const storage = multer.diskStorage({
 });
 
 /* FILE FILTER (IMAGES ONLY) */
+=======
+
+/* MEMORY STORAGE (needed for Supabase upload) */
+
+const storage = multer.memoryStorage();
+
+/* FILE FILTER (allow only images) */
+>>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 
 const fileFilter = (req, file, cb) => {
 

@@ -1,4 +1,9 @@
 import app from "./app.js";
+<<<<<<< HEAD
+=======
+import dotenv from "dotenv";
+dotenv.config();
+>>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 import { connectDB } from "./config/db.js";
 import { PORT } from "./config/env.js";
 import { fileURLToPath } from "url";
@@ -6,6 +11,10 @@ import { fileURLToPath } from "url";
 import express from "express";
 import path from "path";
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 const startServer = async () => {
 
   await connectDB();
