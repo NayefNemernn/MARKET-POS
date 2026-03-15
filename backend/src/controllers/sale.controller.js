@@ -58,18 +58,11 @@ export const createSale = async (req, res) => {
     /* CREATE SALE */
 
     const sale = await Sale.create({
-<<<<<<< HEAD
-      items: saleItems,
-      total,
-      paymentMethod
-    });
-=======
   items: saleItems,
   total,
   paymentMethod,
   paid: paymentMethod === "paylater" ? false : true
 });
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 
     res.status(201).json({
       message: "Sale completed",

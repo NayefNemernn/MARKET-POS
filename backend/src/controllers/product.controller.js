@@ -1,10 +1,7 @@
 import Product from "../models/Product.js";
 import Category from "../models/Category.js";
-<<<<<<< HEAD
-=======
 import supabase from "../config/supabase.js";
 import { v4 as uuid } from "uuid";
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 
 /* =========================
    GET ALL PRODUCTS
@@ -44,27 +41,6 @@ res.json(product);
    CREATE PRODUCT
 ========================= */
 
-<<<<<<< HEAD
-export const createProduct = async (req, res) => {
-  try {
-
-    const { name, barcode, price, stock, category } = req.body;
-
-    const product = await Product.create({
-      name,
-      barcode,
-      price,
-      stock,
-      category,
-      image: req.file ? `/uploads/${req.file.filename}` : ""
-    });
-
-    res.status(201).json(product);
-
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-=======
 export const createProduct = async (req,res)=>{
 
 try{
@@ -109,7 +85,6 @@ res.status(500).json({message:err.message});
 
 }
 
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 };
 
 
@@ -117,28 +92,6 @@ res.status(500).json({message:err.message});
    UPDATE PRODUCT
 ========================= */
 
-<<<<<<< HEAD
-export const updateProduct = async (req, res) => {
-  try {
-
-    const updateData = { ...req.body };
-
-    if (req.file) {
-      updateData.image = `/uploads/${req.file.filename}`;
-    }
-
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    ).populate("category", "name");
-
-    res.json(product);
-
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-=======
 export const updateProduct = async (req,res)=>{
 
 try{
@@ -176,7 +129,6 @@ res.status(500).json({message:err.message});
 
 }
 
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 };
 
 
