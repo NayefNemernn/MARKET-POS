@@ -82,6 +82,12 @@
 │   │   │   │   ├── BarcodeScanner.jsx
 │   │   │   │   ├── CartItem.jsx
 │   │   │   │   └── Cart.jsx
+│   │   │   ├── products
+│   │   │   │   ├── ImageDropzone.jsx
+│   │   │   │   ├── InventoryScanner.jsx
+│   │   │   │   ├── ProductCard.jsx
+│   │   │   │   ├── ProductEditPanel.jsx
+│   │   │   │   └── ProductForm.jsx
 │   │   │   ├── ReceiptPreview.jsx
 │   │   │   ├── ReceivePaymentModal.jsx
 │   │   │   ├── RecentPayments.jsx
@@ -91,12 +97,26 @@
 │   │   ├── context
 │   │   │   ├── AuthContext.jsx
 │   │   │   ├── CartContext.jsx
+│   │   │   ├── LanguageContext.jsx
 │   │   │   └── ThemeContext.jsx
 │   │   ├── hooks
 │   │   │   ├── useAuth.js
 │   │   │   ├── useCart.js
+│   │   │   ├── useCategoriesTranslation.js
+│   │   │   ├── useDashboardTranslation.js
 │   │   │   ├── useOfflineSales.js
-│   │   │   └── useProducts.js
+│   │   │   ├── usePayLaterTranslation.js
+│   │   │   ├── useProducts.js
+│   │   │   ├── useProductsTranslation.js
+│   │   │   ├── useReportsTranslation.js
+│   │   │   └── useTranslation.js
+│   │   ├── i18n
+│   │   │   ├── categories.js
+│   │   │   ├── dashboard.js
+│   │   │   ├── paylater.js
+│   │   │   ├── products.js
+│   │   │   ├── reports.js
+│   │   │   └── translations.js
 │   │   ├── index.css
 │   │   ├── layouts
 │   │   │   └── DashboardLayout.jsx
@@ -117,4 +137,4 @@
 │   └── vite.config.js
 └── tree.txt
 
-24 directories, 94 files
+26 directories, 112 files
