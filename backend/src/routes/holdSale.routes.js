@@ -10,7 +10,8 @@ import {
   getRecentPayments,
   paymentsThisMonth,
   getCustomerPayments,
-  getCustomerInvoices
+  getCustomerInvoices,
+  updateCreditLimit
 } from "../controllers/holdSale.controller.js";
 
 import { protect } from "../middleware/auth.middleware.js";
@@ -39,5 +40,7 @@ router.get("/payments/month",paymentsThisMonth);
 
 router.get("/payments/customer/:name", getCustomerPayments);
 router.get("/invoices/:name", getCustomerInvoices);
+router.patch("/:id/limit", updateCreditLimit);
+
 
 export default router;

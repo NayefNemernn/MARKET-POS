@@ -5,7 +5,7 @@ return(
 <div className="print-receipt p-4 text-sm">
 
 <h2 className="text-center font-bold text-lg mb-2">
-Market POS
+Nemer's Market 
 </h2>
 
 <p className="text-center text-xs">

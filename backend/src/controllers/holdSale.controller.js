@@ -247,3 +247,24 @@ customerName:req.params.name
 res.json(invoices);
 
 };
+export const updateCreditLimit = async (req, res) => {
+  try {
+
+    const { creditLimit } = req.body;
+
+    const sale = await HoldSale.findByIdAndUpdate(
+      req.params.id,
+      { creditLimit },
+      { new: true }
+    );
+
+    if (!sale) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.json(sale);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

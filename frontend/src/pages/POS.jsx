@@ -1,749 +1,625 @@
-<<<<<<< HEAD
-import { useEffect, useState } from "react";
-=======
 import { useEffect, useState, useMemo } from "react";
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 import { getAllProducts } from "../api/product.api";
 import { getCategories } from "../api/category.api";
 import { useCart } from "../hooks/useCart";
 import CheckoutModal from "../components/CheckoutModal";
 import { useAuth } from "../context/AuthContext";
-<<<<<<< HEAD
-
-export default function POS({ setPage }) {
-
-const [products,setProducts] = useState([]);
-const [categories,setCategories] = useState([]);
-const [selectedCategory,setSelectedCategory] = useState("all");
-const [search,setSearch] = useState("");
-const [openCheckout,setOpenCheckout] = useState(false);
-
-const {cart,addToCart,increase,decrease,total,clearCart} = useCart();
-const {user,logout} = useAuth();
-
-useEffect(()=>{
-
-load();
-
-},[]);
-
-useEffect(()=>{
-
-const handleEsc = (e)=>{
-
-if(e.key === "Escape"){
-clearCart();
-=======
+import { useTranslation } from "../hooks/useTranslation";
 import toast from "react-hot-toast";
 
+
 export default function POS({ setPage }) {
 
-const [products, setProducts] = useState([]);
-const [categories, setCategories] = useState([]);
-const [selectedCategory, setSelectedCategory] = useState("all");
-const [search, setSearch] = useState("");
-const [openCheckout, setOpenCheckout] = useState(false);
+    const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState("all");
+    const [search, setSearch] = useState("");
+    const [openCheckout, setOpenCheckout] = useState(false);
 
-const { cart, addToCart, increase, decrease, total, clearCart } = useCart();
-const { user, logout } = useAuth();
+    const { cart, addToCart, increase, decrease, total, clearCart } = useCart();
+    const { user, logout } = useAuth();
+    const { t } = useTranslation();
 
+    useEffect(() => { load(); }, []);
 
-/* ================= LOAD DATA ================= */
+    const load = async () => {
+        const p = await getAllProducts();
+        const c = await getCategories();
+        setProducts(p);
+        setCategories(c);
+    };
 
-useEffect(()=>{
-load();
-},[]);
+    const barcodeMap = useMemo(() => {
 
-const load = async () => {
-const p = await getAllProducts();
-const c = await getCategories();
-setProducts(p);
-setCategories(c);
-};
+        const map = {};
+        products.forEach(p => {
+            if (p.barcode) map[p.barcode.toString()] = p;
+        });
 
+        return map;
 
-/* ================= BARCODE MAP ================= */
+    }, [products]);
 
-const barcodeMap = useMemo(()=>{
+    const addProductSafe = (product) => {
 
-const map = {};
+        if (!product) {
+            toast.error(t.productNotFound);
+            return;
+        }
 
-products.forEach(p=>{
-if(p.barcode){
-map[p.barcode.toString()] = p;
-}
-});
+        if (product.stock === 0) {
+            toast.error(t.outOfStock);
+            return;
+        }
 
-return map;
+        addToCart(product);
 
-},[products]);
+    };
 
+    const handleSearchEnter = (e) => {
 
-/* ================= SAFE ADD PRODUCT ================= */
+        if (e.key === "Enter") {
 
-const addProductSafe = (product)=>{
+            const code = search.trim();
+            const product = barcodeMap[code];
 
-if(!product){
-toast.error("Product not found");
-return;
-}
+            addProductSafe(product);
+            setSearch("");
 
-if(product.stock === 0){
-toast.error("Product out of stock");
-return;
-}
+        }
 
-addToCart(product);
+    };
 
-};
+    useEffect(() => {
 
+        let buffer = "";
+        let lastKeyTime = 0;
 
-/* ================= ENTER BARCODE ================= */
+        const handleScanner = (e) => {
 
-const handleSearchEnter = (e)=>{
+            const now = Date.now();
 
-if(e.key === "Enter"){
+            if (now - lastKeyTime > 100) buffer = "";
 
-const code = search.trim();
-const product = barcodeMap[code];
+            lastKeyTime = now;
 
-addProductSafe(product);
+            if (e.key === "Enter") {
 
-setSearch("");
+                const code = buffer.trim();
+                const product = barcodeMap[code];
 
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
-}
+                if (product) addProductSafe(product);
 
-};
+                buffer = "";
+                return;
 
-<<<<<<< HEAD
-window.addEventListener("keydown",handleEsc);
+            }
 
-=======
+            if (/^[0-9a-zA-Z]$/.test(e.key)) buffer += e.key;
 
-/* ================= GLOBAL SCANNER ================= */
+        };
 
-useEffect(()=>{
+        window.addEventListener("keydown", handleScanner);
+        return () => window.removeEventListener("keydown", handleScanner);
 
-let buffer = "";
-let lastKeyTime = 0;
+    }, [barcodeMap]);
 
-const beep = new Audio("/beep.mp3");
+    useEffect(() => {
 
-const handleScanner = (e)=>{
+        const handleEsc = (e) => {
 
-const now = Date.now();
+            if (e.key === "Escape") {
+                clearCart();
+                toast(t.cartCleared);
+            }
 
-if(now - lastKeyTime > 100){
-buffer = "";
-}
+        };
 
-lastKeyTime = now;
+        window.addEventListener("keydown", handleEsc);
+        return () => window.removeEventListener("keydown", handleEsc);
 
-if(e.key === "Enter"){
+    }, []);
 
-const code = buffer.trim();
-const product = barcodeMap[code];
+    const filteredProducts = products.filter(p => {
 
-if(product){
-addProductSafe(product);
-beep.play().catch(()=>{});
-}
+        const matchCategory =
+            selectedCategory === "all" ||
+            p.category?._id === selectedCategory;
 
-buffer = "";
-return;
+        const matchSearch =
+            p.name.toLowerCase().includes(search.toLowerCase()) ||
+            (p.barcode && p.barcode.includes(search));
 
-}
+        return matchCategory && matchSearch;
 
-if(/^[0-9a-zA-Z]$/.test(e.key)){
-buffer += e.key;
-}
+    });
 
-};
+    return (
 
-window.addEventListener("keydown",handleScanner);
+        <div className="flex h-[calc(95vh-64px)] bg-gray-100 dark:bg-[#0b0b0b] text-gray-900 dark:text-white">
 
-return ()=> window.removeEventListener("keydown",handleScanner);
+            {/* LEFT */}
 
-},[barcodeMap]);
+<div className="flex-1 flex flex-col overflow-hidden space-y-4 px-6">
 
-
-/* ================= ESC CLEAR CART ================= */
-
-useEffect(()=>{
-
-const handleEsc = (e)=>{
-if(e.key === "Escape"){
-clearCart();
-toast("Cart cleared");
-}
-};
-
-window.addEventListener("keydown",handleEsc);
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
-return ()=> window.removeEventListener("keydown",handleEsc);
-
-},[]);
-
-<<<<<<< HEAD
-const load = async ()=>{
-
-const p = await getAllProducts();
-const c = await getCategories();
-
-setProducts(p);
-setCategories(c);
-
-};
-=======
-
-/* ================= FILTER PRODUCTS ================= */
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
-
-const filteredProducts = products.filter(p=>{
-
-const matchCategory =
-selectedCategory === "all" ||
-p.category?._id === selectedCategory;
-
-const matchSearch =
-p.name.toLowerCase().includes(search.toLowerCase()) ||
-(p.barcode && p.barcode.includes(search));
-
-return matchCategory && matchSearch;
-
-});
-
-<<<<<<< HEAD
-return(
-
-<div className="flex h-screen bg-gray-100">
-=======
-
-/* ================= UI ================= */
-
-return(
-
-<div className="flex h-screen bg-gray-100 overflow-hidden">
-
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
-
-{/* LEFT SIDE */}
-
-<div className="flex-1 flex flex-col overflow-hidden">
-
-<<<<<<< HEAD
-=======
-
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 {/* HEADER */}
 
-<div className="p-6 pb-2 flex justify-between items-center">
+<div
+className="
+p-6 flex justify-between items-center
+
+rounded-3xl
+
+bg-gray-100 dark:bg-[#141414]
+
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+"
+>
 
 <div>
 
 <h1 className="text-2xl font-semibold">
-Point of Sale
+{t.pos}
 </h1>
 
-<p className="text-gray-400 text-sm">
-Ready to serve customers
+<p className="text-gray-500 dark:text-gray-400 text-sm">
+{t.ready}
 </p>
 
 </div>
 
+
 <div className="flex items-center gap-3">
 
-<span className="text-sm text-gray-500">
+<span className="text-sm text-gray-500 dark:text-gray-400">
 {user?.username}
 </span>
 
 <button
-onClick={()=>setPage("dashboard")}
-className="px-4 py-2 bg-gray-800 text-white rounded-lg"
+onClick={() => setPage("dashboard")}
+className="
+px-4 py-2 rounded-xl
+
+bg-gray-100 dark:bg-[#1c1c1c]
+
+shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff]
+dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f]
+
+hover:scale-[1.03]
+transition
+"
 >
-<<<<<<< HEAD
-
-Dashboard
-
-=======
-Dashboard
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+{t.dashboard}
 </button>
 
 <button
 onClick={logout}
-className="px-4 py-2 bg-red-500 text-white rounded-lg"
+className="
+px-4 py-2 rounded-xl
+bg-red-600 hover:bg-red-700
+text-white
+transition
+"
 >
-<<<<<<< HEAD
-
-Logout
-
-=======
-Logout
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+{t.logout}
 </button>
 
 </div>
 
 </div>
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 {/* SEARCH */}
 
-<div className="px-6 pb-4">
+<div
+className="
+p-4 rounded-3xl
+
+bg-gray-100 dark:bg-[#141414]
+
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+"
+>
 
 <input
-<<<<<<< HEAD
-value={search}
-onChange={(e)=>setSearch(e.target.value)}
-=======
 autoFocus
 value={search}
 onChange={(e)=>setSearch(e.target.value)}
 onKeyDown={handleSearchEnter}
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
-placeholder="Search products or scan barcode..."
-className="w-full border rounded-lg px-4 py-3"
+placeholder={t.search}
+className="
+w-full px-5 py-4 rounded-xl outline-none
+
+bg-gray-100 dark:bg-[#0f0f0f]
+
+shadow-[inset_5px_5px_10px_#d1d5db,inset_-5px_-5px_10px_#ffffff]
+dark:shadow-[inset_5px_5px_10px_#050505,inset_-5px_-5px_10px_#1f1f1f]
+"
 />
 
 </div>
 
-<<<<<<< HEAD
+
 {/* CATEGORIES */}
 
-<div className="px-6 flex gap-3 overflow-x-auto pb-4">
+<div
+className="
+p-4 rounded-3xl flex gap-3 overflow-x-auto
+
+bg-gray-100 dark:bg-[#141414]
+
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+"
+>
 
 <button
 onClick={()=>setSelectedCategory("all")}
-className="px-4 py-2 bg-gray-900 text-white rounded-full text-sm"
+className={`
+px-5 py-2 rounded-xl text-sm transition
+
+${selectedCategory==="all"
+? "bg-blue-600 text-white"
+: `
+
+bg-gray-100 dark:bg-[#1c1c1c]
+
+shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff]
+dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f]
+
+`}
+`}
 >
-
-All
-
+{t.all}
 </button>
+
 
 {categories.map(c=>(
 <button
 key={c._id}
 onClick={()=>setSelectedCategory(c._id)}
-className="px-4 py-2 bg-white rounded-full border text-sm"
-=======
+className={`
+px-5 py-2 rounded-xl text-sm transition
 
-{/* CATEGORIES */}
+${selectedCategory===c._id
+? "bg-blue-600 text-white"
+: `
 
-<div className="px-6 flex gap-3 overflow-x-auto pb-4 pt-3">
+bg-gray-100 dark:bg-[#1c1c1c]
 
-<button
-onClick={()=>setSelectedCategory("all")}
-className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200
-flex items-center gap-2 whitespace-nowrap
-${selectedCategory === "all"
-? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg scale-105"
-: "bg-white border hover:bg-blue-50 hover:border-blue-400 hover:scale-105 active:scale-95"}
+shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff]
+dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f]
+
+`}
 `}
 >
-All
-</button>
-
-{categories.map(c=>(
-
-<button
-key={c._id}
-onClick={()=>setSelectedCategory(c._id)}
-className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200
-flex items-center gap-2 whitespace-nowrap
-${selectedCategory === c._id
-? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg scale-105"
-: "bg-white border hover:bg-blue-50 hover:border-blue-400 hover:scale-105 active:scale-95"}
-`}
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
->
-
 {c.name}
-
 </button>
-<<<<<<< HEAD
-=======
-
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 ))}
 
-</div>
+</div>                {/* PRODUCTS */}
 
-<<<<<<< HEAD
-{/* PRODUCTS */}
+                <div className="flex-1 overflow-y-auto px-6 pb-32">
 
-<div className="flex-1 overflow-y-auto px-6 pb-6">
-=======
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-6">
 
-{/* PRODUCTS */}
+                        {filteredProducts.map(p => {
 
-<div className="flex-1 overflow-y-auto px-6 pb-24">
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+                            const qty = cart.find(i => i.productId === p._id)?.quantity || 0;
+                            const outOfStock = p.stock === 0;
 
-<div className="grid grid-cols-4 gap-5">
+                            return (
 
-{filteredProducts.map(p=>{
+                                <div
+                                    key={p._id}
+                                    onClick={() => addProductSafe(p)}
+                                    className={`
+relative flex flex-col
 
-const qty =
-<<<<<<< HEAD
-cart.find(i=>i.productId === p._id)?.quantity || 0;
-=======
-cart.find(i => i.productId === p._id)?.quantity || 0;
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+rounded-3xl
+p-3
 
-const outOfStock = p.stock === 0;
+bg-gray-100 dark:bg-[#141414]
 
-return(
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
 
-<div
-key={p._id}
-<<<<<<< HEAD
-onClick={()=> !outOfStock && addToCart(p)}
-className={`relative bg-white rounded-xl shadow-sm flex flex-col transition
-${outOfStock
-? "opacity-60 cursor-not-allowed"
-: "hover:shadow-md cursor-pointer"
-}`}
->
-
-{outOfStock && (
-
-<div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
-
-Out of Stock
-
-</div>
-
-)}
-
-<div className="h-36 flex items-center justify-center bg-gray-50 rounded-t-xl text-3xl">
-
-📦
-
-=======
-onClick={()=>addProductSafe(p)}
-className={`relative bg-white rounded-xl shadow-sm flex flex-col transition
-${outOfStock
-? "opacity-60 cursor-not-allowed"
-: "hover:shadow-md cursor-pointer"}
+transition
+${!outOfStock && "hover:scale-[1.03] cursor-pointer"}
+${outOfStock && "opacity-40"}
 `}
+                                >
+
+                                    {/* OUT OF STOCK */}
+
+                                    {outOfStock && (
+                                        <div className="absolute top-3 right-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                            {t.out}
+                                        </div>
+                                    )}
+
+                                    {/* IMAGE */}
+
+                                    <div
+                                        className="
+                                                    h-32
+                                                    rounded-2xl
+                                                    bg-gray-200 dark:bg-[#0f0f0f]
+
+                                                    flex items-center justify-center
+                                                    overflow-hidden
+                                                    "
+                                    >
+
+                                        <img
+                                            src={p.image || "/placeholder.png"}
+                                            className="
+  w-full
+  h-full
+  object-cover
+  "
+                                        />
+
+                                    </div>
+
+
+                                    {/* PRODUCT INFO */}
+
+                                    <div className="mt-3 px-1">
+
+                                        <p className="text-sm font-semibold truncate">
+                                            {p.name}
+                                        </p>
+
+                                        <p className="text-xs text-blue-500 font-semibold">
+                                            ${p.price}
+                                        </p>
+
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {t.stock}: {p.stock}
+                                        </p>
+
+                                    </div>
+
+
+                                    {/* CART CONTROLS */}
+
+                                    <div
+                                        className="mt-3 flex justify-between items-center"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+
+                                        <div className="flex gap-2 items-center">
+
+                                            <button
+                                                disabled={outOfStock}
+                                                onClick={() => decrease(p._id)}
+                                                className="
+w-7 h-7 rounded-full
+
+bg-gray-200 dark:bg-[#1c1c1c]
+
+flex items-center justify-center
+"
+                                            >
+                                                -
+                                            </button>
+
+                                            <span className="text-sm">
+                                                {qty}
+                                            </span>
+
+                                            <button
+                                                disabled={outOfStock}
+                                                onClick={() => increase(p._id)}
+                                                className="
+w-7 h-7 rounded-full
+
+bg-gray-200 dark:bg-[#1c1c1c]
+
+flex items-center justify-center
+"
+                                            >
+                                                +
+                                            </button>
+
+                                        </div>
+
+                                        <span className="text-sm font-semibold">
+                                            ${(p.price * qty).toFixed(2)}
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+                            );
+
+                        })}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {/* CART */}
+
+            <div
+className="
+w-[360px]
+flex flex-col
+h-full
+
+bg-gray-100 dark:bg-[#141414]
+
+rounded-l-3xl
+
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+"
 >
 
-{outOfStock && (
-<div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
-Out of Stock
-</div>
-)}
+{/* HEADER */}
 
-<div className="h-36 bg-gray-50 rounded-t-xl overflow-hidden">
-  <img
-    src={p.image || "/placeholder.png"}
-    onError={(e)=>{e.target.src="/placeholder.png"}}
-    className="w-full h-full object-cover"
-  />
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
-</div>
-
-<div className="p-3">
-
-<p className="text-sm font-medium">
-{p.name}
-</p>
-
-<p className="text-gray-500 text-xs">
-${p.price}
-</p>
-
-<p className="text-gray-400 text-xs">
-Stock: {p.stock}
-</p>
-
-</div>
-
-<div
-className="px-3 pb-3 flex justify-between items-center"
-onClick={(e)=>e.stopPropagation()}
->
-
-<div className="flex gap-2 items-center">
-
-<button
-disabled={outOfStock}
-onClick={()=>decrease(p._id)}
-className="w-6 h-6 bg-gray-200 rounded"
->
-<<<<<<< HEAD
-
--
-
-=======
--
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
-</button>
-
-<span className="text-sm font-semibold">
-{qty}
-</span>
-
-<button
-disabled={outOfStock}
-onClick={()=>increase(p._id)}
-className="w-6 h-6 bg-gray-200 rounded"
->
-<<<<<<< HEAD
-
-+
-
-=======
-+
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
-</button>
-
-</div>
-
-<span className="text-sm font-semibold">
-<<<<<<< HEAD
-
-${(p.price * qty).toFixed(2)}
-
-=======
-${(p.price * qty).toFixed(2)}
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
-</span>
-
-</div>
-
-</div>
-
-);
-
-})}
-
-</div>
-
-</div>
-
-</div>
-
-<<<<<<< HEAD
-{/* CART PANEL */}
-
-<div className="w-[360px] bg-white shadow-xl flex flex-col h-screen sticky top-0">
-
-<div className="p-4 border-b flex justify-between">
+<div className="p-4 flex justify-between items-center">
 
 <h2 className="font-semibold">
-
-Current Order
-
+{t.currentOrder}
 </h2>
 
-<span className="text-xs bg-gray-200 px-2 py-1 rounded">
+<span
+className="
+text-xs px-3 py-1 rounded-full
 
-{cart.length} items
+bg-gray-100 dark:bg-[#1c1c1c]
 
-=======
-
-{/* CART PANEL */}
-
-<div className="w-[360px] bg-white flex flex-col h-screen shadow-2xl border-l rounded-l-3xl overflow-hidden">
-
-
-<div className="p-4 border-b flex justify-between items-center bg-gray-50">
-
-<h2 className="font-semibold text-gray-700">
-Current Order
-</h2>
-
-<span className="text-xs bg-gray-200 px-3 py-1 rounded-full">
-{cart.length} items
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff]
+dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f]
+"
+>
+{cart.length}
 </span>
 
 </div>
 
-<<<<<<< HEAD
+
 {/* CART ITEMS */}
-
-<div className="flex-1 overflow-y-auto p-4 space-y-3">
-
-{cart.map(item=>(
-<div
-key={item.productId}
-className="flex justify-between"
-=======
 
 <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
 {cart.length === 0 && (
-<p className="text-sm text-gray-400 text-center mt-10">
-Cart is empty
+
+<p className="text-center text-gray-500 mt-10">
+{t.cartEmpty}
 </p>
+
 )}
 
-{cart.map(item=>(
+
+{cart.map(item => (
 
 <div
 key={item.productId}
-className="flex justify-between items-center bg-gray-50 rounded-xl px-3 py-2 hover:bg-gray-100 transition"
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+className="
+flex justify-between items-center
+rounded-2xl px-4 py-3
+
+bg-gray-100 dark:bg-[#1c1c1c]
+
+shadow-[inset_5px_5px_10px_#d1d5db,inset_-5px_-5px_10px_#ffffff]
+dark:shadow-[inset_5px_5px_10px_#050505,inset_-5px_-5px_10px_#1f1f1f]
+"
 >
+
+{/* PRODUCT INFO */}
 
 <div>
 
-<<<<<<< HEAD
-<p className="text-sm font-medium">
-
-{item.name}
-
-</p>
-
-<p className="text-xs text-gray-400">
-
-${item.price} each
-
-=======
 <p className="text-sm font-semibold">
 {item.name}
 </p>
 
-<p className="text-xs text-gray-400">
-${item.price} each
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+<p className="text-xs text-gray-500">
+${item.price}
 </p>
 
 </div>
 
-<<<<<<< HEAD
-<div className="flex items-center gap-2">
 
-<button onClick={()=>decrease(item.productId)}>
--
-</button>
+{/* CONTROLS */}
 
-<span>
-
-{item.quantity}
-
-</span>
-
-<button onClick={()=>increase(item.productId)}>
-+
-</button>
-
-<p className="font-semibold">
-
-${(item.price * item.quantity).toFixed(2)}
-
-=======
 <div className="flex items-center gap-3">
 
 <button
 onClick={()=>decrease(item.productId)}
-className="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 transition"
+className="
+w-7 h-7 rounded-full
+
+bg-gray-100 dark:bg-[#141414]
+
+shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff]
+dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f]
+
+flex items-center justify-center
+"
 >
 -
 </button>
 
-<span className="text-sm font-semibold w-5 text-center">
+<span className="text-sm">
 {item.quantity}
 </span>
 
 <button
 onClick={()=>increase(item.productId)}
-className="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 transition"
+className="
+w-7 h-7 rounded-full
+
+bg-gray-100 dark:bg-[#141414]
+
+shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff]
+dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f]
+
+flex items-center justify-center
+"
 >
 +
 </button>
 
-<p className="font-semibold w-16 text-right">
+<p className="w-16 text-right font-semibold">
 ${(item.price * item.quantity).toFixed(2)}
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 </p>
 
 </div>
 
 </div>
-<<<<<<< HEAD
-=======
 
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 ))}
 
 </div>
 
-<<<<<<< HEAD
-{/* TOTAL */}
 
-<div className="p-4 border-t">
+{/* FOOTER */}
 
-<div className="flex justify-between mb-4">
+<div className="p-4 space-y-4">
 
-<span className="font-semibold">
-=======
+<div className="flex justify-between">
 
-<div className="p-4 border-t bg-gray-50">
+<span>{t.total}</span>
 
-<div className="flex justify-between mb-4">
-
-<span className="font-semibold text-gray-600">
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
-Total
-</span>
-
-<span className="font-bold text-lg">
-<<<<<<< HEAD
-
+<span className="font-bold">
 ${total.toFixed(2)}
-
-=======
-${total.toFixed(2)}
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 </span>
 
 </div>
 
 <button
 onClick={()=>setOpenCheckout(true)}
-<<<<<<< HEAD
-className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold"
->
+className="
+w-full py-3 rounded-full
 
-Checkout
+bg-green-600 hover:bg-green-700
 
-=======
-className="w-full bg-green-600 hover:bg-green-700 active:scale-95 transition text-white py-3 rounded-xl font-semibold shadow-md"
+text-white font-semibold
+
+transition
+"
 >
-Checkout
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+{t.checkout}
 </button>
 
 </div>
 
 </div>
 
-<<<<<<< HEAD
-{/* CHECKOUT MODAL */}
-=======
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+            {openCheckout && (
+                <CheckoutModal cart={cart} total={total} close={() => setOpenCheckout(false)} />
+            )}
 
-{openCheckout && (
+        </div>
 
-<CheckoutModal
-cart={cart}
-total={total}
-close={()=>setOpenCheckout(false)}
-/>
-
-)}
-
-</div>
-
-);
-
+    );
 }

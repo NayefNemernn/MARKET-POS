@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { AuthProvider } from "./context/AuthContext";
-<<<<<<< HEAD
-=======
 import { Toaster } from "react-hot-toast";
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 
 import DashboardLayout from "./layouts/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
@@ -67,10 +64,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-<<<<<<< HEAD
-=======
       <Toaster position="top-right" />
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
       <DashboardLayout page={page} setPage={setPage} user={user}>
         {renderPage()}
       </DashboardLayout>

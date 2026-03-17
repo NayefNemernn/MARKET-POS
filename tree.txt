@@ -7,7 +7,8 @@
 │   │   ├── app.js
 │   │   ├── config
 │   │   │   ├── db.js
-│   │   │   └── env.js
+│   │   │   ├── env.js
+│   │   │   └── supabase.js
 │   │   ├── controllers
 │   │   │   ├── auth.controller.js
 │   │   │   ├── category.controller.js
@@ -71,6 +72,7 @@
 │   │   │   ├── common
 │   │   │   │   ├── Button.jsx
 │   │   │   │   └── Input.jsx
+│   │   │   ├── CreditTimeline.jsx
 │   │   │   ├── CustomerInvoices.jsx
 │   │   │   ├── CustomerPaymentsDrawer.jsx
 │   │   │   ├── EditCustomerModal.jsx
@@ -84,7 +86,8 @@
 │   │   │   ├── ReceivePaymentModal.jsx
 │   │   │   ├── RecentPayments.jsx
 │   │   │   ├── RequireAdmin.jsx
-│   │   │   └── Sidebar.jsx
+│   │   │   ├── Sidebar.jsx
+│   │   │   └── ThemeToggle.jsx
 │   │   ├── context
 │   │   │   ├── AuthContext.jsx
 │   │   │   ├── CartContext.jsx
@@ -112,7 +115,6 @@
 │   │       └── AppRouter.jsx
 │   ├── tailwind.config.js
 │   └── vite.config.js
-├── tree.txt
-└── uploads
+└── tree.txt
 
-25 directories, 91 files
+24 directories, 94 files

@@ -2,20 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 /* =========================
    GLOBAL UI TRANSITIONS
 ========================= */
 
 * {
-<<<<<<< HEAD
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-=======
   transition: background-color 0.2s ease,
               color 0.2s ease,
               transform 0.15s ease,
@@ -103,7 +94,6 @@
 }
 
 
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
 /* =========================
    PRINT STYLES (RECEIPT)
 ========================= */
@@ -123,19 +113,13 @@
     position: absolute;
     top: 0;
     left: 0;
-<<<<<<< HEAD
-    width: 280px; /* Perfect for thermal printer */
-=======
     width: 280px; /* Thermal printer width */
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
   }
 
   @page {
     margin: 0;
   }
 
-<<<<<<< HEAD
-=======
 }
 @keyframes slideIn {
   from { transform: translateX(100%); }
@@ -153,5 +137,61 @@
 
 .animate-fadeIn {
   animation: fadeIn 0.2s ease;
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+}
+
+/* =============================
+   NEUMORPHIC LOGIN CARD
+============================= */
+
+.neu-card {
+  width: 420px;
+  border-radius: 30px;
+  transition: all 0.3s ease;
+}
+
+/* LIGHT MODE */
+
+.light .neu-card {
+  background: #f5f5f5;
+  box-shadow:
+    15px 15px 30px #d1d1d1,
+    -15px -15px 30px #ffffff;
+}
+
+/* DARK MODE */
+
+.dark .neu-card {
+  background: #212121;
+  box-shadow:
+    15px 15px 30px rgb(25,25,25),
+    -15px -15px 30px rgb(60,60,60);
+}
+
+/* KEYPAD BUTTON */
+
+.neu-btn {
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 20px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.light .neu-btn {
+  background: #f5f5f5;
+  box-shadow:
+    6px 6px 12px #d1d1d1,
+    -6px -6px 12px #ffffff;
+}
+
+.dark .neu-btn {
+  background: #212121;
+  color: white;
+  box-shadow:
+    6px 6px 12px #1a1a1a,
+    -6px -6px 12px #2c2c2c;
+}
+
+.neu-btn:active {
+  transform: scale(0.96);
 }

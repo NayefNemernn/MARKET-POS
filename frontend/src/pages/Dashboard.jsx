@@ -1,147 +1,387 @@
 import { useEffect, useState } from "react";
 import { getDashboardStats } from "../api/dashboard.api";
+import { motion } from "framer-motion";
+import {
+LineChart,
+Line,
+CartesianGrid,
+XAxis,
+YAxis,
+Tooltip,
+ResponsiveContainer
+} from "recharts";
 
-export default function Dashboard({ setPage }) {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+import { useDashboardTranslation } from "../hooks/useDashboardTranslation";
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await getDashboardStats();
-        setStats(data);
-      } catch (err) {
-        setError("You are not allowed to view the dashboard.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+export default function Dashboard() {
 
-  if (loading) {
-    return (
-      <div className="p-6 text-gray-500 animate-pulse">
-        Loading dashboard…
-      </div>
-    );
-  }
+const t = useDashboardTranslation();
 
-  if (error) {
-    return (
-      <div className="p-6 text-red-600 font-medium">
-        {error}
-      </div>
-    );
-  }
+const [stats, setStats] = useState(null);
+const [loading, setLoading] = useState(true);
 
-  const isOnline =
-    typeof navigator !== "undefined" && navigator.onLine;
+const [salesMode,setSalesMode] = useState("today");
 
-  return (
-    <div className="space-y-10 p-6">
+const [showSales, setShowSales] = useState(true);
+const [showTop, setShowTop] = useState(true);
+const [showLow, setShowLow] = useState(true);
+const [showReceipts, setShowReceipts] = useState(true);
 
-      {/* HEADER */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Dashboard
-        </h1>
-        <p className="text-gray-500 mt-1">
-          Welcome back 👋 Here’s what’s happening today.
-        </p>
-      </div>
+const salesValue =
+salesMode === "today"
+? stats?.todaySales
+: stats?.weekSales;
 
-      {/* KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <KpiCard
-          title="Today Sales"
-          value={`$${stats?.todaySales?.toFixed(2) ?? "0.00"}`}
-          onClick={() => setPage("reports")}
-        />
 
-        <KpiCard
-          title="Products"
-          value={stats?.totalProducts ?? 0}
-          onClick={() => setPage("products")}
-        />
+/* LOAD DASHBOARD */
 
-        <KpiCard
-          title="Low Stock"
-          value={stats?.lowStock ?? 0}
-          danger
-          onClick={() => setPage("products")}
-        />
+useEffect(()=>{
 
-        <KpiCard
-          title="System Status"
-          value={isOnline ? "Online" : "Offline"}
-          status
-        />
-      </div>
+const load = async()=>{
 
-      {/* QUICK ACTIONS */}
-      <div className="bg-white rounded-2xl shadow-sm border p-6">
-        <h2 className="text-xl font-semibold mb-4">
-          Quick Actions
-        </h2>
+try{
 
-        <div className="flex flex-wrap gap-4">
-          <ActionButton
-            label="Open POS"
-            onClick={() => setPage("pos")}
-          />
-          <ActionButton
-            label="Add Product"
-            onClick={() => setPage("products")}
-          />
-          <ActionButton
-            label="View Reports"
-            onClick={() => setPage("reports")}
-          />
-        </div>
-      </div>
-    </div>
-  );
+const data = await getDashboardStats();
+setStats(data);
+
+}catch(err){
+
+console.error(err);
+
+} finally {
+
+setLoading(false);
+
 }
 
-/* =======================
-   COMPONENTS
-======================= */
+};
 
-function KpiCard({ title, value, danger, status, onClick }) {
-  const clickable = !!onClick;
+load();
 
-  return (
-    <div
-      onClick={onClick}
-      className={`
-        p-6 rounded-2xl bg-white border shadow-sm
-        transition-all duration-200
-        ${clickable ? "cursor-pointer hover:shadow-md hover:-translate-y-1" : ""}
-        ${danger ? "border-l-4 border-red-500" : ""}
-        ${status ? "border-l-4 border-green-500" : ""}
-      `}
-    >
-      <p className="text-gray-500 text-sm">{title}</p>
-      <p className="text-2xl font-bold mt-2">{value}</p>
-    </div>
-  );
+},[]);
+
+
+/* LOADING */
+
+if(loading){
+
+return(
+<div className="p-6 animate-pulse text-gray-500">
+{t.loading}
+</div>
+);
+
 }
 
-function ActionButton({ label, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="
-        px-5 py-3 rounded-xl
-        bg-blue-600 text-white font-medium
-        hover:bg-blue-700
-        active:scale-95
-        transition-all duration-150
-      "
-    >
-      {label}
-    </button>
-  );
+
+/* UI */
+
+return(
+
+<div className="space-y-10 p-6">
+
+{/* HEADER */}
+
+<div>
+
+<h1 className="text-3xl font-bold">
+{t.title}
+</h1>
+
+<p className="text-gray-500 dark:text-gray-400">
+{t.subtitle}
+</p>
+
+</div>
+
+
+{/* SALES MODE SWITCH */}
+
+<div className="flex gap-2">
+
+<button
+onClick={()=>setSalesMode("today")}
+className={`
+px-4 py-2 rounded-xl text-sm transition
+${salesMode==="today"
+? "bg-blue-600 text-white"
+: "bg-gray-200 dark:bg-[#1c1c1c]"}
+`}
+>
+{t.today}
+</button>
+
+<button
+onClick={()=>setSalesMode("week")}
+className={`
+px-4 py-2 rounded-xl text-sm transition
+${salesMode==="week"
+? "bg-blue-600 text-white"
+: "bg-gray-200 dark:bg-[#1c1c1c]"}
+`}
+>
+{t.week}
+</button>
+
+</div>
+
+
+{/* KPI CARDS */}
+
+<div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+
+<KpiCard
+title={salesMode==="today" ? t.todaySales : t.weekSales}
+value={
+<motion.span
+key={salesValue}
+initial={{opacity:0,y:10}}
+animate={{opacity:1,y:0}}
+>
+${Number(salesValue || 0).toFixed(2)}
+</motion.span>
+}
+/>
+
+<KpiCard
+title={t.products}
+value={stats?.totalProducts ?? 0}
+/>
+
+<KpiCard
+title={t.lowStock}
+value={stats?.lowStock ?? 0}
+danger
+/>
+
+<KpiCard
+title={t.customers}
+value={stats?.customers ?? 0}
+/>
+
+</div>
+
+
+{/* TOGGLES */}
+
+<div className="flex flex-wrap gap-3">
+
+<Toggle label={t.salesChart} state={showSales} set={setShowSales}/>
+<Toggle label={t.topProducts} state={showTop} set={setShowTop}/>
+<Toggle label={t.lowStock} state={showLow} set={setShowLow}/>
+<Toggle label={t.receipts} state={showReceipts} set={setShowReceipts}/>
+
+</div>
+
+
+{/* SALES CHART */}
+
+{showSales && (
+
+<AnimatedCard title={t.salesWeek}>
+
+<ResponsiveContainer width="100%" height={300}>
+
+<LineChart data={stats?.salesChart || []}>
+
+<CartesianGrid strokeDasharray="3 3"/>
+
+<XAxis dataKey="day"/>
+
+<YAxis/>
+
+<Tooltip/>
+
+<Line
+type="monotone"
+dataKey="sales"
+stroke="#3b82f6"
+strokeWidth={3}
+/>
+
+</LineChart>
+
+</ResponsiveContainer>
+
+</AnimatedCard>
+
+)}
+
+
+{/* GRID */}
+
+<div className="grid md:grid-cols-3 gap-6">
+
+
+{/* TOP PRODUCTS */}
+
+{showTop && (
+
+<AnimatedCard title={t.topProducts}>
+
+{stats?.topProducts?.map(p=>(
+
+<div
+key={p._id}
+className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700"
+>
+
+<span>{p.name}</span>
+<span className="font-semibold">{p.sold}</span>
+
+</div>
+
+))}
+
+</AnimatedCard>
+
+)}
+
+
+{/* LOW STOCK */}
+
+{showLow && (
+
+<AnimatedCard title={t.lowStockProducts}>
+
+{stats?.lowStockProducts?.map(p=>(
+
+<div
+key={p._id}
+className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700"
+>
+
+<span>{p.name}</span>
+<span className="text-red-500">{p.stock}</span>
+
+</div>
+
+))}
+
+</AnimatedCard>
+
+)}
+
+
+{/* RECENT RECEIPTS */}
+
+{showReceipts && (
+
+<AnimatedCard title={t.recentReceipts}>
+
+{stats?.recentSales?.map(r=>(
+
+<div
+key={r._id}
+className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700"
+>
+
+<span>{r.customerName || t.walkIn}</span>
+
+<span className="font-semibold">
+${r.total}
+</span>
+
+</div>
+
+))}
+
+</AnimatedCard>
+
+)}
+
+</div>
+
+</div>
+
+);
+
+}
+
+
+/* KPI CARD */
+
+function KpiCard({title,value,danger}){
+
+return(
+
+<motion.div
+whileHover={{scale:1.05}}
+className="
+p-6 rounded-3xl
+bg-white dark:bg-[#141414]
+
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+"
+>
+
+<p className="text-gray-500 dark:text-gray-400 text-sm">
+{title}
+</p>
+
+<p className={`text-2xl font-bold mt-2 ${danger?"text-red-500":""}`}>
+{value}
+</p>
+
+</motion.div>
+
+);
+
+}
+
+
+/* ANALYTICS CARD */
+
+function AnimatedCard({title,children}){
+
+return(
+
+<motion.div
+initial={{opacity:0,y:20}}
+animate={{opacity:1,y:0}}
+className="
+p-6 rounded-3xl
+bg-white dark:bg-[#141414]
+
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+"
+>
+
+<h3 className="font-semibold mb-4">
+{title}
+</h3>
+
+{children}
+
+</motion.div>
+
+);
+
+}
+
+
+/* TOGGLE */
+
+function Toggle({label,state,set}){
+
+return(
+
+<button
+onClick={()=>set(!state)}
+className={`
+px-4 py-2 rounded-xl text-sm transition
+${state
+? "bg-blue-600 text-white"
+: "bg-gray-200 dark:bg-[#1c1c1c]"}
+`}
+>
+
+{label}
+
+</button>
+
+);
+
 }

@@ -1,69 +1,112 @@
 import Sale from "../models/Sale.js";
+import Product from "../models/Product.js";
 
-// DAILY REPORT
-export const getDailySales = async (req, res) => {
-  try {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
+/* ================= DASHBOARD ================= */
 
-    const result = await Sale.aggregate([
-      { $match: { createdAt: { $gte: start } } },
-      {
-        $group: {
-          _id: null,
-          totalSales: { $sum: 1 },
-          totalRevenue: { $sum: "$total" }
-        }
-      }
-    ]);
+export const getDashboardStats = async (req, res) => {
 
-    res.json(result[0] || { totalSales: 0, totalRevenue: 0 });
+try {
 
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-export const getMonthlySales = async (req, res) => {
-  try {
-    const now = new Date();
-    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+/* TODAY SALES */
 
-    const result = await Sale.aggregate([
-      { $match: { createdAt: { $gte: startMonth } } },
-      {
-        $group: {
-          _id: null,
-          totalSales: { $sum: 1 },
-          totalRevenue: { $sum: "$total" }
-        }
-      }
-    ]);
+const start = new Date();
+start.setHours(0,0,0,0);
 
-    res.json(result[0] || { totalSales: 0, totalRevenue: 0 });
+const today = await Sale.aggregate([
+{ $match: { createdAt: { $gte: start } } },
+{
+$group:{
+_id:null,
+todaySales:{ $sum:"$total" },
+count:{ $sum:1 }
+}
+}
+]);
 
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-export const getYearlySales = async (req, res) => {
-  try {
-    const now = new Date();
-    const startYear = new Date(now.getFullYear(), 0, 1);
+/* TOTAL PRODUCTS */
 
-    const result = await Sale.aggregate([
-      { $match: { createdAt: { $gte: startYear } } },
-      {
-        $group: {
-          _id: null,
-          totalSales: { $sum: 1 },
-          totalRevenue: { $sum: "$total" }
-        }
-      }
-    ]);
+const totalProducts = await Product.countDocuments();
 
-    res.json(result[0] || { totalSales: 0, totalRevenue: 0 });
+/* LOW STOCK */
 
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+const lowStockProducts = await Product.find({ stock:{ $lte:5 } })
+.select("name stock")
+.limit(5);
+
+const lowStock = lowStockProducts.length;
+
+/* RECENT SALES */
+
+const recentSales = await Sale.find()
+.sort({ createdAt:-1 })
+.limit(5)
+.select("total customerName");
+
+/* SALES CHART (last 7 days) */
+
+const lastWeek = new Date();
+lastWeek.setDate(lastWeek.getDate()-7);
+
+const salesChart = await Sale.aggregate([
+
+{ $match:{ createdAt:{ $gte:lastWeek } } },
+
+{
+$group:{
+_id:{ $dayOfMonth:"$createdAt" },
+sales:{ $sum:"$total" }
+}
+},
+
+{ $sort:{ _id:1 } }
+
+]);
+
+/* TOP PRODUCTS */
+
+const topProducts = await Sale.aggregate([
+
+{ $unwind:"$items" },
+
+{
+$group:{
+_id:"$items.productId",
+sold:{ $sum:"$items.quantity" },
+name:{ $first:"$items.name" }
+}
+},
+
+{ $sort:{ sold:-1 } },
+
+{ $limit:5 }
+
+]);
+
+res.json({
+
+todaySales: today[0]?.todaySales || 0,
+totalProducts,
+lowStock,
+lowStockProducts,
+recentSales,
+
+salesChart: salesChart.map(s=>({
+day:s._id,
+sales:s.sales
+})),
+
+topProducts: topProducts.map(p=>({
+_id:p._id,
+name:p.name,
+sold:p.sold
+}))
+
+});
+
+} catch(err){
+
+res.status(500).json({ message: err.message });
+
+}
+
 };

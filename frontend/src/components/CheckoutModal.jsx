@@ -3,326 +3,348 @@ import { createSale } from "../api/sale.api";
 import { createHoldSale, getHoldSaleNames } from "../api/holdSale.api";
 import { useCart } from "../hooks/useCart";
 import Receipt from "../pages/Receipt";
+import { useTranslation } from "../hooks/useTranslation";
 
 export default function CheckoutModal({ cart, total, close }) {
 
-    const { clearCart } = useCart();
+const { clearCart } = useCart();
+const { t } = useTranslation();
 
-    const [method, setMethod] = useState("cash");
-    const [amount, setAmount] = useState("");
-    const [change, setChange] = useState(0);
+const [method,setMethod] = useState("cash");
+const [amount,setAmount] = useState("");
+const [change,setChange] = useState(0);
 
-    const [customerName, setCustomerName] = useState("");
-    const [phone, setPhone] = useState("");
+const [customerName,setCustomerName] = useState("");
+const [phone,setPhone] = useState("");
 
-    const [nameSuggestions, setNameSuggestions] = useState([]);
-    const [showSuggestions, setShowSuggestions] = useState(false);
+const [nameSuggestions,setNameSuggestions] = useState([]);
+const [showSuggestions,setShowSuggestions] = useState(false);
 
-    const [receipt, setReceipt] = useState(null);
+const [receipt,setReceipt] = useState(null);
 
-    useEffect(() => {
+useEffect(()=>{
+getHoldSaleNames().then(setNameSuggestions);
+},[]);
 
-        getHoldSaleNames().then(setNameSuggestions);
+useEffect(()=>{
 
-    }, []);
+const received=parseFloat(amount);
 
-    useEffect(() => {
+if(!received){
+setChange(0);
+return;
+}
 
-        const received = parseFloat(amount);
+const diff=received-total;
+setChange(diff>0?diff:0);
 
-        if (!received) {
-            setChange(0);
-            return;
-        }
+},[amount,total]);
 
-        const diff = received - total;
-        setChange(diff > 0 ? diff : 0);
+const isNewCustomer=
+method==="later" &&
+customerName &&
+!nameSuggestions.includes(customerName);
 
-    }, [amount, total]);
+const completeSale=async()=>{
 
-    /* DETECT NEW CUSTOMER */
+try{
 
-    const isNewCustomer =
-        method === "later" &&
-        customerName &&
-        !nameSuggestions.includes(customerName);
+if(cart.length===0){
+alert(t.cartEmpty);
+return;
+}
 
-    /* COMPLETE SALE */
+/* PAY LATER */
 
-    const completeSale = async () => {
+if(method==="later"){
 
-        try {
+if(!customerName.trim()){
+alert(t.enterCustomerName);
+return;
+}
 
-            if (cart.length === 0) {
-                alert("Cart is empty");
-                return;
-            }
+await createHoldSale({
 
-            /* PAY LATER */
+customerName,
+phone:isNewCustomer?phone:"",
 
-            if (method === "later") {
+items:cart.map(i=>({
+productId:i.productId,
+name:i.name,
+price:i.price,
+quantity:i.quantity
+})),
 
-                if (!customerName.trim()) {
-                    alert("Enter customer name");
-                    return;
-                }
+total
 
-                await createHoldSale({
+});
 
-                    customerName,
-                    phone: isNewCustomer ? phone : "",
+clearCart();
+close();
+return;
 
-                    items: cart.map(i => ({
-                        productId: i.productId,
-                        name: i.name,
-                        price: i.price,
-                        quantity: i.quantity
-                    })),
+}
 
-                    total
+/* NORMAL SALE */
 
-                });
+const payload={
 
-                clearCart();
-                close();
-                return;
+items:cart.map(i=>({
+productId:i.productId,
+quantity:i.quantity
+})),
 
-            }
+paymentMethod:method
 
-            /* NORMAL SALE */
+};
 
-            const payload = {
+const res=await createSale(payload);
 
-                items: cart.map(i => ({
-                    productId: i.productId,
-                    quantity: i.quantity
-                })),
+setReceipt(res.sale);
+clearCart();
 
-                paymentMethod: method
+}catch(err){
 
-            };
+alert(err.response?.data?.message||t.checkoutFailed);
 
-            const res = await createSale(payload);
+}
 
-            setReceipt(res.sale);
+};
 
-            clearCart();
+/* RECEIPT */
 
-        } catch (err) {
+if(receipt){
 
-            alert(err.response?.data?.message || "Checkout failed");
+return(
 
-        }
+<div className="fixed inset-0 bg-black/80 backdrop-blur flex items-center justify-center z-50">
 
-    };
+<div className="
+bg-gray-100 dark:bg-[#141414]
+rounded-3xl p-6 w-[360px]
 
-    /* RECEIPT PREVIEW */
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+">
 
-    if (receipt) {
+<Receipt sale={receipt}/>
 
-        return (
+<div className="flex gap-3 mt-4">
 
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+<button
+onClick={()=>window.print()}
+className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-xl"
+>
+{t.print}
+</button>
 
-                <div className="bg-white rounded-xl shadow-xl p-6 w-[360px]">
+<button
+onClick={()=>{setReceipt(null);close();}}
+className="flex-1 bg-gray-200 dark:bg-[#1c1c1c] py-2 rounded-xl"
+>
+{t.close}
+</button>
 
-                    <Receipt sale={receipt} />
+</div>
 
-                    <div className="flex gap-3 mt-4">
+</div>
 
-                        <button
-                            onClick={() => window.print()}
-                            className="flex-1 bg-green-600 text-white py-2 rounded"
-                        >
+</div>
 
-                            Print
+)
 
-                        </button>
+}
 
-                        <button
-                            onClick={() => { setReceipt(null); close(); }}
-                            className="flex-1 border py-2 rounded"
-                        >
+return(
 
-                            Close
+<div className="fixed inset-0 bg-black/70 backdrop-blur flex items-center justify-center z-50">
 
-                        </button>
+<div className="
+w-[420px]
+bg-gray-100 dark:bg-[#141414]
+rounded-3xl p-6
 
-                    </div>
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+">
 
-                </div>
+{/* HEADER */}
 
-            </div>
+<div className="flex justify-between items-center mb-6">
 
-        )
+<h2 className="font-semibold text-lg">
+{t.completePayment}
+</h2>
 
-    }
+<button onClick={close}>✕</button>
 
-    return (
+</div>
 
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+{/* TOTAL */}
 
-            <div className="bg-white rounded-xl w-[420px] p-6 shadow-xl">
+<div className="
+bg-blue-600 text-white
+rounded-2xl p-6 text-center mb-6
+shadow-[0_0_20px_rgba(59,130,246,0.6)]
+">
 
-                <div className="flex justify-between mb-6">
+<p className="text-blue-200 text-sm">
+{t.totalAmount}
+</p>
 
-                    <h2 className="font-semibold text-lg">
-                        Complete Payment
-                    </h2>
+<p className="text-3xl font-bold">
+${total.toFixed(2)}
+</p>
 
-                    <button onClick={close}>✕</button>
+</div>
 
-                </div>
+{/* PAYMENT METHODS */}
 
-                <div className="bg-blue-700 text-white rounded-xl p-6 text-center mb-6">
+<p className="text-sm text-gray-500 mb-2">
+{t.paymentMethod}
+</p>
 
-                    <p>Total Amount</p>
+<div className="flex gap-3 mb-4">
 
-                    <p className="text-3xl font-bold">
-                        ${total.toFixed(2)}
-                    </p>
+<button
+onClick={()=>setMethod("cash")}
+className={`flex-1 py-3 rounded-xl
+${method==="cash"
+?"bg-green-600 text-white"
+:"bg-gray-200 dark:bg-[#1c1c1c]"}`}
+>
+{t.cash}
+</button>
 
-                </div>
+<button
+onClick={()=>setMethod("card")}
+className={`flex-1 py-3 rounded-xl
+${method==="card"
+?"bg-blue-600 text-white"
+:"bg-gray-200 dark:bg-[#1c1c1c]"}`}
+>
+{t.card}
+</button>
 
-                {/* PAYMENT METHODS */}
+<button
+onClick={()=>setMethod("later")}
+className={`flex-1 py-3 rounded-xl
+${method==="later"
+?"bg-purple-600 text-white"
+:"bg-gray-200 dark:bg-[#1c1c1c]"}`}
+>
+{t.payLater}
+</button>
 
-                <p className="text-sm mb-2">Payment Method</p>
+</div>
 
-                <div className="flex gap-3 mb-4">
+{/* CUSTOMER NAME */}
 
-                    <button
-                        onClick={() => setMethod("cash")}
-                        className={`flex-1 border rounded-lg py-3 ${method === "cash" ? "border-green-500 bg-green-50" : ""}`}
-                    >
+{method==="later" && (
 
-                        Cash
+<div className="relative mb-3">
 
-                    </button>
+<input
+value={customerName}
+onChange={(e)=>{
+setCustomerName(e.target.value);
+setShowSuggestions(true);
+}}
+placeholder={t.customerName}
+className="w-full bg-gray-200 dark:bg-[#1c1c1c] rounded-lg px-3 py-2 outline-none"
+/>
 
-                    <button
-                        onClick={() => setMethod("card")}
-                        className={`flex-1 border rounded-lg py-3 ${method === "card" ? "border-green-500 bg-green-50" : ""}`}
-                    >
+{showSuggestions && customerName && (
 
-                        Card
+<div className="absolute bg-white dark:bg-[#1c1c1c] w-full rounded shadow max-h-40 overflow-y-auto">
 
-                    </button>
+{nameSuggestions
+.filter(n=>n.toLowerCase().includes(customerName.toLowerCase()))
+.map(name=>(
+<div
+key={name}
+onClick={()=>{
+setCustomerName(name);
+setShowSuggestions(false);
+}}
+className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-[#2a2a2a] cursor-pointer"
+>
+{name}
+</div>
+))}
 
-                    <button
-                        onClick={() => setMethod("later")}
-                        className={`flex-1 border rounded-lg py-3 ${method === "later" ? "border-green-500 bg-green-50" : ""}`}
-                    >
+</div>
 
-                        Pay Later
+)}
 
-                    </button>
+</div>
 
-                </div>
+)}
 
-                {/* CUSTOMER NAME */}
+{/* PHONE */}
 
-                {method === "later" && (
+{isNewCustomer && (
 
-                    <div className="relative mb-3">
+<input
+value={phone}
+onChange={(e)=>setPhone(e.target.value)}
+placeholder={t.phone}
+className="w-full bg-gray-200 dark:bg-[#1c1c1c] rounded-lg px-3 py-2 mb-4 outline-none"
+/>
 
-                        <input
-                            value={customerName}
-                            onChange={(e) => {
-                                setCustomerName(e.target.value);
-                                setShowSuggestions(true);
-                            }}
-                            placeholder="Customer name"
-                            className="w-full border rounded-lg px-3 py-2"
-                        />
+)}
 
-                        {showSuggestions && customerName && (
+{/* CASH */}
 
-                            <div className="absolute bg-white border w-full rounded shadow max-h-40 overflow-y-auto">
+{method==="cash" && (
 
-                                {nameSuggestions
-                                    .filter(n => n.toLowerCase().includes(customerName.toLowerCase()))
-                                    .map(name => (
-                                        <div
-                                            key={name}
-                                            onClick={() => {
-                                                setCustomerName(name);
-                                                setShowSuggestions(false);
-                                            }}
-                                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                                        >
+<>
 
-                                            {name}
+<input
+value={amount}
+onChange={(e)=>setAmount(e.target.value)}
+placeholder={t.amountReceived}
+className="w-full bg-gray-200 dark:bg-[#1c1c1c] rounded-lg px-3 py-2 mb-3 outline-none"
+/>
 
-                                        </div>
-                                    ))}
+<div className="flex justify-between bg-green-100 dark:bg-green-900/30 rounded-lg px-4 py-3 mb-3">
 
-                            </div>
+<span>{t.change}</span>
+<span>${change.toFixed(2)}</span>
 
-                        )}
+</div>
 
-                    </div>
+{/* QUICK CASH */}
 
-                )}
+<div className="grid grid-cols-4 gap-2 mb-4">
 
-                {/* PHONE INPUT FOR NEW CUSTOMER */}
+<button onClick={()=>setAmount(20)} className="bg-gray-200 dark:bg-[#1c1c1c] py-2 rounded-lg">$20</button>
 
-                {isNewCustomer && (
+<button onClick={()=>setAmount(50)} className="bg-gray-200 dark:bg-[#1c1c1c] py-2 rounded-lg">$50</button>
 
-                    <input
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="Phone number"
-                        className="w-full border rounded-lg px-3 py-2 mb-4"
-                    />
+<button onClick={()=>setAmount(100)} className="bg-gray-200 dark:bg-[#1c1c1c] py-2 rounded-lg">$100</button>
 
-                )}
+<button onClick={()=>setAmount(total)} className="bg-gray-200 dark:bg-[#1c1c1c] py-2 rounded-lg">
+{t.exact}
+</button>
 
-                {/* CASH INPUT */}
+</div>
 
-                {method === "cash" && (
+</>
 
-                    <>
+)}
 
-                        <input
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            placeholder="Amount received"
-                            className="w-full border rounded-lg px-3 py-2 mb-3"
-                        />
+<button
+onClick={completeSale}
+className="w-full bg-green-600 hover:bg-green-700 py-3 rounded-xl font-semibold text-white"
+>
+{t.completeSale}
+</button>
 
-                        <div className="flex justify-between bg-green-50 text-green-700 rounded-lg px-4 py-3 mb-3">
+</div>
 
-                            <span>Change</span>
-                            <span>${change.toFixed(2)}</span>
+</div>
 
-                        </div>
-
-                        <div className="grid grid-cols-4 gap-2 mb-4">
-
-                            <button onClick={() => setAmount(20)} className="border py-2">$20</button>
-                            <button onClick={() => setAmount(50)} className="border py-2">$50</button>
-                            <button onClick={() => setAmount(100)} className="border py-2">$100</button>
-                            <button onClick={() => setAmount(total)} className="border py-2">Exact</button>
-
-                        </div>
-
-                    </>
-
-                )}
-
-                <button
-                    onClick={completeSale}
-                    className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold"
-                >
-
-                    Complete Sale
-
-                </button>
-
-            </div>
-
-        </div>
-
-    );
+);
 
 }

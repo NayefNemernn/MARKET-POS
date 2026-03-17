@@ -1,152 +1,3 @@
-<<<<<<< HEAD
-import React, { useEffect, useState } from "react";
-import api from "../api/axios";
-import RequireAdmin from "../components/RequireAdmin";
-
-export default function Reports() {
-  const [sales, setSales] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchSales = async () => {
-      try {
-        const res = await api.get("/sales");
-        setSales(res.data);
-      } catch (err) {
-        console.error("Failed to load sales", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSales();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="p-10 text-center text-gray-500 text-lg">
-        Loading sales reports…
-      </div>
-    );
-  }
-
-  const totalRevenue = sales.reduce(
-    (sum, sale) => sum + sale.total,
-    0
-  );
-
-  const averageSale =
-    sales.length > 0 ? totalRevenue / sales.length : 0;
-
-  return (
-    <RequireAdmin>
-      <div className="min-h-screen bg-gray-100 p-6">
-        <div className="max-w-6xl mx-auto">
-          {/* HEADER */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold">
-              📊 Sales Reports
-            </h1>
-            <p className="text-gray-500 mt-1">
-              Overview of all completed transactions
-            </p>
-          </div>
-
-          {/* KPI CARDS */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500">Total Sales</p>
-              <p className="text-3xl font-bold mt-2">
-                {sales.length}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500">Total Revenue</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
-                ${totalRevenue.toFixed(2)}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500">Average Sale</p>
-              <p className="text-3xl font-bold mt-2">
-                ${averageSale.toFixed(2)}
-              </p>
-            </div>
-          </div>
-
-          {/* SALES TABLE */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b">
-              <h2 className="text-xl font-semibold">
-                Transaction History
-              </h2>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 text-gray-600">
-                  <tr>
-                    <th className="p-4 text-left">Date</th>
-                    <th className="p-4 text-center">Items</th>
-                    <th className="p-4 text-right">Total</th>
-                    <th className="p-4 text-center">Payment</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {sales.map((sale) => (
-                    <tr
-                      key={sale._id}
-                      className="border-t hover:bg-gray-50 transition"
-                    >
-                      <td className="p-4">
-                        {new Date(
-                          sale.createdAt
-                        ).toLocaleString()}
-                      </td>
-
-                      <td className="p-4 text-center">
-                        {sale.items.reduce(
-                          (sum, item) =>
-                            sum + item.quantity,
-                          0
-                        )}
-                      </td>
-
-                      <td className="p-4 text-right font-semibold">
-                        ${sale.total.toFixed(2)}
-                      </td>
-
-                      <td className="p-4 text-center capitalize">
-                        <span className="inline-block px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700">
-                          {sale.paymentMethod}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {sales.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan="4"
-                        className="p-6 text-center text-gray-400"
-                      >
-                        No sales recorded yet
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </RequireAdmin>
-  );
-}
-=======
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../api/axios";
 import RequireAdmin from "../components/RequireAdmin";
@@ -164,7 +15,11 @@ import {
  Bar
 } from "recharts";
 
+import { useReportsTranslation } from "../hooks/useReportsTranslation";
+
 export default function Reports(){
+
+const t = useReportsTranslation();
 
 const [sales,setSales] = useState([]);
 const [loading,setLoading] = useState(true);
@@ -246,7 +101,7 @@ sales.forEach(sale=>{
 
  sale.items.forEach(item=>{
 
-  const name = item.name || "Unknown";
+  const name = item.name || t.unknown;
 
   if(!map[name]){
    map[name] = {name, qty:0};
@@ -262,7 +117,7 @@ return Object.values(map)
 .sort((a,b)=>b.qty-a.qty)
 .slice(0,5);
 
-},[sales]);
+},[sales,t]);
 
 
 /* =====================
@@ -291,29 +146,6 @@ return Object.values(map);
 
 
 /* =====================
- PROFIT ANALYTICS
-===================== */
-
-const profitData = useMemo(()=>{
-
-let revenue = 0;
-
-sales.forEach(sale=>{
- sale.items.forEach(item=>{
-  revenue += item.price * item.quantity;
- });
-});
-
-return {
- revenue,
- cost:0,
- profit:revenue
-};
-
-},[sales]);
-
-
-/* =====================
  PAY LATER
 ===================== */
 
@@ -334,28 +166,19 @@ return {
 },[sales]);
 
 
-/* =====================
- LOADING
-===================== */
-
 if(loading){
  return(
-  <div className="p-10 text-center text-gray-500">
-   Loading Reports...
+  <div className="p-10 text-center text-gray-500 dark:text-gray-400">
+   {t.loading}
   </div>
  );
 }
-
-
-/* =====================
- UI
-===================== */
 
 return(
 
 <RequireAdmin>
 
-<div className="p-6 bg-gray-100 min-h-screen space-y-8">
+<div className="p-6 min-h-screen space-y-8 bg-gray-100 dark:bg-[#0f0f0f]">
 
 
 {/* HEADER */}
@@ -365,11 +188,11 @@ return(
 <div>
 
 <h1 className="text-3xl font-bold">
-📊 Sales Analytics
+📊 {t.title}
 </h1>
 
-<p className="text-gray-500">
-Advanced POS sales dashboard
+<p className="text-gray-500 dark:text-gray-400">
+{t.subtitle}
 </p>
 
 </div>
@@ -379,24 +202,24 @@ Advanced POS sales dashboard
 
 <button
 onClick={()=>setMode("daily")}
-className={`px-4 py-2 rounded ${
+className={`px-4 py-2 rounded-xl transition ${
 mode==="daily"
 ? "bg-blue-600 text-white"
-: "bg-white"
+: "bg-white dark:bg-[#141414] text-gray-700 dark:text-gray-200"
 }`}
 >
-Daily
+{t.daily}
 </button>
 
 <button
 onClick={()=>setMode("monthly")}
-className={`px-4 py-2 rounded ${
+className={`px-4 py-2 rounded-xl transition ${
 mode==="monthly"
 ? "bg-blue-600 text-white"
-: "bg-white"
+: "bg-white dark:bg-[#141414] text-gray-700 dark:text-gray-200"
 }`}
 >
-Monthly
+{t.monthly}
 </button>
 
 </div>
@@ -408,234 +231,90 @@ Monthly
 
 <div className="grid grid-cols-3 gap-6">
 
-<motion.div
-initial={{opacity:0,y:20}}
-animate={{opacity:1,y:0}}
-className="bg-white p-6 rounded-xl shadow"
->
+<KpiCard title={t.totalSales} value={sales.length}/>
 
-<p className="text-gray-500">
-Total Sales
-</p>
-
-<p className="text-3xl font-bold">
-{sales.length}
-</p>
-
-</motion.div>
-
-
-<motion.div
-initial={{opacity:0,y:20}}
-animate={{opacity:1,y:0}}
-transition={{delay:0.1}}
-className="bg-white p-6 rounded-xl shadow"
->
-
-<p className="text-gray-500">
-Revenue
-</p>
-
-<p className="text-3xl font-bold text-green-600">
-${totalRevenue.toFixed(2)}
-</p>
-
-</motion.div>
-
-
-<motion.div
-initial={{opacity:0,y:20}}
-animate={{opacity:1,y:0}}
-transition={{delay:0.2}}
-className="bg-white p-6 rounded-xl shadow"
->
-
-<p className="text-gray-500">
-Average Sale
-</p>
-
-<p className="text-3xl font-bold">
-${averageSale.toFixed(2)}
-</p>
-
-</motion.div>
-
-</div>
-
-
-{/* REVENUE TREND */}
-
-<div className="bg-white p-6 rounded-xl shadow">
-
-<h2 className="text-xl font-semibold mb-4">
-Revenue Trend
-</h2>
-
-<ResponsiveContainer width="100%" height={300}>
-
-<LineChart data={chartData}>
-
-<CartesianGrid strokeDasharray="3 3"/>
-
-<XAxis dataKey="date"/>
-
-<YAxis/>
-
-<Tooltip/>
-
-<Line
-type="monotone"
-dataKey="revenue"
-stroke="#3b82f6"
-strokeWidth={3}
+<KpiCard
+title={t.revenue}
+value={<span className="text-green-600">${totalRevenue.toFixed(2)}</span>}
 />
 
+<KpiCard
+title={t.averageSale}
+value={`$${averageSale.toFixed(2)}`}
+/>
+
+</div>
+
+
+<Card title={t.revenueTrend}>
+<ResponsiveContainer width="100%" height={300}>
+<LineChart data={chartData}>
+<CartesianGrid strokeDasharray="3 3"/>
+<XAxis dataKey="date"/>
+<YAxis/>
+<Tooltip/>
+<Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3}/>
 </LineChart>
-
 </ResponsiveContainer>
-
-</div>
-
-
-{/* PROFIT */}
-
-<div className="grid grid-cols-3 gap-6">
-
-<div className="bg-white p-6 rounded-xl shadow">
-
-<p className="text-gray-500">
-Revenue
-</p>
-
-<p className="text-2xl font-bold text-green-600">
-${profitData.revenue.toFixed(2)}
-</p>
-
-</div>
-
-<div className="bg-white p-6 rounded-xl shadow">
-
-<p className="text-gray-500">
-Cost
-</p>
-
-<p className="text-2xl font-bold text-red-500">
-${profitData.cost.toFixed(2)}
-</p>
-
-</div>
-
-<div className="bg-white p-6 rounded-xl shadow">
-
-<p className="text-gray-500">
-Profit
-</p>
-
-<p className="text-2xl font-bold text-indigo-600">
-${profitData.profit.toFixed(2)}
-</p>
-
-</div>
-
-</div>
+</Card>
 
 
-{/* TOP PRODUCTS */}
-
-<div className="bg-white p-6 rounded-xl shadow">
-
-<h2 className="text-xl font-semibold mb-4">
-Top Selling Products
-</h2>
-
+<Card title={t.topProducts}>
 <ResponsiveContainer width="100%" height={250}>
-
 <BarChart data={topProducts}>
-
 <CartesianGrid strokeDasharray="3 3"/>
-
 <XAxis dataKey="name"/>
-
 <YAxis/>
-
 <Tooltip/>
-
 <Bar dataKey="qty" fill="#6366f1"/>
-
 </BarChart>
-
 </ResponsiveContainer>
+</Card>
 
-</div>
 
-
-{/* HOURLY SALES */}
-
-<div className="bg-white p-6 rounded-xl shadow">
-
-<h2 className="text-xl font-semibold mb-4">
-Hourly Sales Activity
-</h2>
-
+<Card title={t.hourlySales}>
 <ResponsiveContainer width="100%" height={250}>
-
 <BarChart data={hourlySales}>
-
 <CartesianGrid strokeDasharray="3 3"/>
-
 <XAxis dataKey="hour"/>
-
 <YAxis/>
-
 <Tooltip/>
-
 <Bar dataKey="sales" fill="#f59e0b"/>
-
 </BarChart>
-
 </ResponsiveContainer>
+</Card>
 
-</div>
 
-
-{/* PAY LATER */}
-
-<div className="bg-white p-6 rounded-xl shadow">
-
-<h2 className="text-xl font-semibold mb-4">
-Pay Later / Credit
-</h2>
-
+<Card title={t.payLater}>
 <p className="text-3xl font-bold text-red-600">
 ${payLaterStats.totalCredit.toFixed(2)}
 </p>
+</Card>
 
-</div>
 
+<div className="
+rounded-3xl
+bg-white dark:bg-[#141414]
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+overflow-hidden
+">
 
-{/* TRANSACTION TABLE */}
-
-<div className="bg-white rounded-xl shadow overflow-hidden">
-
-<div className="p-4 border-b">
-
+<div className="p-6 border-b border-gray-200 dark:border-gray-700">
 <h2 className="text-xl font-semibold">
-Transaction History
+{t.transactionHistory}
 </h2>
-
 </div>
 
 <table className="w-full">
 
-<thead className="bg-gray-50">
+<thead className="bg-gray-50 dark:bg-[#1c1c1c]">
 
 <tr>
-
-<th className="p-4 text-left">Date</th>
-<th className="p-4 text-center">Items</th>
-<th className="p-4 text-right">Total</th>
-<th className="p-4 text-center">Payment</th>
-
+<th className="p-4 text-left">{t.date}</th>
+<th className="p-4 text-center">{t.items}</th>
+<th className="p-4 text-right">{t.total}</th>
+<th className="p-4 text-center">{t.payment}</th>
 </tr>
 
 </thead>
@@ -646,7 +325,7 @@ Transaction History
 
 <tr
 key={sale._id}
-className="border-t hover:bg-gray-50"
+className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
 >
 
 <td className="p-4">
@@ -663,10 +342,8 @@ ${sale.total.toFixed(2)}
 
 <td className="p-4 text-center">
 
-<span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700">
-
+<span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
 {sale.paymentMethod}
-
 </span>
 
 </td>
@@ -688,4 +365,64 @@ ${sale.total.toFixed(2)}
 );
 
 }
->>>>>>> 51ad7f39c1de03ce9bd7493a4477a21ad3670ddb
+
+
+/* KPI CARD */
+
+function KpiCard({title,value}){
+
+return(
+
+<motion.div
+initial={{opacity:0,y:20}}
+animate={{opacity:1,y:0}}
+className="
+p-6 rounded-3xl
+bg-white dark:bg-[#141414]
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+"
+>
+
+<p className="text-gray-500 dark:text-gray-400 text-sm">
+{title}
+</p>
+
+<p className="text-2xl font-bold mt-2">
+{value}
+</p>
+
+</motion.div>
+
+);
+
+}
+
+
+/* ANALYTICS CARD */
+
+function Card({title,children}){
+
+return(
+
+<motion.div
+initial={{opacity:0,y:20}}
+animate={{opacity:1,y:0}}
+className="
+p-6 rounded-3xl
+bg-white dark:bg-[#141414]
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+"
+>
+
+<h3 className="font-semibold mb-4">
+{title}
+</h3>
+
+{children}
+
+</motion.div>
+
+);
+}

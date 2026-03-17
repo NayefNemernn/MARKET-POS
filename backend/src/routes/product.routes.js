@@ -9,7 +9,7 @@ getAllProducts,
 getProductByBarcode,
 createProduct,
 updateProduct,
-deleteProduct
+deleteProduct,
 } from "../controllers/product.controller.js";
 
 const router = express.Router();

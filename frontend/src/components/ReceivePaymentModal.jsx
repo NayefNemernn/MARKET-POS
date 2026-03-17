@@ -1,19 +1,20 @@
 import { useState } from "react";
 import api from "../api/axios";
 import ReceiptPreview from "./ReceiptPreview";
+import { motion } from "framer-motion";
 
 export default function ReceivePaymentModal({ sale, close, reload }) {
 
-    const [amount, setAmount] = useState("");
-    const [method, setMethod] = useState("cash");
+const [amount,setAmount] = useState("");
+const [method,setMethod] = useState("cash");
+const [showReceipt,setShowReceipt] = useState(false);
 
-const [showReceipt, setShowReceipt] = useState(false);
-    const percent = (p) => {
-        const value = (sale.balance * p) / 100;
-        setAmount(value.toFixed(2));
-    };
+const percent = (p)=>{
+const value = (sale.balance * p) / 100;
+setAmount(value.toFixed(2));
+};
 
-    const pay = async () => {
+const pay = async()=>{
 
 await api.post(`/hold-sales/${sale._id}/pay`,{
 amount:Number(amount),
@@ -26,126 +27,199 @@ reload();
 
 };
 
-const printReceipt = () => {
+const printReceipt = ()=>{
 
-  const content = document.getElementById("receipt").innerHTML;
+const content = document.getElementById("receipt").innerHTML;
 
-  const win = window.open("", "", "width=400,height=600");
+const win = window.open("", "", "width=400,height=600");
 
-  win.document.write(`
-    <html>
-      <head>
-        <title>Receipt</title>
-        <style>
-          body{
-            font-family: Arial;
-            padding:20px;
-          }
-        </style>
-      </head>
-      <body>
-        ${content}
-      </body>
-    </html>
-  `);
+win.document.write(`
+<html>
+<head>
+<title>Receipt</title>
+<style>
+body{
+font-family:Arial;
+padding:20px;
+}
+</style>
+</head>
+<body>
+${content}
+</body>
+</html>
+`);
 
-  win.document.close();
-  win.print();
+win.document.close();
+win.print();
+
 };
 
-    return (
+return(
 
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+<div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
 
-            <div className="bg-white p-6 rounded-xl w-[380px] space-y-4">
+<motion.div
+initial={{scale:0.9,opacity:0}}
+animate={{scale:1,opacity:1}}
+className="
+w-[380px] p-6 space-y-4 rounded-3xl
 
-                <h2 className="text-lg font-semibold">
-                    Receive Payment
-                </h2>
+bg-white dark:bg-[#141414]
 
-                <div className="bg-orange-500 text-white p-4 rounded text-center">
+shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
+dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
+"
+>
 
-                    <p>Outstanding Balance</p>
+<h2 className="text-lg font-semibold">
+Receive Payment
+</h2>
 
-                    <h2 className="text-3xl font-bold">
-                        ${sale.balance.toFixed(2)}
-                    </h2>
 
-                </div>
+{/* BALANCE */}
 
-                <input
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="border w-full p-2 rounded"
-                />
+<div className="bg-orange-500 text-white p-4 rounded-xl text-center">
 
-                <div className="grid grid-cols-3 gap-2">
+<p>Outstanding Balance</p>
 
-                    <button onClick={() => percent(25)} className="border py-1 rounded">
-                        25%
-                    </button>
+<h2 className="text-3xl font-bold">
+${sale.balance.toFixed(2)}
+</h2>
 
-                    <button onClick={() => percent(50)} className="border py-1 rounded">
-                        50%
-                    </button>
+</div>
 
-                    <button onClick={() => percent(100)} className="border py-1 rounded">
-                        100%
-                    </button>
 
-                </div>
+{/* AMOUNT */}
 
-                <select
-                    value={method}
-                    onChange={(e) => setMethod(e.target.value)}
-                    className="border w-full p-2 rounded"
-                >
+<input
+value={amount}
+onChange={(e)=>setAmount(e.target.value)}
+className="
+w-full px-3 py-2 rounded-xl
+bg-gray-50 dark:bg-[#1c1c1c]
+border border-gray-200 dark:border-gray-700
+outline-none focus:ring-2 focus:ring-green-500
+"
+/>
 
-                    <option value="cash">Cash</option>
-                    <option value="card">Card</option>
 
-                </select>
+{/* QUICK PERCENT */}
 
-                <button
-                    onClick={pay}
-                    className="bg-green-500 text-white w-full py-2 rounded"
-                >
+<div className="grid grid-cols-3 gap-2">
 
-                    Record Payment
+<button
+onClick={()=>percent(25)}
+className="
+bg-gray-100 dark:bg-[#1c1c1c]
+hover:bg-gray-200 dark:hover:bg-[#2a2a2a]
+rounded-lg py-1 transition
+"
+>
+25%
+</button>
 
-                </button>
+<button
+onClick={()=>percent(50)}
+className="
+bg-gray-100 dark:bg-[#1c1c1c]
+hover:bg-gray-200 dark:hover:bg-[#2a2a2a]
+rounded-lg py-1 transition
+"
+>
+50%
+</button>
 
-                <button
-                    onClick={close}
-                    className="border w-full py-2 rounded"
-                >
+<button
+onClick={()=>percent(100)}
+className="
+bg-gray-100 dark:bg-[#1c1c1c]
+hover:bg-gray-200 dark:hover:bg-[#2a2a2a]
+rounded-lg py-1 transition
+"
+>
+100%
+</button>
 
-                    Cancel
+</div>
 
-                </button>
-                {showReceipt && (
 
-  <div className="border rounded p-3 mt-4">
+{/* METHOD */}
 
-    <ReceiptPreview
-      sale={sale}
-      amount={Number(amount)}
-    />
+<select
+value={method}
+onChange={(e)=>setMethod(e.target.value)}
+className="
+w-full px-3 py-2 rounded-xl
+bg-gray-50 dark:bg-[#1c1c1c]
+border border-gray-200 dark:border-gray-700
+"
+>
 
-    <button
-      onClick={printReceipt}
-      className="mt-4 bg-gray-900 text-white w-full py-2 rounded"
-    >
-      Print Receipt
-    </button>
+<option value="cash">💵 Cash</option>
+<option value="card">💳 Card</option>
 
-  </div>
+</select>
+
+
+{/* ACTION */}
+
+<button
+onClick={pay}
+className="
+bg-green-600 hover:bg-green-700
+text-white w-full py-2 rounded-xl transition
+"
+>
+Record Payment
+</button>
+
+
+<button
+onClick={close}
+className="
+w-full py-2 rounded-xl
+bg-gray-100 dark:bg-[#1c1c1c]
+hover:bg-gray-200 dark:hover:bg-[#2a2a2a]
+transition
+"
+>
+Cancel
+</button>
+
+
+{/* RECEIPT */}
+
+{showReceipt && (
+
+<div className="
+border border-gray-200 dark:border-gray-700
+rounded-xl p-3 mt-4
+">
+
+<ReceiptPreview
+sale={sale}
+amount={Number(amount)}
+/>
+
+<button
+onClick={printReceipt}
+className="
+mt-4 bg-gray-900 text-white
+w-full py-2 rounded-xl
+"
+>
+Print Receipt
+</button>
+
+</div>
 
 )}
 
-            </div>
+</motion.div>
 
-        </div>
+</div>
 
-    );
+);
+
 }
