@@ -178,7 +178,7 @@ value={stats?.customers ?? 0}
 
 {showSales && (
 
-<AnimatedCard title={t.salesWeek}>
+<AnimatedCard title={t.salesChart}>
 
 <ResponsiveContainer width="100%" height={300}>
 
