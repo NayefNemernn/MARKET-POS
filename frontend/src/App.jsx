@@ -17,37 +17,12 @@ export default function App() {
   const token = localStorage.getItem("token");
   const user  = JSON.parse(localStorage.getItem("user"));
 
-  const [page, setPage]       = useState(user?.role === "admin" ? "dashboard" : "pos");
-  const [isOnline, setIsOnline] = useState(true); // default true — don't scare users on load
-  const [installPrompt, setInstallPrompt] = useState(null); // PWA install event
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [page, setPage]     = useState(user?.role === "admin" ? "dashboard" : "pos");
+  const [isOnline, setIsOnline] = useState(true); // always start as true
 
   const { sync } = useOfflineSales();
 
-  // ── PWA install prompt ─────────────────────────────────────────────────────
-  useEffect(() => {
-    const handler = (e) => {
-      e.preventDefault();          // stop browser's default mini-infobar
-      setInstallPrompt(e);         // save event so we can fire it manually
-      setShowInstallBanner(true);  // show our custom install banner
-    };
-
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-
-  const handleInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === "accepted") {
-      toast.success("✅ App installed! You can now open it from your desktop.");
-    }
-    setInstallPrompt(null);
-    setShowInstallBanner(false);
-  };
-
-  // ── Online / offline detection + auto-sync ─────────────────────────────────
+  // ── Only react to real browser online/offline events ──────────────────────
   useEffect(() => {
     const handleOnline = async () => {
       setIsOnline(true);
@@ -94,7 +69,6 @@ export default function App() {
     );
   }
 
-  // ── Page router ───────────────────────────────────────────────────────────
   const renderPage = () => {
     switch (page) {
       case "dashboard":  return <Dashboard setPage={setPage} />;
@@ -112,29 +86,10 @@ export default function App() {
     <AuthProvider>
       <Toaster position="top-right" />
 
-      {/* ── Offline banner ──────────────────────────────────────────────── */}
+      {/* Offline banner — only shows when truly offline */}
       {!isOnline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-500 text-black text-center text-sm py-1 font-semibold">
           ⚠️ Offline Mode — Sales are being saved locally
-        </div>
-      )}
-
-      {/* ── Install banner ──────────────────────────────────────────────── */}
-      {showInstallBanner && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-[#1c1c1c] text-white px-6 py-3 rounded-2xl shadow-2xl border border-white/10">
-          <span className="text-sm">📲 Install Market POS as a desktop app</span>
-          <button
-            onClick={handleInstall}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1.5 rounded-xl transition"
-          >
-            Install
-          </button>
-          <button
-            onClick={() => setShowInstallBanner(false)}
-            className="text-gray-400 hover:text-white text-sm"
-          >
-            ✕
-          </button>
         </div>
       )}
 

@@ -23,11 +23,23 @@ export default function POS({ setPage }) {
     useEffect(() => { load(); }, []);
 
     const load = async () => {
-        const p = await getAllProducts();
-        const c = await getCategories();
-        setProducts(p);
-        setCategories(c);
-    };
+  try {
+    const p = await getAllProducts();
+    const c = await getCategories();
+    // Cache for offline use
+    localStorage.setItem("cached_products", JSON.stringify(p));
+    localStorage.setItem("cached_categories", JSON.stringify(c));
+    setProducts(p);
+    setCategories(c);
+  } catch (err) {
+    // Offline — load from cache
+    const cached = localStorage.getItem("cached_products");
+    const cachedCats = localStorage.getItem("cached_categories");
+    if (cached) setProducts(JSON.parse(cached));
+    if (cachedCats) setCategories(JSON.parse(cachedCats));
+    if (cached) toast("📦 Showing cached products", { icon: "💾" });
+  }
+};
 
     const barcodeMap = useMemo(() => {
 

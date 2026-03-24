@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Market POS</title>
 
-    <!-- PWA - fully inlined with absolute icon URLs -->
+    <!-- PWA manifest inlined -->
     <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;Market POS&quot;,&quot;short_name&quot;:&quot;POS&quot;,&quot;description&quot;:&quot;Point of Sale System&quot;,&quot;start_url&quot;:&quot;https://nemer-pos.vercel.app/&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;orientation&quot;:&quot;landscape&quot;,&quot;background_color&quot;:&quot;%230b0b0b&quot;,&quot;theme_color&quot;:&quot;%23141414&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;https://nemer-pos.vercel.app/icon-192.png&quot;,&quot;sizes&quot;:&quot;192x192&quot;,&quot;type&quot;:&quot;image/png&quot;},{&quot;src&quot;:&quot;https://nemer-pos.vercel.app/icon-512.png&quot;,&quot;sizes&quot;:&quot;512x512&quot;,&quot;type&quot;:&quot;image/png&quot;,&quot;purpose&quot;:&quot;any maskable&quot;}]}" />
 
     <meta name="theme-color" content="#141414" />
@@ -13,17 +13,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Market POS" />
-
-    <!-- Register service worker -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('SW registered:', reg.scope))
-            .catch(err => console.log('SW failed:', err));
-        });
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>
