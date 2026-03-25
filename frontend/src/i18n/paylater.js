@@ -1,43 +1,64 @@
 export const paylaterTranslations = {
-
   en: {
-    title: "Pay Later Accounts",
-    subtitle: "Manage customer credit and payments",
-
-    accountsDebt: "Accounts with Debt",
-    totalOutstanding: "Total Outstanding",
-    paymentsMonth: "Payments This Month",
-
-    searchCustomers: "Search customers...",
-
-    customer: "Customer",
-    creditLimit: "Credit Limit",
-    debt: "Debt",
-    available: "Available",
-    actions: "Actions",
-
-    receivePayment: "Receive Payment",
-    save: "Save"
+    title:              "Pay Later Accounts",
+    subtitle:           "Manage customer credit and payments",
+    accountsDebt:       "Accounts with Debt",
+    totalOutstanding:   "Total Outstanding",
+    paymentsMonth:      "Payments This Month",
+    searchCustomers:    "Search customers...",
+    customer:           "Customer",
+    creditLimit:        "Credit Limit",
+    debt:               "Debt",
+    available:          "Available",
+    actions:            "Actions",
+    receivePayment:     "Receive Payment",
+    save:               "Save",
+    noAccounts:         "No open accounts",
+    balance:            "Balance",
+    paid:               "Paid",
+    total:              "Total",
+    phone:              "Phone",
+    editCustomer:       "Edit Customer",
+    viewHistory:        "View History",
+    deleteAccount:      "Delete Account",
+    deleteConfirm:      "Delete this account and restore stock?",
+    // RecentPayments panel
+    recentPayments:     "Recent Payments",
+    allCustomers:       "All Customers",
+    noRecentPayments:   "No recent payments",
+    paymentMethod:      "Method",
+    cash:               "Cash",
+    card:               "Card",
   },
-
   ar: {
-    title: "حسابات الدفع لاحقاً",
-    subtitle: "إدارة ديون العملاء والمدفوعات",
-
-    accountsDebt: "حسابات عليها ديون",
-    totalOutstanding: "إجمالي الديون",
-    paymentsMonth: "مدفوعات هذا الشهر",
-
-    searchCustomers: "ابحث عن عميل...",
-
-    customer: "العميل",
-    creditLimit: "حد الائتمان",
-    debt: "الدين",
-    available: "المتاح",
-    actions: "الإجراءات",
-
-    receivePayment: "استلام دفعة",
-    save: "حفظ"
+    title:              "حسابات الدفع لاحقاً",
+    subtitle:           "إدارة ديون العملاء والمدفوعات",
+    accountsDebt:       "حسابات عليها ديون",
+    totalOutstanding:   "إجمالي الديون",
+    paymentsMonth:      "مدفوعات هذا الشهر",
+    searchCustomers:    "ابحث عن عميل...",
+    customer:           "العميل",
+    creditLimit:        "حد الائتمان",
+    debt:               "الدين",
+    available:          "المتاح",
+    actions:            "الإجراءات",
+    receivePayment:     "استلام دفعة",
+    save:               "حفظ",
+    noAccounts:         "لا توجد حسابات مفتوحة",
+    balance:            "الرصيد",
+    paid:               "مدفوع",
+    total:              "الإجمالي",
+    phone:              "الهاتف",
+    editCustomer:       "تعديل العميل",
+    viewHistory:        "عرض السجل",
+    deleteAccount:      "حذف الحساب",
+    deleteConfirm:      "حذف هذا الحساب واسترجاع المخزون؟",
+    // RecentPayments panel
+    recentPayments:     "آخر المدفوعات",
+    allCustomers:       "جميع العملاء",
+    noRecentPayments:   "لا توجد مدفوعات حديثة",
+    paymentMethod:      "طريقة الدفع",
+    cash:               "نقداً",
+    card:               "بطاقة",
   }
-
 };

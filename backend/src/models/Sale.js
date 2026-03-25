@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const saleSchema = new mongoose.Schema(
 {
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
+  },
   items: [
     {
       productId: {
@@ -18,27 +23,22 @@ const saleSchema = new mongoose.Schema(
       subtotal: Number
     }
   ],
-
   total: {
     type: Number,
     required: true
   },
-
   paymentMethod: {
     type: String,
     enum: ["cash", "card", "paylater"],
     default: "cash"
   },
-
   paid: {
     type: Boolean,
     default: true
   }
-
 },
 { timestamps: true }
 );
 
 const Sale = mongoose.model("Sale", saleSchema);
-
 export default Sale;

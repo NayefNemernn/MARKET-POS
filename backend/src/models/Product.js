@@ -7,39 +7,39 @@ const productSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
-
     barcode: {
       type: String,
-      required: true,
-      unique: true
+      required: true
     },
-
     price: {
       type: Number,
       required: true,
       min: 0
     },
-
     stock: {
       type: Number,
       required: true,
       min: 0
     },
-
-    // category relation
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category"
     },
-
-    // ⭐ PRODUCT IMAGE
     image: {
       type: String,
       default: ""
+    },
+    // Data isolation per user
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
     }
-
   },
   { timestamps: true }
 );
+
+// barcode unique per user
+productSchema.index({ barcode: 1, userId: 1 }, { unique: true });
 
 export default mongoose.model("Product", productSchema);

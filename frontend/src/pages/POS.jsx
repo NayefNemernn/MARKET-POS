@@ -1,3 +1,4 @@
+import { useRefresh } from "../context/RefreshContext";
 import { useEffect, useState, useMemo } from "react";
 import { getAllProducts } from "../api/product.api";
 import { getCategories } from "../api/category.api";
@@ -9,8 +10,10 @@ import { useCurrency } from "../context/CurrencyContext";
 import ExchangeRateBar from "../components/ExchangeRateBar";
 import VoiceButton from "../components/common/VoiceButton";
 import toast from "react-hot-toast";
+import { ShoppingBag, Search } from "lucide-react";
 
 export default function POS({ setPage }) {
+  const { tick } = useRefresh();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -18,21 +21,20 @@ export default function POS({ setPage }) {
   const [openCheckout, setOpenCheckout] = useState(false);
 
   const { cart, addToCart, increase, decrease, total, clearCart } = useCart();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { t } = useTranslation();
   const { toLBP, formatLBP, formatUSD, displayCurrency } = useCurrency();
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [tick]);
 
   const load = async () => {
     try {
-      const p = await getAllProducts();
-      const c = await getCategories();
+      const [p, c] = await Promise.all([getAllProducts(), getCategories()]);
       localStorage.setItem("cached_products", JSON.stringify(p));
       localStorage.setItem("cached_categories", JSON.stringify(c));
       setProducts(p);
       setCategories(c);
-    } catch (err) {
+    } catch {
       const cached = localStorage.getItem("cached_products");
       const cachedCats = localStorage.getItem("cached_categories");
       if (cached) setProducts(JSON.parse(cached));
@@ -62,10 +64,12 @@ export default function POS({ setPage }) {
     }
   };
 
+  // Hardware barcode scanner
   useEffect(() => {
     let buffer = "";
     let lastKeyTime = 0;
     const handleScanner = (e) => {
+      if (e.target.tagName === "INPUT") return;
       const now = Date.now();
       if (now - lastKeyTime > 100) buffer = "";
       lastKeyTime = now;
@@ -90,21 +94,20 @@ export default function POS({ setPage }) {
   }, []);
 
   const filteredProducts = products.filter(p => {
-    const matchCategory = selectedCategory === "all" || p.category?._id === selectedCategory;
+    const matchCat = selectedCategory === "all" || p.category?._id === selectedCategory;
     const matchSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       (p.barcode && p.barcode.includes(search));
-    return matchCategory && matchSearch;
+    return matchCat && matchSearch;
   });
 
-  // Price display helper based on user's currency preference
   const renderPrice = (price) => {
-    if (displayCurrency === "usd") return <span className="text-green-500 font-semibold">{formatUSD(price)}</span>;
-    if (displayCurrency === "lbp") return <span className="text-amber-500 font-semibold text-xs">{formatLBP(toLBP(price))}</span>;
+    if (displayCurrency === "usd") return <span className="text-green-600 dark:text-green-400 font-bold text-sm">{formatUSD(price)}</span>;
+    if (displayCurrency === "lbp") return <span className="text-amber-600 dark:text-amber-400 font-bold text-xs">{formatLBP(toLBP(price))}</span>;
     return (
       <div className="flex flex-col leading-tight">
-        <span className="text-green-500 font-semibold text-xs">{formatUSD(price)}</span>
-        <span className="text-amber-500 font-semibold text-xs">{formatLBP(toLBP(price))}</span>
+        <span className="text-green-600 dark:text-green-400 font-bold text-xs">{formatUSD(price)}</span>
+        <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">{formatLBP(toLBP(price))}</span>
       </div>
     );
   };
@@ -112,12 +115,12 @@ export default function POS({ setPage }) {
   const renderCartPrice = (price) => {
     if (displayCurrency === "lbp") return formatLBP(toLBP(price));
     if (displayCurrency === "usd") return formatUSD(price);
-    return `${formatUSD(price)} / ${formatLBP(toLBP(price))}`;
+    return `${formatUSD(price)} · ${formatLBP(toLBP(price))}`;
   };
 
   const renderTotal = () => {
-    if (displayCurrency === "lbp") return formatLBP(toLBP(total));
-    if (displayCurrency === "usd") return formatUSD(total);
+    if (displayCurrency === "lbp") return <span className="font-bold text-lg text-amber-500">{formatLBP(toLBP(total))}</span>;
+    if (displayCurrency === "usd") return <span className="font-bold text-lg text-green-500">{formatUSD(total)}</span>;
     return (
       <div className="text-right">
         <div className="font-bold text-green-500">{formatUSD(total)}</div>
@@ -126,267 +129,217 @@ export default function POS({ setPage }) {
     );
   };
 
-  return (
-    <div className="flex flex-col h-screen bg-gray-100 dark:bg-[#0b0b0b] text-gray-900 dark:text-white overflow-hidden">
+  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
-      {/* EXCHANGE RATE BAR — top strip */}
-      <div className="px-4 pt-3 pb-1 shrink-0">
+  return (
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-[#0b0b0b] text-gray-900 dark:text-white overflow-hidden">
+
+      {/* Exchange rate strip */}
+      <div className="px-4 pt-2 pb-1 shrink-0">
         <ExchangeRateBar />
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden gap-3 px-3 pb-3">
 
-        {/* LEFT */}
-        <div className="flex-1 flex flex-col overflow-hidden space-y-3 px-4 pb-4">
+        {/* ── LEFT: Products ── */}
+        <div className="flex-1 flex flex-col overflow-hidden gap-2 min-w-0">
 
-          {/* HEADER */}
-          <div className="
-            p-4 flex justify-between items-center rounded-3xl
-            bg-gray-100 dark:bg-[#141414]
-            shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
-            dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
-          ">
-            <div>
-              <h1 className="text-2xl font-semibold">{t.pos}</h1>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">{t.ready}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-500 dark:text-gray-400">{user?.username}</span>
-              <button
-                onClick={() => setPage("dashboard")}
-                className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-[#1c1c1c] shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff] dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f] hover:scale-[1.03] transition"
-              >
-                {t.dashboard}
-              </button>
-              <button
-                onClick={logout}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white transition"
-              >
-                {t.logout}
-              </button>
-            </div>
+          {/* Search bar */}
+          <div className="shrink-0 flex items-center gap-2
+            bg-white dark:bg-[#141414] rounded-2xl px-4 py-2
+            shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff]
+            dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]">
+            <Search size={16} className="text-gray-400 shrink-0" />
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={handleSearchEnter}
+              placeholder={t.search}
+              className="flex-1 bg-transparent outline-none text-sm placeholder-gray-400"
+            />
+            <VoiceButton onResult={text => setSearch(text)} />
           </div>
 
-          {/* SEARCH + Voice */}
-          <div className="
-            p-3 rounded-3xl
-            bg-gray-100 dark:bg-[#141414]
-            shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
-            dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
-          ">
-            <div className="flex items-center gap-2">
-              <input
-                autoFocus
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={handleSearchEnter}
-                placeholder={t.search}
-                className="
-                  flex-1 px-5 py-3 rounded-xl outline-none
-                  bg-gray-100 dark:bg-[#0f0f0f]
-                  shadow-[inset_5px_5px_10px_#d1d5db,inset_-5px_-5px_10px_#ffffff]
-                  dark:shadow-[inset_5px_5px_10px_#050505,inset_-5px_-5px_10px_#1f1f1f]
-                "
-              />
-              <VoiceButton onResult={(text) => setSearch(text)} />
-            </div>
-          </div>
-
-          {/* CATEGORIES */}
-          <div className="
-            p-3 rounded-3xl flex gap-3 overflow-x-auto
-            bg-gray-100 dark:bg-[#141414]
-            shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
-            dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
-          ">
-            <button
-              onClick={() => setSelectedCategory("all")}
-              className={`px-5 py-2 rounded-xl text-sm transition whitespace-nowrap ${
-                selectedCategory === "all"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 dark:bg-[#1c1c1c] shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff] dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f]"
-              }`}
-            >
-              {t.all}
-            </button>
-            {categories.map(c => (
+          {/* Categories */}
+          <div className="shrink-0 flex gap-2 overflow-x-auto pb-1
+            scrollbar-none">
+            {[{ _id: "all", name: t.all }, ...categories].map(c => (
               <button
                 key={c._id}
                 onClick={() => setSelectedCategory(c._id)}
-                className={`px-5 py-2 rounded-xl text-sm transition whitespace-nowrap ${
-                  selectedCategory === c._id
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 dark:bg-[#1c1c1c] shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff] dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f]"
-                }`}
+                className={`px-4 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shrink-0
+                  ${selectedCategory === c._id
+                    ? "bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.4)]"
+                    : "bg-white dark:bg-[#1c1c1c] text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#252525]"
+                  }`}
               >
                 {c.name}
               </button>
             ))}
           </div>
 
-          {/* PRODUCTS GRID */}
-          <div className="flex-1 overflow-y-auto pr-1">
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 pb-4">
+          {/* Products grid */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 pb-2">
               {filteredProducts.map(p => {
                 const qty = cart.find(i => i.productId === p._id)?.quantity || 0;
-                const outOfStock = p.stock === 0;
-
+                const out = p.stock === 0;
                 return (
                   <div
                     key={p._id}
                     onClick={() => addProductSafe(p)}
-                    className={`
-                      relative flex flex-col rounded-3xl p-3
-                      bg-gray-100 dark:bg-[#141414]
-                      shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
-                      dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
-                      transition
-                      ${!outOfStock && "hover:scale-[1.03] cursor-pointer"}
-                      ${outOfStock && "opacity-40"}
+                    className={`relative flex flex-col rounded-2xl overflow-hidden
+                      bg-white dark:bg-[#141414]
+                      shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff]
+                      dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]
+                      transition-all duration-200
+                      ${!out ? "cursor-pointer hover:scale-[1.02] hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)]" : "opacity-50"}
+                      ${qty > 0 ? "ring-2 ring-blue-500/40" : ""}
                     `}
                   >
-                    {outOfStock && (
-                      <div className="absolute top-3 right-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    {/* Out of stock badge */}
+                    {out && (
+                      <div className="absolute top-2 right-2 z-10 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                         {t.out}
                       </div>
                     )}
 
-                    {/* IMAGE */}
-                    <div className="h-28 rounded-2xl bg-gray-200 dark:bg-[#0f0f0f] flex items-center justify-center overflow-hidden">
+                    {/* Qty badge */}
+                    {qty > 0 && (
+                      <div className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shadow-lg">
+                        {qty}
+                      </div>
+                    )}
+
+                    {/* Image */}
+                    <div className="h-24 bg-gray-100 dark:bg-[#0f0f0f]">
                       <img
                         src={p.image || "/placeholder.png"}
                         className="w-full h-full object-cover"
+                        onError={e => e.target.src = "/placeholder.png"}
                       />
                     </div>
 
-                    {/* INFO */}
-                    <div className="mt-2 px-1">
-                      <p className="text-sm font-semibold truncate">{p.name}</p>
+                    {/* Info */}
+                    <div className="p-2.5 flex flex-col gap-1">
+                      <p className="text-xs font-semibold truncate leading-tight">{p.name}</p>
+                      {renderPrice(p.price)}
+                      <p className="text-[10px] text-gray-400">{t.stock}: {p.stock}</p>
 
-                      {/* DUAL CURRENCY PRICE */}
-                      <div className="mt-1">
-                        {renderPrice(p.price)}
-                      </div>
-
-                      <p className="text-xs text-gray-500 mt-1">{t.stock}: {p.stock}</p>
-                    </div>
-
-                    {/* CART CONTROLS */}
-                    <div
-                      className="mt-2 flex justify-between items-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex gap-2 items-center">
-                        <button
-                          disabled={outOfStock}
-                          onClick={() => decrease(p._id)}
-                          className="w-7 h-7 rounded-full bg-gray-200 dark:bg-[#1c1c1c] flex items-center justify-center"
-                        >-</button>
-                        <span className="text-sm">{qty}</span>
-                        <button
-                          disabled={outOfStock}
-                          onClick={() => increase(p._id)}
-                          className="w-7 h-7 rounded-full bg-gray-200 dark:bg-[#1c1c1c] flex items-center justify-center"
-                        >+</button>
-                      </div>
-                      {qty > 0 && (
-                        <div className="text-right">
-                          <div className="text-xs font-semibold text-green-500">{formatUSD(p.price * qty)}</div>
-                          {displayCurrency !== "usd" && (
-                            <div className="text-xs text-amber-500">{formatLBP(toLBP(p.price * qty))}</div>
-                          )}
+                      {/* +/- controls */}
+                      <div className="flex items-center justify-between mt-1" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            disabled={out}
+                            onClick={() => decrease(p._id)}
+                            className="w-6 h-6 rounded-full bg-gray-100 dark:bg-[#252525] text-sm font-bold flex items-center justify-center hover:bg-gray-200 dark:hover:bg-[#333] transition"
+                          >−</button>
+                          <span className="text-xs font-medium w-3 text-center">{qty}</span>
+                          <button
+                            disabled={out}
+                            onClick={() => increase(p._id)}
+                            className="w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center hover:bg-blue-700 transition"
+                          >+</button>
                         </div>
-                      )}
+                        {qty > 0 && (
+                          <span className="text-[10px] text-green-500 font-semibold">{formatUSD(p.price * qty)}</span>
+                        )}
+                      </div>
                     </div>
-
                   </div>
                 );
               })}
+
+              {filteredProducts.length === 0 && (
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-gray-400">
+                  <ShoppingBag size={40} className="mb-3 opacity-30" />
+                  <p className="text-sm">No products found</p>
+                </div>
+              )}
             </div>
           </div>
-
         </div>
 
-        {/* CART */}
-        <div className="
-          w-[340px] flex flex-col h-full
-          bg-gray-100 dark:bg-[#141414]
-          rounded-l-3xl
-          shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
-          dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
-        ">
+        {/* ── RIGHT: Cart ── */}
+        <div className="w-72 xl:w-80 flex flex-col shrink-0
+          bg-white dark:bg-[#141414] rounded-2xl
+          shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff]
+          dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]
+          overflow-hidden">
 
-          {/* HEADER */}
-          <div className="p-4 flex justify-between items-center">
-            <h2 className="font-semibold">{t.currentOrder}</h2>
-            <span className="text-xs px-3 py-1 rounded-full bg-gray-100 dark:bg-[#1c1c1c] shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff] dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f]">
-              {cart.length}
+          {/* Cart header */}
+          <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-white/5 shrink-0">
+            <div className="flex items-center gap-2">
+              <ShoppingBag size={16} className="text-blue-500" />
+              <span className="font-semibold text-sm">{t.currentOrder}</span>
+            </div>
+            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">
+              {cartCount} {cartCount === 1 ? "item" : "items"}
             </span>
           </div>
 
-          {/* CART ITEMS */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {cart.length === 0 && (
-              <p className="text-center text-gray-500 mt-10">{t.cartEmpty}</p>
-            )}
-            {cart.map(item => (
-              <div
-                key={item.productId}
-                className="
-                  flex justify-between items-center
-                  rounded-2xl px-4 py-3
-                  bg-gray-100 dark:bg-[#1c1c1c]
-                  shadow-[inset_5px_5px_10px_#d1d5db,inset_-5px_-5px_10px_#ffffff]
-                  dark:shadow-[inset_5px_5px_10px_#050505,inset_-5px_-5px_10px_#1f1f1f]
-                "
-              >
-                <div className="flex-1 min-w-0 mr-2">
-                  <p className="text-sm font-semibold truncate">{item.name}</p>
-                  <p className="text-xs text-gray-500">{renderCartPrice(item.price)}</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => decrease(item.productId)}
-                    className="w-7 h-7 rounded-full bg-gray-100 dark:bg-[#141414] shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff] dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f] flex items-center justify-center"
-                  >-</button>
-                  <span className="text-sm w-4 text-center">{item.quantity}</span>
-                  <button
-                    onClick={() => increase(item.productId)}
-                    className="w-7 h-7 rounded-full bg-gray-100 dark:bg-[#141414] shadow-[5px_5px_10px_#d1d5db,-5px_-5px_10px_#ffffff] dark:shadow-[5px_5px_10px_#050505,-5px_-5px_10px_#1f1f1f] flex items-center justify-center"
-                  >+</button>
-                  <div className="w-16 text-right">
-                    <div className="text-xs font-semibold text-green-500">{formatUSD(item.price * item.quantity)}</div>
+          {/* Cart items */}
+          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+            {cart.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 py-10">
+                <ShoppingBag size={32} className="opacity-20 mb-2" />
+                <p className="text-xs">{t.cartEmpty}</p>
+              </div>
+            ) : (
+              cart.map(item => (
+                <div key={item.productId}
+                  className="flex items-center gap-2 p-2.5 rounded-xl
+                    bg-gray-50 dark:bg-[#1c1c1c]
+                    border border-gray-100 dark:border-white/5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate">{item.name}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">{renderCartPrice(item.price)}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => decrease(item.productId)}
+                      className="w-6 h-6 rounded-full bg-gray-200 dark:bg-[#333] text-xs font-bold flex items-center justify-center hover:bg-gray-300 transition"
+                    >−</button>
+                    <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
+                    <button
+                      onClick={() => increase(item.productId)}
+                      className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center hover:bg-blue-700 transition"
+                    >+</button>
+                  </div>
+                  <div className="text-right shrink-0 min-w-[48px]">
+                    <div className="text-xs font-bold text-green-500">{formatUSD(item.price * item.quantity)}</div>
                     {displayCurrency !== "usd" && (
-                      <div className="text-xs text-amber-500">{formatLBP(toLBP(item.price * item.quantity))}</div>
+                      <div className="text-[10px] text-amber-500">{formatLBP(toLBP(item.price * item.quantity))}</div>
                     )}
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
-          {/* FOOTER */}
-          <div className="p-4 space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold">{t.total}</span>
+          {/* Cart footer */}
+          <div className="px-4 py-3 border-t border-gray-100 dark:border-white/5 shrink-0 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">{t.total}</span>
               {renderTotal()}
             </div>
             <button
               onClick={() => setOpenCheckout(true)}
-              className="w-full py-3 rounded-full bg-green-600 hover:bg-green-700 text-white font-semibold transition"
+              disabled={cart.length === 0}
+              className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-40
+                text-white font-semibold text-sm transition-all
+                shadow-[0_4px_14px_rgba(34,197,94,0.4)]"
             >
               {t.checkout}
             </button>
           </div>
-
         </div>
       </div>
 
       {openCheckout && (
         <CheckoutModal cart={cart} total={total} close={() => setOpenCheckout(false)} />
       )}
-
     </div>
   );
 }

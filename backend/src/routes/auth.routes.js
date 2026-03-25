@@ -1,13 +1,14 @@
 import express from "express";
-import { login, register } from "../controllers/auth.controller.js";
-import { protect, isAdmin } from "../middleware/auth.middleware.js";
+import { login, logout, register, getUsers, changePassword } from "../controllers/auth.controller.js";
+import { protect } from "../middleware/auth.middleware.js";
+import { isAdmin } from "../middleware/role.middleware.js";
 
 const router = express.Router();
 
-// Public — anyone can log in
+router.get("/users", getUsers);              // public — for login page
 router.post("/login", login);
-
-// Protected — only admins can create new users
+router.post("/logout", protect, logout);
 router.post("/register", protect, isAdmin, register);
+router.post("/change-password", protect, isAdmin, changePassword);
 
 export default router;

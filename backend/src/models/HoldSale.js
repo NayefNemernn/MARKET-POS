@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const holdSaleSchema = new mongoose.Schema(
 {
+userId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User",
+  required: true
+},
 customerName: String,
 phone: String,
 

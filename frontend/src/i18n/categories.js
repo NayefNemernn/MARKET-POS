@@ -1,43 +1,32 @@
 export const categoriesTranslations = {
-
   en: {
-
-    title: "Categories",
-    total: "total",
-
-    search: "Search category...",
-    newCategory: "New category",
-
-    add: "Add",
-    delete: "Delete",
-
-    loading: "Loading categories...",
-    loadFailed: "Failed to load categories",
-
+    title:         "Categories",
+    total:         "total",
+    search:        "Search category...",
+    newCategory:   "New category name...",
+    add:           "Add",
+    delete:        "Delete",
+    loading:       "Loading categories...",
+    loadFailed:    "Failed to load categories",
     deleteConfirm: "Delete this category?",
-    deleteFailed: "Delete failed",
-    createFailed: "Create failed"
-
+    deleteFailed:  "Delete failed",
+    createFailed:  "Create failed",
+    noCategories:  "No categories yet",
+    addFirst:      "Add your first category above",
   },
-
   ar: {
-
-    title: "الفئات",
-    total: "الإجمالي",
-
-    search: "ابحث عن فئة...",
-    newCategory: "فئة جديدة",
-
-    add: "إضافة",
-    delete: "حذف",
-
-    loading: "جارٍ تحميل الفئات...",
-    loadFailed: "فشل تحميل الفئات",
-
+    title:         "الفئات",
+    total:         "الإجمالي",
+    search:        "ابحث عن فئة...",
+    newCategory:   "اسم الفئة الجديدة...",
+    add:           "إضافة",
+    delete:        "حذف",
+    loading:       "جارٍ تحميل الفئات...",
+    loadFailed:    "فشل تحميل الفئات",
     deleteConfirm: "حذف هذه الفئة؟",
-    deleteFailed: "فشل الحذف",
-    createFailed: "فشل الإنشاء"
-
+    deleteFailed:  "فشل الحذف",
+    createFailed:  "فشل الإنشاء",
+    noCategories:  "لا توجد فئات بعد",
+    addFirst:      "أضف فئتك الأولى أعلاه",
   }
-
 };

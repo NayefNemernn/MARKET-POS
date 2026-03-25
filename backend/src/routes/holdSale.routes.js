@@ -1,5 +1,4 @@
 import express from "express";
-
 import {
   createHoldSale,
   getHoldSales,
@@ -13,34 +12,24 @@ import {
   getCustomerInvoices,
   updateCreditLimit
 } from "../controllers/holdSale.controller.js";
-
 import { protect } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
-
 router.use(protect);
 
-router.post("/", createHoldSale);
-
-router.get("/", getHoldSales);
-
-router.get("/names", getHoldSaleNames);
-
-router.post("/:id/pay", payHoldSale);
-
-router.put("/:id/customer", updateHoldCustomer);
-
-router.get("/payments/recent", getRecentPayments);
-
-router.delete("/:id", deleteHoldSale);
-
-router.get("/payments/recent",getRecentPayments);
-
-router.get("/payments/month",paymentsThisMonth);
-
+// Specific routes MUST come before /:id routes
+router.get("/names",                   getHoldSaleNames);
+router.get("/payments/recent",         getRecentPayments);
+router.get("/payments/month",          paymentsThisMonth);
 router.get("/payments/customer/:name", getCustomerPayments);
-router.get("/invoices/:name", getCustomerInvoices);
-router.patch("/:id/limit", updateCreditLimit);
+router.get("/invoices/:name",          getCustomerInvoices);
 
+router.get("/",    getHoldSales);
+router.post("/",   createHoldSale);
+
+router.post("/:id/pay",      payHoldSale);
+router.put("/:id/customer",  updateHoldCustomer);
+router.patch("/:id/limit",   updateCreditLimit);
+router.delete("/:id",        deleteHoldSale);
 
 export default router;

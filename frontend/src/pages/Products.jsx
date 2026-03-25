@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import InventoryScanner from "../components/products/InventoryScanner";
-import { Search, Barcode, Printer, Scan } from "lucide-react";
+import { useRefresh } from "../context/RefreshContext";
+import { Search, Barcode, Printer, ScanLine, X, Plus, Package } from "lucide-react";
 
 import {
   getAllProducts,
@@ -21,51 +21,45 @@ import ProductForm from "../components/products/ProductForm";
 import ImageDropzone from "../components/products/ImageDropzone";
 import ExchangeRateBar from "../components/ExchangeRateBar";
 import VoiceButton from "../components/common/VoiceButton";
-
 import { useProductsTranslation } from "../hooks/useProductsTranslation";
 
 export default function Products() {
   const t = useProductsTranslation();
+  const { tick, refresh } = useRefresh();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [editingProduct, setEditingProduct] = useState(null);
-
   const [search, setSearch] = useState("");
   const [barcode, setBarcode] = useState("");
   const [inventoryMode, setInventoryMode] = useState(false);
-
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
-
-  const [form, setForm] = useState({
-    name: "",
-    price: "",
-    stock: "",
-    category: ""
-  });
+  const [form, setForm] = useState({ name: "", price: "", stock: "", category: "" });
 
   const previewBarcodeRef = useRef(null);
-  const printBarcodeRef = useRef(null);
-  const labelRef = useRef(null);
+  const printBarcodeRef   = useRef(null);
+  const labelRef          = useRef(null);
 
-  /* LOAD DATA */
+  /* LOAD */
   const load = async () => {
-    const p = await getAllProducts();
-    const c = await getCategories();
-    setProducts(p);
-    setCategories(c);
+    try {
+      const [p, c] = await Promise.all([getAllProducts(), getCategories()]);
+      setProducts(p);
+      setCategories(c);
+    } catch (err) {
+      toast.error("Failed to load products");
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [tick]);
 
   /* SEARCH */
   const filtered = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.barcode.includes(search)
+    (p.barcode && p.barcode.includes(search))
   );
 
-  /* LOW STOCK */
   const lowStock = products.filter(p => p.stock <= 3);
 
   /* GENERATE BARCODE */
@@ -73,51 +67,46 @@ export default function Products() {
     const code = Date.now().toString();
     setBarcode(code);
     setTimeout(() => {
-      if (previewBarcodeRef.current) {
-        JsBarcode(previewBarcodeRef.current, code, { format: "CODE128", width: 2, height: 40 });
-      }
-      if (printBarcodeRef.current) {
-        JsBarcode(printBarcodeRef.current, code, { format: "CODE128", width: 2, height: 40 });
-      }
+      [previewBarcodeRef, printBarcodeRef].forEach(ref => {
+        if (ref.current) JsBarcode(ref.current, code, { format: "CODE128", width: 2, height: 40 });
+      });
     }, 100);
   };
 
-  /* CREATE PRODUCT */
+  /* CREATE */
   const handleCreate = async () => {
-    if (!form.name || !barcode) {
-      toast.error(t.nameRequired);
-      return;
-    }
+    if (!form.name || !barcode) { toast.error(t.nameRequired); return; }
 
     let categoryId = null;
     if (form.category) {
-      const existing = categories.find(
-        c => c.name.toLowerCase() === form.category.toLowerCase()
-      );
+      const existing = categories.find(c => c.name.toLowerCase() === form.category.toLowerCase());
       if (existing) {
         categoryId = existing._id;
       } else {
-        const newCategory = await createCategory({ name: form.category });
-        categoryId = newCategory._id;
+        const newCat = await createCategory({ name: form.category });
+        categoryId = newCat._id;
       }
     }
 
     const data = new FormData();
-    data.append("name", form.name);
-    data.append("barcode", barcode);
-    data.append("price", form.price || 0);
-    data.append("stock", form.stock || 0);
-    data.append("category", categoryId);
+    data.append("name",     form.name);
+    data.append("barcode",  barcode);
+    data.append("price",    form.price  || 0);
+    data.append("stock",    form.stock  || 0);
+    data.append("category", categoryId || "");
     if (image) data.append("image", image);
 
-    await createProduct(data);
-    toast.success(t.productCreated);
-
-    setForm({ name: "", price: "", stock: "", category: "" });
-    setBarcode("");
-    setPreview("");
-    setImage(null);
-    load();
+    try {
+      await createProduct(data);
+      toast.success(t.productCreated);
+      setForm({ name: "", price: "", stock: "", category: "" });
+      setBarcode("");
+      setPreview("");
+      setImage(null);
+      refresh();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create product");
+    }
   };
 
   /* DELETE */
@@ -125,118 +114,208 @@ export default function Products() {
     if (!window.confirm(t.deleteProduct)) return;
     await deleteProduct(id);
     toast.success(t.deleted);
-    load();
+    refresh();
   };
 
   /* PRINT */
   const handlePrint = useReactToPrint({ content: () => labelRef.current });
 
+  /* INVENTORY SCAN — scan barcode to +1 stock */
+  useEffect(() => {
+    let buffer = "";
+    let lastKeyTime = 0;
+
+    const handleScanner = async (e) => {
+      if (!inventoryMode) return;
+      if (e.target.tagName === "INPUT") return;
+
+      const now = Date.now();
+      if (now - lastKeyTime > 150) buffer = "";
+      lastKeyTime = now;
+
+      if (e.key === "Enter") {
+        const code = buffer.trim();
+        buffer = "";
+
+        const product = products.find(p => p.barcode === code);
+        if (!product) { toast.error(`Barcode not found: ${code}`); return; }
+
+        try {
+          const updated = await updateProduct(product._id, { stock: product.stock + 1 });
+          setProducts(prev => prev.map(p => p._id === updated._id ? updated : p));
+          toast.success(`✅ ${product.name} → stock +1 (now ${product.stock + 1})`);
+        } catch {
+          toast.error("Failed to update stock");
+        }
+        return;
+      }
+
+      if (/^[0-9a-zA-Z\-]$/.test(e.key)) buffer += e.key;
+    };
+
+    window.addEventListener("keydown", handleScanner);
+    return () => window.removeEventListener("keydown", handleScanner);
+  }, [inventoryMode, products]);
+
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-neutral-950 min-h-screen">
+    <div className="h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-neutral-950">
 
-      {/* EXCHANGE RATE BAR */}
-      <ExchangeRateBar />
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-5 space-y-5">
 
-      {/* TOP BAR */}
-      <div className="
-        flex items-center gap-3 p-4 rounded-2xl
-        bg-white dark:bg-[#141414]
-        shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
-        dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
-      ">
+          {/* Exchange rate */}
+          <ExchangeRateBar />
 
-        {/* SEARCH + Voice */}
-        <div className="relative flex-1 flex items-center gap-2">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            placeholder={t.searchProduct}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="
-              w-full pl-10 pr-4 py-3 rounded-xl outline-none
-              bg-gray-100 dark:bg-[#0f0f0f]
-              shadow-[inset_5px_5px_10px_#d1d5db,inset_-5px_-5px_10px_#ffffff]
-              dark:shadow-[inset_5px_5px_10px_#050505,inset_-5px_-5px_10px_#1f1f1f]
-            "
-          />
-          <VoiceButton onResult={(text) => setSearch(text)} />
-        </div>
+          {/* ── TOP TOOLBAR ── */}
+          <div className="flex flex-wrap items-center gap-3
+            p-3 rounded-2xl bg-white dark:bg-[#141414]
+            shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff]
+            dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]">
 
-        <button
-          onClick={generateBarcode}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-200 dark:bg-[#1c1c1c] text-gray-700 dark:text-gray-200 hover:scale-[1.03] transition"
-        >
-          <Barcode size={16} />
-          {t.generateBarcode}
-        </button>
+            {/* Search */}
+            <div className="relative flex-1 min-w-48 flex items-center gap-2">
+              <Search size={16} className="absolute left-3 text-gray-400" />
+              <input
+                placeholder={t.searchProduct || "Search products..."}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none
+                  bg-gray-50 dark:bg-[#0f0f0f]
+                  border border-gray-200 dark:border-white/5
+                  focus:border-blue-400 dark:focus:border-blue-500/50 transition"
+              />
+              <VoiceButton onResult={text => setSearch(text)} />
+            </div>
 
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-200 dark:bg-[#1c1c1c] text-gray-700 dark:text-gray-200 hover:scale-[1.03] transition"
-        >
-          <Printer size={16} />
-          {t.printLabel}
-        </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={generateBarcode}
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm
+                  bg-gray-100 dark:bg-[#1c1c1c] hover:bg-gray-200 dark:hover:bg-[#252525]
+                  text-gray-700 dark:text-gray-300 transition">
+                <Barcode size={14}/> {t.generateBarcode || "Generate Barcode"}
+              </button>
 
-        <button
-          onClick={() => setInventoryMode(!inventoryMode)}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition"
-        >
-          <Scan size={16} />
-          {inventoryMode ? "Stop Scan" : "Inventory Scan"}
-        </button>
-      </div>
+              <button onClick={handlePrint}
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm
+                  bg-gray-100 dark:bg-[#1c1c1c] hover:bg-gray-200 dark:hover:bg-[#252525]
+                  text-gray-700 dark:text-gray-300 transition">
+                <Printer size={14}/> {t.printLabel || "Print Label"}
+              </button>
 
-      {/* STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { label: t.totalProducts, value: products.length, color: "" },
-          { label: t.lowStock, value: lowStock.length, color: "text-red-500" },
-          { label: t.categories, value: categories.length, color: "" },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="
-            p-6 rounded-2xl bg-white dark:bg-[#141414]
-            shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
-            dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
-          ">
-            <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
-            <h2 className={`text-3xl font-bold mt-2 ${color}`}>{value}</h2>
+              {/* Inventory scan toggle */}
+              <button
+                onClick={() => setInventoryMode(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition
+                  ${inventoryMode
+                    ? "bg-red-500 hover:bg-red-600 text-white shadow-[0_0_12px_rgba(239,68,68,0.4)]"
+                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-[0_0_12px_rgba(59,130,246,0.3)]"
+                  }`}
+              >
+                <ScanLine size={14}/>
+                {inventoryMode ? "Stop Scan" : "Inventory Scan"}
+              </button>
+            </div>
           </div>
-        ))}
+
+          {/* Inventory scan active banner */}
+          {inventoryMode && (
+            <div className="flex items-center justify-between
+              px-4 py-3 rounded-2xl
+              bg-blue-50 dark:bg-blue-900/20
+              border border-blue-200 dark:border-blue-500/30">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  Inventory Scan Active — Scan barcodes to increase stock by 1
+                </span>
+              </div>
+              <button onClick={() => setInventoryMode(false)}
+                className="text-blue-400 hover:text-blue-600 transition">
+                <X size={16}/>
+              </button>
+            </div>
+          )}
+
+          {/* ── STATS ── */}
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: t.totalProducts || "Total Products", value: products.length,  color: "text-blue-600 dark:text-blue-400",  bg: "bg-blue-50 dark:bg-blue-900/20" },
+              { label: t.lowStock      || "Low Stock",      value: lowStock.length,   color: "text-red-600 dark:text-red-400",    bg: "bg-red-50 dark:bg-red-900/20" },
+              { label: t.categories    || "Categories",     value: categories.length, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-900/20" },
+            ].map(({ label, value, color, bg }) => (
+              <div key={label} className={`${bg} rounded-2xl p-4 border border-white/50 dark:border-white/5`}>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+                <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* ── ADD PRODUCT FORM ── */}
+          <div className="rounded-2xl bg-white dark:bg-[#141414]
+            shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff]
+            dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]
+            overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-white/5 flex items-center gap-2">
+              <Plus size={16} className="text-blue-500" />
+              <span className="font-semibold text-sm">Add New Product</span>
+            </div>
+            <div className="p-5">
+              <ProductForm
+                form={form}
+                setForm={setForm}
+                barcode={barcode}
+                setBarcode={setBarcode}
+                categories={categories}
+                onCreate={handleCreate}
+                preview={preview}
+                setPreview={setPreview}
+                setImage={setImage}
+                ImageDropzone={ImageDropzone}
+              />
+            </div>
+          </div>
+
+          {/* Barcode preview */}
+          {barcode && (
+            <div className="bg-white dark:bg-[#141414] rounded-2xl p-4 shadow flex items-center gap-4">
+              <svg ref={previewBarcodeRef} />
+              <span className="text-xs text-gray-500 font-mono">{barcode}</span>
+            </div>
+          )}
+
+          {/* ── PRODUCTS GRID ── */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Package size={16} className="text-gray-400" />
+              <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">
+                {filtered.length} product{filtered.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <Package size={40} className="opacity-20 mb-3" />
+                <p className="text-sm">No products found</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                {filtered.map(p => (
+                  <ProductCard
+                    key={p._id}
+                    product={p}
+                    onDelete={remove}
+                    onEdit={product => setEditingProduct(product)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
       </div>
 
-      {/* PRODUCT FORM */}
-      <ProductForm
-        form={form}
-        setForm={setForm}
-        barcode={barcode}
-        setBarcode={setBarcode}
-        categories={categories}
-        onCreate={handleCreate}
-        preview={preview}
-        setPreview={setPreview}
-        setImage={setImage}
-        ImageDropzone={ImageDropzone}
-      />
-
-      {/* BARCODE PREVIEW */}
-      <div className="bg-white rounded-2xl shadow p-4">
-        <svg ref={previewBarcodeRef}></svg>
-      </div>
-
-      {/* PRODUCT GRID */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-8 gap-4">
-        {filtered.map(p => (
-          <ProductCard
-            key={p._id}
-            product={p}
-            onDelete={remove}
-            onEdit={(product) => setEditingProduct(product)}
-          />
-        ))}
-      </div>
-
-      {/* EDIT PANEL */}
+      {/* Edit panel */}
       <ProductEditPanel
         editingProduct={editingProduct}
         setEditingProduct={setEditingProduct}
@@ -248,14 +327,13 @@ export default function Products() {
         setEditPreview={setPreview}
       />
 
-      {/* PRINT LABEL */}
+      {/* Hidden print label */}
       <div style={{ position: "absolute", left: "-9999px" }}>
         <div ref={labelRef} className="p-6 text-center">
-          <svg ref={printBarcodeRef}></svg>
+          <svg ref={printBarcodeRef} />
           <p className="mt-2 font-semibold">{barcode}</p>
         </div>
       </div>
-
     </div>
   );
 }

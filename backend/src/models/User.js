@@ -21,6 +21,15 @@ const userSchema = new mongoose.Schema(
     active: {
       type: Boolean,
       default: true
+    },
+    // One-device enforcement
+    deviceId: {
+      type: String,
+      default: null
+    },
+    sessionToken: {
+      type: String,
+      default: null
     }
   },
   { timestamps: true }

@@ -1,61 +1,46 @@
 export const dashboardTranslations = {
-
   en: {
-
-    title: "Dashboard",
-    subtitle: "Live POS Analytics",
-
-    loading: "Loading dashboard...",
-
-    today: "Today",
-    week: "Week",
-
-    todaySales: "Today Sales",
-    weekSales: "Week Sales",
-
-    products: "Products",
-    lowStock: "Low Stock",
-    customers: "Customers",
-
-    salesChart: "Sales Chart",
-    topProducts: "Top Selling Products",
+    title:            "Dashboard",
+    subtitle:         "Live POS Analytics",
+    loading:          "Loading dashboard...",
+    today:            "Today",
+    week:             "Week",
+    todaySales:       "Today Sales",
+    weekSales:        "Week Sales",
+    products:         "Products",
+    lowStock:         "Low Stock",
+    customers:        "Customers",
+    salesChart:       "Sales Chart",
+    topProducts:      "Top Selling Products",
     lowStockProducts: "Low Stock",
-    receipts: "Receipts",
-    recentReceipts: "Recent Receipts",
-
-    walkIn: "Walk-in",
-
-    salesThisWeek: "Sales This Week"
-
+    receipts:         "Receipts",
+    recentReceipts:   "Recent Receipts",
+    walkIn:           "Walk-in",
+    salesThisWeek:    "Sales This Week",
+    noData:           "No data",
+    sold:             "sold",
+    stock:            "stock",
   },
-
   ar: {
-
-    title: "لوحة التحكم",
-    subtitle: "تحليلات نقاط البيع",
-
-    loading: "جارٍ تحميل لوحة التحكم...",
-
-    today: "اليوم",
-    week: "الأسبوع",
-
-    todaySales: "مبيعات اليوم",
-    weekSales: "مبيعات الأسبوع",
-
-    products: "المنتجات",
-    lowStock: "مخزون منخفض",
-    customers: "العملاء",
-
-    salesChart: "مخطط المبيعات",
-    topProducts: "الأكثر مبيعاً",
+    title:            "لوحة التحكم",
+    subtitle:         "تحليلات نقاط البيع",
+    loading:          "جارٍ تحميل لوحة التحكم...",
+    today:            "اليوم",
+    week:             "الأسبوع",
+    todaySales:       "مبيعات اليوم",
+    weekSales:        "مبيعات الأسبوع",
+    products:         "المنتجات",
+    lowStock:         "مخزون منخفض",
+    customers:        "العملاء",
+    salesChart:       "مخطط المبيعات",
+    topProducts:      "الأكثر مبيعاً",
     lowStockProducts: "مخزون منخفض",
-    receipts: "الإيصالات",
-    recentReceipts: "آخر الإيصالات",
-
-    walkIn: "زبون مباشر",
-
-    salesThisWeek: "مبيعات هذا الأسبوع"
-
+    receipts:         "الإيصالات",
+    recentReceipts:   "آخر الإيصالات",
+    walkIn:           "زبون مباشر",
+    salesThisWeek:    "مبيعات هذا الأسبوع",
+    noData:           "لا توجد بيانات",
+    sold:             "مبيع",
+    stock:            "مخزون",
   }
-
 };

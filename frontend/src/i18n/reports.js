@@ -2,59 +2,129 @@ export const reportsTranslations = {
 
   en: {
 
-    loading: "Loading Reports...",
-    title: "Sales Analytics",
-    subtitle: "Advanced POS sales dashboard",
+    /* General */
+    loading:          "Loading Reports...",
+    title:            "Reports",
+    subtitle:         "Sales analytics dashboard",
+    noData:           "No data",
+    noSales:          "No transactions in this period",
 
-    daily: "Daily",
-    monthly: "Monthly",
+    /* Period toggle */
+    today:            "Today",
+    thisWeek:         "This Week",
+    byHour:           "by hour",
+    byDay:            "by day",
 
-    totalSales: "Total Sales",
-    revenue: "Revenue",
-    averageSale: "Average Sale",
+    /* Tabs */
+    tabOverview:      "Overview",
+    tabPayLater:      "Pay Later",
+    tabTransactions:  "Transactions",
 
-    revenueTrend: "Revenue Trend",
-    topProducts: "Top Selling Products",
-    hourlySales: "Hourly Sales Activity",
-    payLater: "Pay Later / Credit",
+    /* KPI cards */
+    totalRevenue:     "Total Revenue",
+    totalSales:       "Transactions",
+    averageSale:      "Avg. Sale",
+    outstanding:      "Outstanding",
+    revenue:          "Revenue",
 
+    /* Charts */
+    revenueTrend:     "Revenue Trend",
+    topProducts:      "Top Products",
+    paymentMethods:   "Payment Methods",
+    hourlySales:      "Hourly Sales Activity",
+
+    /* Payment methods */
+    cash:             "Cash",
+    card:             "Card",
+    credit:           "Credit",
+
+    /* Pay Later tab */
+    totalCreditGiven: "Total Credit Given",
+    totalPaidBack:    "Total Paid Back",
+    outstandingBal:   "Outstanding Balance",
+    payLaterSales:    "Pay Later Sales",
+    payLaterPeriodDesc: "Sales recorded as Pay Later in the selected period",
+    noPayLaterSales:  "No pay later sales in this period",
+    periodTotal:      "Period Total",
+    openAccounts:     "Open Credit Accounts",
+    openAccountsDesc: "Customers with outstanding balances",
+    noOpenAccounts:   "No open accounts 🎉",
+    balance:          "balance",
+    paid:             "paid",
+
+    /* Transactions tab */
+    transactionsDesc: "transactions",
     transactionHistory: "Transaction History",
-
-    date: "Date",
-    items: "Items",
-    total: "Total",
-    payment: "Payment",
-
-    unknown: "Unknown"
+    date:             "Date & Time",
+    items:            "Items",
+    total:            "Total",
+    payment:          "Method",
+    unknown:          "Unknown",
+    more:             "more",
 
   },
 
   ar: {
 
-    loading: "جارٍ تحميل التقارير...",
-    title: "تحليلات المبيعات",
-    subtitle: "لوحة تحكم متقدمة للمبيعات",
+    /* General */
+    loading:          "جارٍ تحميل التقارير...",
+    title:            "التقارير",
+    subtitle:         "لوحة تحليلات المبيعات",
+    noData:           "لا توجد بيانات",
+    noSales:          "لا توجد معاملات في هذه الفترة",
 
-    daily: "يومي",
-    monthly: "شهري",
+    /* Period toggle */
+    today:            "اليوم",
+    thisWeek:         "هذا الأسبوع",
+    byHour:           "بالساعة",
+    byDay:            "باليوم",
 
-    totalSales: "إجمالي المبيعات",
-    revenue: "الإيرادات",
-    averageSale: "متوسط البيع",
+    /* Tabs */
+    tabOverview:      "نظرة عامة",
+    tabPayLater:      "الدفع الآجل",
+    tabTransactions:  "المعاملات",
 
-    revenueTrend: "اتجاه الإيرادات",
-    topProducts: "المنتجات الأكثر مبيعاً",
-    hourlySales: "نشاط المبيعات بالساعة",
-    payLater: "الدفع الآجل / الائتمان",
+    /* KPI cards */
+    totalRevenue:     "إجمالي الإيرادات",
+    totalSales:       "عدد المعاملات",
+    averageSale:      "متوسط البيع",
+    outstanding:      "المستحق",
+    revenue:          "الإيرادات",
 
-    transactionHistory: "سجل العمليات",
+    /* Charts */
+    revenueTrend:     "اتجاه الإيرادات",
+    topProducts:      "المنتجات الأكثر مبيعاً",
+    paymentMethods:   "طرق الدفع",
+    hourlySales:      "نشاط المبيعات بالساعة",
 
-    date: "التاريخ",
-    items: "العناصر",
-    total: "الإجمالي",
-    payment: "طريقة الدفع",
+    /* Payment methods */
+    cash:             "نقداً",
+    card:             "بطاقة",
+    credit:           "آجل",
 
-    unknown: "غير معروف"
+    /* Pay Later tab */
+    totalCreditGiven: "إجمالي الائتمان الممنوح",
+    totalPaidBack:    "إجمالي المبالغ المسددة",
+    outstandingBal:   "الرصيد المستحق",
+    payLaterSales:    "مبيعات الدفع الآجل",
+    payLaterPeriodDesc: "المبيعات المسجلة كدفع آجل في الفترة المحددة",
+    noPayLaterSales:  "لا توجد مبيعات آجلة في هذه الفترة",
+    periodTotal:      "مجموع الفترة",
+    openAccounts:     "الحسابات المفتوحة",
+    openAccountsDesc: "العملاء ذوو الأرصدة المستحقة",
+    noOpenAccounts:   "لا توجد حسابات مفتوحة 🎉",
+    balance:          "الرصيد",
+    paid:             "مدفوع",
+
+    /* Transactions tab */
+    transactionsDesc: "معاملة",
+    transactionHistory: "سجل المعاملات",
+    date:             "التاريخ والوقت",
+    items:            "المنتجات",
+    total:            "الإجمالي",
+    payment:          "طريقة الدفع",
+    unknown:          "غير معروف",
+    more:             "أخرى",
 
   }
 
