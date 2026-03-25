@@ -1,5 +1,15 @@
+# Environment variables — NEVER commit these
 .env
-backend/.env
-node_modules
-uploads
-dist
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Uploaded files
+uploads/
+
+# Logs
+*.log
+npm-debug.log*

@@ -17,7 +17,12 @@ const app = express();
 /* =======================
    MIDDLEWARE
 ======================= */
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true
+  })
+);
 app.use(express.json());
 
 /* =======================
@@ -30,6 +35,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/hold-sales", holdSaleRoutes);
+
 /* =======================
    HEALTH CHECK
 ======================= */

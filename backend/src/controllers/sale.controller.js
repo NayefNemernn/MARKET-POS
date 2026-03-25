@@ -6,7 +6,6 @@ import Product from "../models/Product.js";
  */
 export const createSale = async (req, res) => {
   try {
-
     const { items, paymentMethod } = req.body;
 
     if (!items || items.length === 0) {
@@ -17,23 +16,20 @@ export const createSale = async (req, res) => {
     const saleItems = [];
 
     for (const item of items) {
-
       const product = await Product.findById(item.productId);
 
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
 
-      /* CHECK STOCK */
-
+      // CHECK STOCK
       if (product.stock < item.quantity) {
         return res.status(400).json({
           message: `${product.name} not enough stock`
         });
       }
 
-      /* CALCULATE SUBTOTAL */
-
+      // CALCULATE SUBTOTAL
       const subtotal = product.price * item.quantity;
       total += subtotal;
 
@@ -45,24 +41,20 @@ export const createSale = async (req, res) => {
         subtotal
       });
 
-      /* 🔻 DECREASE STOCK */
-
-      product.stock -= item.quantity;
+      // DECREASE STOCK — only via $inc to avoid double deduction
       await Product.findByIdAndUpdate(
-  product._id,
-  { $inc: { stock: -item.quantity } }
-);
-
+        product._id,
+        { $inc: { stock: -item.quantity } }
+      );
     }
 
-    /* CREATE SALE */
-
+    // CREATE SALE
     const sale = await Sale.create({
-  items: saleItems,
-  total,
-  paymentMethod,
-  paid: paymentMethod === "paylater" ? false : true
-});
+      items: saleItems,
+      total,
+      paymentMethod,
+      paid: paymentMethod === "paylater" ? false : true
+    });
 
     res.status(201).json({
       message: "Sale completed",
@@ -70,28 +62,35 @@ export const createSale = async (req, res) => {
     });
 
   } catch (error) {
-
     res.status(500).json({ message: error.message });
-
   }
 };
+
 /**
  * Get all sales (reports)
  */
 export const getSales = async (req, res) => {
-  const sales = await Sale.find().sort({ createdAt: -1 });
-  res.json(sales);
+  try {
+    const sales = await Sale.find().sort({ createdAt: -1 });
+    res.json(sales);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 /**
  * Get single sale (receipt)
  */
 export const getSaleById = async (req, res) => {
-  const sale = await Sale.findById(req.params.id);
+  try {
+    const sale = await Sale.findById(req.params.id);
 
-  if (!sale) {
-    return res.status(404).json({ message: "Sale not found" });
+    if (!sale) {
+      return res.status(404).json({ message: "Sale not found" });
+    }
+
+    res.json(sale);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
-
-  res.json(sale);
 };

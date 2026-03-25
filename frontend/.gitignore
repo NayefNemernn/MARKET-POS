@@ -1,6 +1,20 @@
-README.md
+# Environment variables — NEVER commit these
 .env
-backend/.env
-node_modules
-uploads
-dist
+.env.local
+.env.production
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Vite cache
+.vite/
+
+# PWA dev dist
+dev-dist/
+
+# Logs
+*.log
+npm-debug.log*
