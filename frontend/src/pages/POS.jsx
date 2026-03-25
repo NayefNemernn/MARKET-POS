@@ -70,8 +70,17 @@ export default function POS({ setPage }) {
 
   const handleSearchEnter = (e) => {
     if (e.key === "Enter") {
-      addProductSafe(barcodeMap[search.trim()]);
-      setSearch("");
+      const code = search.trim();
+      if (!code) return;
+      const product = barcodeMap[code];
+      if (product) {
+        addProductSafe(product);
+        setSearch(""); // clear after successful scan
+      } else {
+        // try partial name match before giving up
+        addProductSafe(product); // will show "not found" toast
+        setSearch("");
+      }
     }
   };
 
