@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Nav ball background — light/dark */
+:root { --ball-bg: #e5e7eb; }
+.dark { --ball-bg: #2a2a2e; }
+
 /* =========================
    GLOBAL UI TRANSITIONS
 ========================= */

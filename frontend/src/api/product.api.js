@@ -28,6 +28,11 @@ export const updateProduct = async (id, data) => {
   return res.data;
 };
 
+export const getProductStats = async (id) => {
+  const res = await api.get(`/products/${id}/stats`);
+  return res.data;
+};
+
 export const deleteProduct = async (id) => {
   await api.delete(`/products/${id}`);
 };

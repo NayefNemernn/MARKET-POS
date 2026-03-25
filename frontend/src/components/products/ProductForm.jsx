@@ -92,6 +92,15 @@ export default function ProductForm({
       voiceFilter: (t) => t,
     },
     {
+      key: "cost",
+      label: t.cost || "Cost Price ($)",
+      placeholder: "0.00",
+      type: "number",
+      value: form.cost,
+      onChange: (v) => setForm({ ...form, cost: v }),
+      voiceFilter: (t) => t.replace(/[^0-9.]/g, ""),
+    },
+    {
       key: "stock",
       label: t.stock || "Stock",
       placeholder: "0",
@@ -233,6 +242,25 @@ export default function ProductForm({
             </div>
           </div>
         ))}
+
+        {/* === EXPIRY DATE — optional === */}
+        <div>
+          <label className={labelClass}>
+            {t.expiryDate || "Expiry Date"} <span className="normal-case text-gray-300 dark:text-gray-600 font-normal">(optional)</span>
+          </label>
+          <input
+            type="date"
+            value={form.expiryDate || ""}
+            onChange={e => setForm({ ...form, expiryDate: e.target.value || "" })}
+            min={new Date().toISOString().slice(0, 10)}
+            className={inputClass}
+          />
+          {form.expiryDate && (() => {
+            const days  = Math.ceil((new Date(form.expiryDate) - new Date()) / 86400000);
+            const color = days <= 7 ? "text-red-500" : days <= 30 ? "text-amber-500" : "text-green-500";
+            return <p className={`text-xs mt-1 font-medium ${color}`}>Expires in {days} day{days !== 1 ? "s" : ""}</p>;
+          })()}
+        </div>
 
       </div>
 

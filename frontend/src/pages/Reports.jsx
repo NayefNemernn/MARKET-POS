@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import {
   TrendingUp, ShoppingCart, CreditCard, Clock,
-  DollarSign, AlertCircle
+  DollarSign, AlertCircle, AlertTriangle, Package, Bell
 } from "lucide-react";
 
 const CARD = "rounded-2xl bg-white dark:bg-[#141414] shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff] dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]";
@@ -29,6 +29,7 @@ export default function Reports() {
 
   const [sales,     setSales]     = useState([]);
   const [holdSales, setHoldSales] = useState([]);
+  const [alerts,    setAlerts]    = useState({ lowStock: [], expiring: [] });
   const [loading,   setLoading]   = useState(true);
   const [period,    setPeriod]    = useState("week");
   const [tab,       setTab]       = useState("overview");
@@ -36,12 +37,14 @@ export default function Reports() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [sRes, hRes] = await Promise.all([
+        const [sRes, hRes, aRes] = await Promise.all([
           api.get("/sales"),
           api.get("/hold-sales"),
+          api.get("/products/alerts"),
         ]);
         setSales(sRes.data);
         setHoldSales(hRes.data);
+        setAlerts(aRes.data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -172,17 +175,26 @@ export default function Reports() {
           <div className="flex gap-1 border-b border-gray-200 dark:border-white/10">
             {[
               ["overview",     t.tabOverview,     <TrendingUp   size={14}/>],
-              ["paylater",     t.tabPayLater,      <CreditCard   size={14}/>],
-              ["transactions", t.tabTransactions,  <ShoppingCart size={14}/>],
-            ].map(([key, label, icon]) => (
-              <button key={key} onClick={() => setTab(key)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px
-                  ${tab === key
-                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}>
-                {icon}{label}
-              </button>
-            ))}
+              ["paylater",     t.tabPayLater,     <CreditCard   size={14}/>],
+              ["transactions", t.tabTransactions, <ShoppingCart size={14}/>],
+              ["alerts",       t.tabAlerts,       <Bell         size={14}/>],
+            ].map(([key, label, icon]) => {
+              const alertCount = key === "alerts" ? alerts.lowStock.length + alerts.expiring.length : 0;
+              return (
+                <button key={key} onClick={() => setTab(key)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px
+                    ${tab === key
+                      ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}>
+                  {icon}{label}
+                  {alertCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white leading-none">
+                      {alertCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* ══════════════════
@@ -489,6 +501,202 @@ export default function Reports() {
               </div>
             </div>
           )}
+
+          {/* ══════════════════
+              ALERTS
+          ══════════════════ */}
+          {tab === "alerts" && (() => {
+            const totalAlerts = alerts.lowStock.length + alerts.expiring.length;
+
+            const expiryBadge = (daysLeft) => {
+              if (daysLeft < 0)   return { label: t.alertBadgeExpired,  cls: "bg-red-600    text-white" };
+              if (daysLeft === 0) return { label: t.today_exp,          cls: "bg-red-600    text-white" };
+              if (daysLeft <= 7)  return { label: t.alertBadgeCritical, cls: "bg-red-500    text-white" };
+              if (daysLeft <= 14) return { label: t.alertBadgeWarning,  cls: "bg-amber-500  text-white" };
+              return                     { label: t.alertBadgeSoon,     cls: "bg-yellow-400 text-yellow-900" };
+            };
+
+            const stockBadge = (stock) => {
+              if (stock === 0) return { label: "OUT",                cls: "bg-red-600   text-white" };
+              if (stock <= 2)  return { label: t.alertBadgeCritical, cls: "bg-red-500   text-white" };
+              return                  { label: t.alertBadgeWarning,  cls: "bg-amber-500 text-white" };
+            };
+
+            const fmtDate = (d) => new Date(d).toLocaleDateString(isAr ? "ar-SA" : "en-US", { day: "numeric", month: "short", year: "numeric" });
+
+            return (
+              <div className="space-y-5">
+
+                {/* Summary banner */}
+                {totalAlerts === 0 ? (
+                  <div className={`${CARD} p-8 text-center`}>
+                    <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-3">
+                      <AlertCircle size={24} className="text-green-600 dark:text-green-400" />
+                    </div>
+                    <p className="font-semibold text-green-700 dark:text-green-400">{t.noAlerts}</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className={`${CARD} p-4 bg-amber-50 dark:bg-amber-900/15`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Package size={16} className="text-amber-600 dark:text-amber-400" />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.lowStockAlerts}</p>
+                      </div>
+                      <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{alerts.lowStock.length}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{t.lowStockDesc}</p>
+                    </div>
+                    <div className={`${CARD} p-4 bg-red-50 dark:bg-red-900/15`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle size={16} className="text-red-600 dark:text-red-400" />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.expiryAlerts}</p>
+                      </div>
+                      <p className="text-3xl font-bold text-red-600 dark:text-red-400">{alerts.expiring.length}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{t.expiryDesc}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── LOW STOCK ── */}
+                <div className={`${CARD} overflow-hidden`}>
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/8">
+                    <div className="flex items-center gap-2">
+                      <Package size={16} className="text-amber-500" />
+                      <h3 className="font-semibold text-sm">{t.lowStockAlerts}</h3>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                        {alerts.lowStock.length}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400">{t.lowStockDesc}</p>
+                  </div>
+
+                  {alerts.lowStock.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-gray-400">{t.noLowStock} ✓</div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 dark:bg-[#1c1c1c] text-xs text-gray-400">
+                        <tr>
+                          <th className="px-5 py-3 text-start">{t.unknown === "Unknown" ? "Product" : "المنتج"}</th>
+                          <th className="px-5 py-3 text-start">{t.category}</th>
+                          <th className="px-5 py-3 text-center">{t.stockLevel}</th>
+                          <th className="px-5 py-3 text-end">{t.price}</th>
+                          <th className="px-5 py-3 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                        {alerts.lowStock.map(p => {
+                          const { label, cls } = stockBadge(p.stock);
+                          return (
+                            <tr key={p._id} className={`transition-colors ${p.stock === 0 ? "bg-red-50/50 dark:bg-red-900/10" : "hover:bg-gray-50 dark:hover:bg-white/5"}`}>
+                              <td className="px-5 py-3">
+                                <div className="flex items-center gap-3">
+                                  {p.image ? (
+                                    <img src={p.image} className="w-8 h-8 rounded-lg object-cover" onError={e => e.target.style.display="none"} />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#252525] flex items-center justify-center">
+                                      <Package size={14} className="text-gray-400" />
+                                    </div>
+                                  )}
+                                  <span className="font-medium">{p.name}</span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3 text-gray-500 dark:text-gray-400">{p.category || "—"}</td>
+                              <td className="px-5 py-3 text-center">
+                                <span className={`text-lg font-bold ${p.stock === 0 ? "text-red-600" : "text-amber-600"}`}>{p.stock}</span>
+                                <span className="text-xs text-gray-400 block">{t.unitsLeft}</span>
+                              </td>
+                              <td className="px-5 py-3 text-end font-semibold text-green-600 dark:text-green-400">${p.price.toFixed(2)}</td>
+                              <td className="px-5 py-3 text-center">
+                                <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${cls}`}>{label}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* ── EXPIRING SOON ── */}
+                <div className={`${CARD} overflow-hidden`}>
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/8">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={16} className="text-red-500" />
+                      <h3 className="font-semibold text-sm">{t.expiryAlerts}</h3>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                        {alerts.expiring.length}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400">{t.expiryDesc}</p>
+                  </div>
+
+                  {alerts.expiring.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-gray-400">{t.noExpiry} ✓</div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 dark:bg-[#1c1c1c] text-xs text-gray-400">
+                        <tr>
+                          <th className="px-5 py-3 text-start">{t.unknown === "Unknown" ? "Product" : "المنتج"}</th>
+                          <th className="px-5 py-3 text-start">{t.category}</th>
+                          <th className="px-5 py-3 text-center">{t.stockLevel}</th>
+                          <th className="px-5 py-3 text-center">{t.expiryDate}</th>
+                          <th className="px-5 py-3 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                        {alerts.expiring.map(p => {
+                          const { label, cls } = expiryBadge(p.daysLeft);
+                          const rowBg = p.expired
+                            ? "bg-red-50/60 dark:bg-red-900/15"
+                            : p.daysLeft <= 7
+                            ? "bg-orange-50/40 dark:bg-orange-900/10"
+                            : "";
+                          return (
+                            <tr key={p._id} className={`transition-colors ${rowBg}`}>
+                              <td className="px-5 py-3">
+                                <div className="flex items-center gap-3">
+                                  {p.image ? (
+                                    <img src={p.image} className="w-8 h-8 rounded-lg object-cover" onError={e => e.target.style.display="none"} />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#252525] flex items-center justify-center">
+                                      <Package size={14} className="text-gray-400" />
+                                    </div>
+                                  )}
+                                  <span className="font-medium">{p.name}</span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3 text-gray-500 dark:text-gray-400">{p.category || "—"}</td>
+                              <td className="px-5 py-3 text-center">
+                                <span className="font-semibold">{p.stock}</span>
+                                <span className="text-xs text-gray-400 block">{t.unitsLeft}</span>
+                              </td>
+                              <td className="px-5 py-3 text-center">
+                                <span className={`font-semibold text-sm block ${p.expired ? "text-red-600" : p.daysLeft <= 7 ? "text-orange-500" : "text-gray-700 dark:text-gray-300"}`}>
+                                  {fmtDate(p.expiryDate)}
+                                </span>
+                                <span className={`text-xs ${p.expired ? "text-red-500 font-semibold" : "text-gray-400"}`}>
+                                  {p.expired
+                                    ? `${Math.abs(p.daysLeft)} ${t.days} ago`
+                                    : p.daysLeft === 0
+                                    ? t.today_exp
+                                    : p.daysLeft === 1
+                                    ? t.tomorrow
+                                    : `${t.expiresIn} ${p.daysLeft} ${t.days}`}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3 text-center">
+                                <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${cls}`}>{label}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+              </div>
+            );
+          })()}
 
         </div>
       </div>

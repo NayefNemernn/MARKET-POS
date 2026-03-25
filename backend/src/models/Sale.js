@@ -16,6 +16,7 @@ const saleSchema = new mongoose.Schema(
       },
       name: String,
       price: Number,
+      cost: { type: Number, default: 0 },
       quantity: {
         type: Number,
         required: true

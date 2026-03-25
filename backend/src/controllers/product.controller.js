@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import Product from "../models/Product.js";
+import Sale from "../models/Sale.js";
 import supabase from "../config/supabase.js";
 import { v4 as uuid } from "uuid";
 
@@ -34,11 +36,176 @@ export const getProductByBarcode = async (req, res) => {
 };
 
 /* =========================
+   GET ALERTS (low stock + near/expired)
+========================= */
+export const getAlerts = async (req, res) => {
+  try {
+    const userId  = req.user._id;
+    const today   = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const in30    = new Date(today);
+    in30.setDate(in30.getDate() + 30);
+
+    const products = await Product.find({ userId })
+      .populate("category", "name")
+      .lean();
+
+    const lowStock = products
+      .filter(p => p.stock <= 5)
+      .map(p => ({
+        _id:        p._id,
+        name:       p.name,
+        image:      p.image,
+        stock:      p.stock,
+        category:   p.category?.name || "",
+        price:      p.price,
+        expiryDate: p.expiryDate || null,
+      }))
+      .sort((a, b) => a.stock - b.stock);
+
+    const expiring = products
+      .filter(p => p.expiryDate)
+      .map(p => {
+        const exp     = new Date(p.expiryDate);
+        const daysLeft = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+        return { ...p, daysLeft };
+      })
+      .filter(p => p.daysLeft <= 30)
+      .map(p => ({
+        _id:        p._id,
+        name:       p.name,
+        image:      p.image,
+        stock:      p.stock,
+        category:   p.category?.name || "",
+        price:      p.price,
+        expiryDate: p.expiryDate,
+        daysLeft:   p.daysLeft,
+        expired:    p.daysLeft < 0,
+      }))
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+
+    res.json({ lowStock, expiring });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* =========================
+   GET PROFITABILITY REPORT
+   Returns per-product cost/revenue/profit across all sales
+========================= */
+export const getProfitabilityReport = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // All products with their current cost
+    const products = await Product.find({ userId }).select("name price cost stock image").lean();
+    const productMap = {};
+    products.forEach(p => { productMap[String(p._id)] = p; });
+
+    // Aggregate sales per product
+    const salesAgg = await Sale.aggregate([
+      { $match: { userId } },
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id:      "$items.productId",
+          name:     { $first: "$items.name" },
+          unitsSold:{ $sum: "$items.quantity" },
+          revenue:  { $sum: "$items.subtotal" },
+          // cost stored in sale item (if available), fallback to 0
+          cogs:     { $sum: { $multiply: [{ $ifNull: ["$items.cost", 0] }, "$items.quantity"] } },
+        }
+      },
+      { $sort: { revenue: -1 } }
+    ]);
+
+    const rows = salesAgg.map(row => {
+      const prod    = productMap[String(row._id)] || {};
+      const revenue = row.revenue  || 0;
+      const cogs    = row.cogs     || 0;
+      const profit  = revenue - cogs;
+      const margin  = revenue > 0 ? (profit / revenue) * 100 : 0;
+      return {
+        productId:  row._id,
+        name:       row.name,
+        image:      prod.image || "",
+        price:      prod.price || 0,
+        cost:       prod.cost  || 0,
+        stock:      prod.stock || 0,
+        unitsSold:  row.unitsSold,
+        revenue:    +revenue.toFixed(2),
+        cogs:       +cogs.toFixed(2),
+        profit:     +profit.toFixed(2),
+        margin:     +margin.toFixed(1),
+      };
+    });
+
+    // Summary totals
+    const totals = rows.reduce((acc, r) => ({
+      revenue: acc.revenue + r.revenue,
+      cogs:    acc.cogs    + r.cogs,
+      profit:  acc.profit  + r.profit,
+      units:   acc.units   + r.unitsSold,
+    }), { revenue: 0, cogs: 0, profit: 0, units: 0 });
+
+    // Total inventory value (cost × stock for all products)
+    const inventoryValue = products.reduce((s, p) => s + (p.cost || 0) * (p.stock || 0), 0);
+
+    res.json({
+      rows,
+      totals: {
+        revenue:        +totals.revenue.toFixed(2),
+        cogs:           +totals.cogs.toFixed(2),
+        profit:         +totals.profit.toFixed(2),
+        margin:         totals.revenue > 0 ? +((totals.profit / totals.revenue) * 100).toFixed(1) : 0,
+        units:          totals.units,
+        inventoryValue: +inventoryValue.toFixed(2),
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* =========================
+   GET PRODUCT SALES STATS
+========================= */
+export const getProductStats = async (req, res) => {
+  try {
+    const productId     = new mongoose.Types.ObjectId(req.params.id);
+    const userId        = req.user._id;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const pipeline = (extraMatch) => [
+      { $match: { userId, ...extraMatch } },
+      { $unwind: "$items" },
+      { $match: { "items.productId": productId } },
+      { $group: { _id: null, sold: { $sum: "$items.quantity" }, revenue: { $sum: "$items.subtotal" } } }
+    ];
+
+    const [allTime, last30] = await Promise.all([
+      Sale.aggregate(pipeline({})),
+      Sale.aggregate(pipeline({ createdAt: { $gte: thirtyDaysAgo } })),
+    ]);
+
+    res.json({
+      allTime: { sold: allTime[0]?.sold || 0, revenue: allTime[0]?.revenue || 0 },
+      last30:  { sold: last30[0]?.sold  || 0, revenue: last30[0]?.revenue  || 0 },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* =========================
    CREATE PRODUCT (user-scoped)
 ========================= */
 export const createProduct = async (req, res) => {
   try {
-    const { name, barcode, price, stock, category } = req.body;
+    const { name, barcode, price, cost, stock, category, expiryDate } = req.body;
     let imageUrl = "";
 
     if (req.file) {
@@ -51,7 +218,8 @@ export const createProduct = async (req, res) => {
     }
 
     const product = await Product.create({
-      name, barcode, price, stock, category,
+      name, barcode, price, cost: cost || 0, stock, category,
+      expiryDate: expiryDate || null,
       image: imageUrl,
       userId: req.user._id
     });

@@ -16,6 +16,15 @@ const productSchema = new mongoose.Schema(
       required: true,
       min: 0
     },
+    cost: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    expiryDate: {
+      type: Date,
+      default: null
+    },
     stock: {
       type: Number,
       required: true,

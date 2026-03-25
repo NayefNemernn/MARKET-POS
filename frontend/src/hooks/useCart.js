@@ -1,4 +1,5 @@
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 export const useCart = () => {
   const [cart, setCart] = useState([]);
@@ -16,7 +17,7 @@ export const useCart = () => {
       if (exists) {
         // 🚫 prevent exceeding stock
         if (exists.quantity >= product.stock) {
-          alert(`⚠️ Only ${product.stock} in stock`);
+          toast.error(`⚠️ Only ${product.stock} in stock`);
           return prev;
         }
 
@@ -49,7 +50,7 @@ export const useCart = () => {
       prev.map((item) => {
         if (item.productId === id) {
           if (item.quantity >= item.stock) {
-            alert(`⚠️ Only ${item.stock} in stock`);
+            toast.error(`⚠️ Only ${item.stock} in stock`);
             return item;
           }
           return { ...item, quantity: item.quantity + 1 };

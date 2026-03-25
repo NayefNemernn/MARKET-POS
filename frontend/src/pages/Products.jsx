@@ -13,7 +13,6 @@ import { getCategories, createCategory } from "../api/category.api";
 
 import toast from "react-hot-toast";
 import JsBarcode from "jsbarcode";
-import { useReactToPrint } from "react-to-print";
 
 import ProductCard from "../components/products/ProductCard";
 import ProductEditPanel from "../components/products/ProductEditPanel";
@@ -35,11 +34,9 @@ export default function Products() {
   const [inventoryMode, setInventoryMode] = useState(false);
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
-  const [form, setForm] = useState({ name: "", price: "", stock: "", category: "" });
+  const [form, setForm] = useState({ name: "", price: "", cost: "", stock: "", category: "" });
 
   const previewBarcodeRef = useRef(null);
-  const printBarcodeRef   = useRef(null);
-  const labelRef          = useRef(null);
 
   /* LOAD */
   const load = async () => {
@@ -66,12 +63,22 @@ export default function Products() {
   const generateBarcode = () => {
     const code = Date.now().toString();
     setBarcode(code);
-    setTimeout(() => {
-      [previewBarcodeRef, printBarcodeRef].forEach(ref => {
-        if (ref.current) JsBarcode(ref.current, code, { format: "CODE128", width: 2, height: 40 });
-      });
-    }, 100);
+    // SVG rendering happens in the useEffect below, after React re-renders with the new code
   };
+
+  // Re-render the preview SVG whenever barcode changes
+  useEffect(() => {
+    if (barcode && previewBarcodeRef.current) {
+      JsBarcode(previewBarcodeRef.current, barcode, {
+        format: "CODE128",
+        width: 2,
+        height: 60,
+        displayValue: true,
+        fontSize: 13,
+        margin: 8,
+      });
+    }
+  }, [barcode]);
 
   /* CREATE */
   const handleCreate = async () => {
@@ -92,14 +99,16 @@ export default function Products() {
     data.append("name",     form.name);
     data.append("barcode",  barcode);
     data.append("price",    form.price  || 0);
+    data.append("cost",     form.cost   || 0);
     data.append("stock",    form.stock  || 0);
     data.append("category", categoryId || "");
+    if (form.expiryDate) data.append("expiryDate", form.expiryDate);
     if (image) data.append("image", image);
 
     try {
       await createProduct(data);
       toast.success(t.productCreated);
-      setForm({ name: "", price: "", stock: "", category: "" });
+      setForm({ name: "", price: "", cost: "", stock: "", category: "", expiryDate: "" });
       setBarcode("");
       setPreview("");
       setImage(null);
@@ -117,8 +126,73 @@ export default function Products() {
     refresh();
   };
 
-  /* PRINT */
-  const handlePrint = useReactToPrint({ content: () => labelRef.current });
+  const printLabel = () => {
+    if (!barcode) { toast.error("Generate a barcode first"); return; }
+
+    // 1. Render barcode into a fresh off-screen SVG
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    document.body.appendChild(svg);
+    JsBarcode(svg, barcode, {
+      format: "CODE128",
+      width: 3,
+      height: 80,
+      displayValue: true,
+      fontSize: 14,
+      margin: 10,
+      background: "#ffffff",
+      lineColor: "#000000",
+    });
+
+    // 2. Serialize SVG → data URL
+    const svgData = new XMLSerializer().serializeToString(svg);
+    document.body.removeChild(svg);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const svgUrl  = URL.createObjectURL(svgBlob);
+
+    // 3. Draw SVG onto a canvas → PNG
+    const img = new Image();
+    img.onload = () => {
+      const canvas  = document.createElement("canvas");
+      const scale   = 3; // high-res for crisp printing
+      canvas.width  = img.width  * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, img.width, img.height);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(svgUrl);
+
+      // 4. Open PNG in new tab and trigger print
+      const pngUrl = canvas.toDataURL("image/png");
+      const win = window.open("", "_blank");
+      win.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Barcode Label — ${barcode}</title>
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fff; }
+              img { max-width: 100%; }
+              @media print {
+                @page { margin: 10mm; }
+                body { min-height: unset; }
+              }
+            </style>
+          </head>
+          <body>
+            <img src="${pngUrl}" />
+            <script>
+              window.onload = () => { window.print(); };
+            <\/script>
+          </body>
+        </html>
+      `);
+      win.document.close();
+    };
+    img.src = svgUrl;
+  };
 
   /* INVENTORY SCAN — scan barcode to +1 stock */
   useEffect(() => {
@@ -196,7 +270,7 @@ export default function Products() {
                 <Barcode size={14}/> {t.generateBarcode || "Generate Barcode"}
               </button>
 
-              <button onClick={handlePrint}
+              <button onClick={printLabel}
                 className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm
                   bg-gray-100 dark:bg-[#1c1c1c] hover:bg-gray-200 dark:hover:bg-[#252525]
                   text-gray-700 dark:text-gray-300 transition">
@@ -327,13 +401,6 @@ export default function Products() {
         setEditPreview={setPreview}
       />
 
-      {/* Hidden print label */}
-      <div style={{ position: "absolute", left: "-9999px" }}>
-        <div ref={labelRef} className="p-6 text-center">
-          <svg ref={printBarcodeRef} />
-          <p className="mt-2 font-semibold">{barcode}</p>
-        </div>
-      </div>
     </div>
   );
 }

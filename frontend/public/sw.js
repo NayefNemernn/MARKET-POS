@@ -1,12 +1,6 @@
-const CACHE_NAME = "market-pos-v1";
+const CACHE_NAME = "market-pos-v3";
+const STATIC_ASSETS = ["/", "/index.html"];
 
-// App shell files to cache immediately
-const STATIC_ASSETS = [
-  "/",
-  "/index.html",
-];
-
-// ── Install: cache app shell ─────────────────────────────────────────────────
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -14,33 +8,41 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-// ── Activate: clean old caches ───────────────────────────────────────────────
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
+          .filter((k) => k !== CACHE_NAME)
+          .map((k) => caches.delete(k))
       )
     )
   );
   self.clients.claim();
 });
 
-// ── Fetch: serve from cache, fall back to network ────────────────────────────
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Don't intercept API calls — always go to network for fresh data
-  if (url.pathname.startsWith("/api/")) {
+  // Skip non-GET and chrome-extension requests
+  if (request.method !== "GET") return;
+  if (url.protocol === "chrome-extension:") return;
+
+  // ✅ Never intercept API calls (cross-origin backend)
+  const isApiCall =
+    url.pathname.startsWith("/api/") ||
+    url.hostname.includes("onrender.com") ||
+    url.hostname.includes("railway.app") ||
+    url.hostname.includes("render.com") ||
+    url.hostname.includes("fly.dev") ||
+    url.hostname.includes("herokuapp.com");
+
+  if (isApiCall) {
     event.respondWith(
       fetch(request)
         .then((res) => {
-          // Cache successful GET API responses (products, categories)
           if (
-            request.method === "GET" &&
             res.status === 200 &&
             (url.pathname.includes("/products") || url.pathname.includes("/categories"))
           ) {
@@ -49,15 +51,12 @@ self.addEventListener("fetch", (event) => {
           }
           return res;
         })
-        .catch(() => {
-          // Offline: return cached API response if available
-          return caches.match(request);
-        })
+        .catch(() => caches.match(request))
     );
     return;
   }
 
-  // For Supabase images — cache first
+  // Supabase images — cache first
   if (url.hostname.includes("supabase.co")) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -72,12 +71,14 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // For everything else (JS, CSS, HTML) — network first, fall back to cache
+  // Static assets — network first, cache fallback
   event.respondWith(
     fetch(request)
       .then((res) => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        if (res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
         return res;
       })
       .catch(() => caches.match(request))

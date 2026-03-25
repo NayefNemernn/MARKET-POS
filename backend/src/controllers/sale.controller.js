@@ -22,12 +22,14 @@ export const createSale = async (req, res) => {
       }
 
       const subtotal = product.price * item.quantity;
+      const costTotal = (product.cost || 0) * item.quantity;
       total += subtotal;
 
       saleItems.push({
         productId: product._id,
         name: product.name,
         price: product.price,
+        cost: product.cost || 0,
         quantity: item.quantity,
         subtotal
       });
