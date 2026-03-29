@@ -1,19 +1,41 @@
 import {
   LayoutDashboard, ShoppingCart, Package, Tags,
   Users, BarChart3, ChevronLeft, ChevronRight,
-  CreditCard, LogOut, Moon, Sun
+  CreditCard, LogOut, Moon, Sun, Pencil, Check, X
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import toast from "react-hot-toast";
 
 export default function Sidebar({ user, page, setPage }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const { dark, setDark } = useTheme();
-  const { logout } = useAuth();
+  const [collapsed, setCollapsed]   = useState(false);
+  const { dark, setDark }           = useTheme();
+  const { logout, storeName, updateStoreName } = useAuth();
 
-  const handleLogout = async () => {
-    await logout();
+  const [editing, setEditing]       = useState(false);
+  const [nameInput, setNameInput]   = useState("");
+  const [saving, setSaving]         = useState(false);
+
+  const startEdit = () => {
+    setNameInput(storeName);
+    setEditing(true);
+  };
+
+  const cancelEdit = () => setEditing(false);
+
+  const saveEdit = async () => {
+    if (!nameInput.trim()) return;
+    setSaving(true);
+    try {
+      await updateStoreName(nameInput.trim());
+      toast.success("Store name updated");
+      setEditing(false);
+    } catch {
+      toast.error("Failed to update store name");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const Item = ({ id, label, icon: Icon }) => (
@@ -38,14 +60,43 @@ export default function Sidebar({ user, page, setPage }) {
       className={`h-screen flex flex-col bg-white dark:bg-gray-900 border-r dark:border-gray-800
         shadow-sm transition-all duration-300 ${collapsed ? "w-20" : "w-64"}`}
     >
-      {/* HEADER */}
-      <div className="flex items-center justify-between px-4 py-4 border-b dark:border-gray-800">
+      {/* HEADER — store name */}
+      <div className="flex items-center justify-between px-4 py-4 border-b dark:border-gray-800 min-h-[60px]">
         {!collapsed && (
-          <h1 className="font-bold text-lg dark:text-white">🧾 Market POS</h1>
+          <div className="flex-1 min-w-0 mr-2">
+            {editing ? (
+              <div className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={nameInput}
+                  onChange={e => setNameInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }}
+                  className="flex-1 min-w-0 text-sm font-bold bg-transparent border-b-2 border-blue-500 outline-none dark:text-white px-0.5"
+                />
+                <button onClick={saveEdit} disabled={saving}
+                  className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition">
+                  <Check size={14}/>
+                </button>
+                <button onClick={cancelEdit}
+                  className="p-1 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                  <X size={14}/>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={startEdit}
+                title="Click to rename your store"
+                className="group flex items-center gap-1.5 w-full text-left"
+              >
+                <span className="font-bold text-base dark:text-white truncate">🧾 {storeName}</span>
+                <Pencil size={11} className="shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 transition"/>
+              </button>
+            )}
+          </div>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400"
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 shrink-0"
         >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
@@ -62,21 +113,17 @@ export default function Sidebar({ user, page, setPage }) {
 
       {/* MENU */}
       <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto mt-2">
-
-        {/* Admin-only pages */}
         {isAdmin && (
           <>
             <Item id="dashboard" label="Dashboard" icon={LayoutDashboard} />
-            <Item id="users" label="Users" icon={Users} />
+            <Item id="users"     label="Users"     icon={Users} />
           </>
         )}
-
-        {/* Shared pages (all authenticated users) */}
-        <Item id="pos" label="Point of Sale" icon={ShoppingCart} />
-        <Item id="products" label="Products" icon={Package} />
-        <Item id="categories" label="Categories" icon={Tags} />
-        <Item id="reports" label="Reports" icon={BarChart3} />
-        <Item id="paylater" label="Pay Later" icon={CreditCard} />
+        <Item id="pos"        label="Point of Sale" icon={ShoppingCart} />
+        <Item id="products"   label="Products"      icon={Package} />
+        <Item id="categories" label="Categories"    icon={Tags} />
+        <Item id="reports"    label="Reports"       icon={BarChart3} />
+        <Item id="paylater"   label="Pay Later"     icon={CreditCard} />
       </nav>
 
       {/* FOOTER */}
@@ -93,9 +140,8 @@ export default function Sidebar({ user, page, setPage }) {
           {dark ? <Sun size={16} /> : <Moon size={16} />}
           {!collapsed && <span>{dark ? "Light Mode" : "Dark Mode"}</span>}
         </button>
-
         <button
-          onClick={handleLogout}
+          onClick={logout}
           title={collapsed ? "Logout" : ""}
           className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl
             text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20

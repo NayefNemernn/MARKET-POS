@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { LogOut } from "lucide-react";
 
 export default function Navbar({ user, page, setPage }) {
-  const { logout } = useAuth();
+  const { logout, storeName } = useAuth();
   const isAdmin = user?.role === "admin";
 
   const NavButton = ({ label, target }) => (
@@ -21,7 +21,7 @@ export default function Navbar({ user, page, setPage }) {
 
   return (
     <div className="flex items-center justify-between px-6 py-3 border-b bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm">
-      <div className="font-bold text-lg dark:text-white">🧾 Market POS</div>
+      <div className="font-bold text-lg dark:text-white">🧾 {storeName}</div>
 
       <div className="flex gap-2">
         {isAdmin && (

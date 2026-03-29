@@ -71,4 +71,22 @@ router.delete("/:id", protect, isAdmin, async (req, res) => {
   }
 });
 
+
+/* UPDATE OWN STORE NAME — any logged-in user */
+router.patch("/me/store-name", protect, async (req, res) => {
+  try {
+    const { storeName } = req.body;
+    if (!storeName || !storeName.trim())
+      return res.status(400).json({ message: "Store name is required" });
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { storeName: storeName.trim() },
+      { new: true }
+    );
+    res.json({ storeName: user.storeName });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

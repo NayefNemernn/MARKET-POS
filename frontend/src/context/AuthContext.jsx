@@ -22,7 +22,19 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  // Global 401 interceptor — auto-logout if session invalidated (device change / password reset)
+  // Update the store name for this account
+  const updateStoreName = async (name) => {
+    const res = await api.patch("/users/me/store-name", { storeName: name });
+    const updated = { ...user, storeName: res.data.storeName };
+    localStorage.setItem("user", JSON.stringify(updated));
+    setUser(updated);
+    return res.data.storeName;
+  };
+
+  // Derived helper — always has a fallback
+  const storeName = user?.storeName || "Market POS";
+
+  // Global 401 interceptor
   useEffect(() => {
     const interceptor = api.interceptors.response.use(
       (res) => res,
@@ -39,7 +51,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, storeName, updateStoreName }}>
       {children}
     </AuthContext.Provider>
   );

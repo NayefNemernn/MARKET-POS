@@ -22,6 +22,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    storeName: {
+      type: String,
+      default: "Market POS"
+    },
     // One-device enforcement
     deviceId: {
       type: String,
@@ -29,14 +33,6 @@ const userSchema = new mongoose.Schema(
     },
     sessionToken: {
       type: String,
-      default: null
-    },
-    deviceName: {
-      type: String,
-      default: null
-    },
-    lastLoginAt: {
-      type: Date,
       default: null
     }
   },

@@ -32,7 +32,7 @@ export const register = async (req, res) => {
 // LOGIN — one device at a time
 export const login = async (req, res) => {
   try {
-    const { username, password, deviceId, deviceName } = req.body;
+    const { username, password, deviceId } = req.body;
 
     const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
@@ -50,8 +50,6 @@ export const login = async (req, res) => {
 
     const sessionToken = uuid();
     user.deviceId = deviceId;
-    user.deviceName = deviceName || null;
-    user.lastLoginAt = new Date();
     user.sessionToken = sessionToken;
     user.active = true; // ensure field is set for old users
     await user.save();
@@ -62,7 +60,7 @@ export const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
+    res.json({ token, user: { id: user._id, username: user.username, role: user.role, storeName: user.storeName || 'Market POS' } });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -72,7 +70,7 @@ export const login = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
-    if (user) { user.deviceId = null; user.deviceName = null; user.sessionToken = null; await user.save(); }
+    if (user) { user.deviceId = null; user.sessionToken = null; await user.save(); }
     res.json({ message: "Logged out" });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useLang } from "../context/LanguageContext";
 import {
   LayoutDashboard, ShoppingCart, Package, Tags,
-  Users, BarChart3, Clock, Sun, Moon, LogOut
+  Users, BarChart3, Clock, Sun, Moon, LogOut, Pencil, Check, X
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 
 const NAV_LABELS = {
   dashboard: "Dashboard", pos: "POS", products: "Products",
@@ -26,7 +27,7 @@ const NAV_COLORS = {
 export default function DashboardLayout({ children, page, setPage, user }) {
   const { theme, toggleTheme } = useTheme();
   const { lang, toggleLang }   = useLang();
-  const { logout }             = useAuth();
+  const { logout, storeName, updateStoreName } = useAuth();
 
   const isAdmin = user?.role === "admin";
   const isPOS   = page === "pos";
@@ -35,6 +36,39 @@ export default function DashboardLayout({ children, page, setPage, user }) {
   const [hovered, setHovered] = useState(null);
   const hideTimer             = useRef(null);
   const navRef                = useRef(null);
+
+  // Store name editing
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput,   setNameInput]   = useState("");
+  const [savingName,  setSavingName]  = useState(false);
+  const nameInputRef = useRef(null);
+
+  const startEditName = (e) => {
+    e.stopPropagation();
+    setNameInput(storeName);
+    setEditingName(true);
+    setTimeout(() => nameInputRef.current?.focus(), 50);
+  };
+
+  const cancelEditName = (e) => {
+    e?.stopPropagation();
+    setEditingName(false);
+  };
+
+  const saveEditName = async (e) => {
+    e?.stopPropagation();
+    if (!nameInput.trim()) return;
+    setSavingName(true);
+    try {
+      await updateStoreName(nameInput.trim());
+      toast.success("Store name updated");
+      setEditingName(false);
+    } catch {
+      toast.error("Failed to update store name");
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const menu = [
     { key: "dashboard",  icon: LayoutDashboard, adminOnly: true  },
@@ -47,14 +81,12 @@ export default function DashboardLayout({ children, page, setPage, user }) {
   ].filter(item => !item.adminOnly || isAdmin);
 
   const toggle  = useCallback(() => setOpen(v => !v), []);
-  const close   = useCallback(() => setOpen(false), []);
+  const close   = useCallback(() => { setOpen(false); setEditingName(false); }, []);
 
-  // Keyboard: Tab or backtick toggles nav, Escape closes
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "`" || e.key === "F1") { e.preventDefault(); toggle(); }
       if (e.key === "Escape") close();
-      // number keys 1-7 navigate
       const idx = parseInt(e.key) - 1;
       if (!isNaN(idx) && idx >= 0 && idx < menu.length && open) {
         setPage(menu[idx].key);
@@ -65,7 +97,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, menu]);
 
-  // Click outside closes
   useEffect(() => {
     if (!open) return;
     const onClickOutside = (e) => {
@@ -75,7 +106,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [open]);
 
-  // Cleanup
   useEffect(() => () => clearTimeout(hideTimer.current), []);
 
   const activeColor = NAV_COLORS[page] || NAV_COLORS.pos;
@@ -83,10 +113,9 @@ export default function DashboardLayout({ children, page, setPage, user }) {
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-neutral-950 text-gray-900 dark:text-white overflow-hidden">
 
-      {/* ── FLOATING NAV TRIGGER — small glowing dot bottom-left ── */}
+      {/* FLOATING NAV */}
       <div ref={navRef} className="fixed bottom-5 left-5 z-50">
 
-        {/* Connected balls nav */}
         <AnimatePresence>
           {open && (
             <motion.div
@@ -106,10 +135,10 @@ export default function DashboardLayout({ children, page, setPage, user }) {
 
               {/* Nav balls */}
               {menu.map((item, i) => {
-                const Icon    = item.icon;
-                const active  = page === item.key;
-                const color   = NAV_COLORS[item.key];
-                const isHov   = hovered === item.key;
+                const Icon   = item.icon;
+                const active = page === item.key;
+                const color  = NAV_COLORS[item.key];
+                const isHov  = hovered === item.key;
 
                 return (
                   <motion.div
@@ -122,7 +151,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
                     onMouseEnter={() => setHovered(item.key)}
                     onMouseLeave={() => setHovered(null)}
                   >
-                    {/* Label tooltip */}
                     <AnimatePresence>
                       {(isHov || active) && (
                         <motion.div
@@ -141,7 +169,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
                       )}
                     </AnimatePresence>
 
-                    {/* The ball */}
                     <motion.button
                       onClick={() => { setPage(item.key); close(); }}
                       whileHover={{ scale: 1.25 }}
@@ -156,11 +183,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
                           : "0 2px 8px rgba(0,0,0,0.12)",
                       }}
                     >
-                      <Icon
-                        size={16}
-                        color={active || isHov ? "white" : theme === "dark" ? "#9ca3af" : "#6b7280"}
-                      />
-                      {/* Active ring pulse */}
+                      <Icon size={16} color={active || isHov ? "white" : theme === "dark" ? "#9ca3af" : "#6b7280"} />
                       {active && (
                         <motion.div
                           className="absolute inset-0 rounded-full"
@@ -174,7 +197,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
                 );
               })}
 
-              {/* Utility balls row — theme / lang / logout */}
+              {/* Utility row */}
               <motion.div
                 initial={{ opacity: 0, x: -30 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -207,7 +230,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
           )}
         </AnimatePresence>
 
-        {/* ── TRIGGER BUTTON — always visible glowing dot ── */}
+        {/* TRIGGER BUTTON */}
         <motion.button
           onClick={toggle}
           whileHover={{ scale: 1.15 }}
@@ -221,7 +244,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
           }}
           title="Navigation (` or F1)"
         >
-          {/* Grid icon → X morph */}
           <motion.div
             animate={{ rotate: open ? 45 : 0, scale: open ? 0.8 : 1 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -245,7 +267,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
             )}
           </motion.div>
 
-          {/* Pulse ring when closed */}
           {!open && (
             <motion.div
               className="absolute inset-0 rounded-full"
@@ -256,25 +277,70 @@ export default function DashboardLayout({ children, page, setPage, user }) {
           )}
         </motion.button>
 
-        {/* User badge below trigger */}
+        {/* User + store name badge — shown below trigger when open */}
         <AnimatePresence>
           {open && (
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              className="absolute top-14 left-0 whitespace-nowrap"
+              className="absolute bottom-0 left-14 whitespace-nowrap"
             >
-              <div className="px-2.5 py-1 rounded-xl text-[10px] font-medium bg-white dark:bg-neutral-800 shadow border border-gray-100 dark:border-neutral-700">
+              {/* User info */}
+              <div className="px-2.5 py-1.5 rounded-xl text-[10px] font-medium bg-white dark:bg-neutral-800 shadow border border-gray-100 dark:border-neutral-700 mb-1.5">
                 <span className="font-bold text-gray-800 dark:text-white">{user?.username}</span>
                 <span className="ml-1.5 capitalize text-blue-500">({user?.role})</span>
+              </div>
+
+              {/* Store name — click pencil to edit */}
+              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 shadow border border-gray-100 dark:border-neutral-700 min-w-[140px]">
+                {editingName ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      ref={nameInputRef}
+                      value={nameInput}
+                      onChange={e => setNameInput(e.target.value)}
+                      onKeyDown={e => {
+                        e.stopPropagation();
+                        if (e.key === "Enter") saveEditName();
+                        if (e.key === "Escape") cancelEditName();
+                      }}
+                      className="flex-1 min-w-0 text-[11px] font-semibold bg-transparent border-b border-blue-500 outline-none text-gray-800 dark:text-white w-28"
+                      placeholder="Store name…"
+                    />
+                    <button
+                      onClick={saveEditName}
+                      disabled={savingName}
+                      className="p-0.5 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+                    >
+                      <Check size={12}/>
+                    </button>
+                    <button
+                      onClick={cancelEditName}
+                      className="p-0.5 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                    >
+                      <X size={12}/>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={startEditName}
+                    className="group flex items-center gap-1.5 w-full text-left"
+                    title="Click to rename your store"
+                  >
+                    <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[120px]">
+                      🧾 {storeName}
+                    </span>
+                    <Pencil size={10} className="shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 transition"/>
+                  </button>
+                )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* MAIN CONTENT */}
       <main className={`flex-1 overflow-hidden ${!isPOS ? "overflow-y-auto p-6 pb-10" : ""}`}>
         {children}
       </main>

@@ -4,6 +4,7 @@ import { useRefresh } from "../context/RefreshContext";
 import { useLang } from "../context/LanguageContext";
 import { usePayLaterTranslation } from "../hooks/usePayLaterTranslation";
 import { useCurrency } from "../context/CurrencyContext";
+import { useAuth } from "../context/AuthContext";
 import ReceivePaymentModal from "../components/ReceivePaymentModal";
 import RecentPayments from "../components/RecentPayments";
 import Avatar from "../components/Avatar";
@@ -20,6 +21,7 @@ const CARD = "rounded-2xl bg-white dark:bg-[#141414] shadow-[6px_6px_16px_#d1d5d
 /* ── Items modal ── */
 function ItemsModal({ sale, close }) {
   const { formatUSD, formatLBP, toLBP, exchangeRate } = useCurrency();
+  const { storeName } = useAuth();
 
   const printItems = () => {
     const win = window.open("", "_blank", "width=360,height=600");
@@ -50,7 +52,7 @@ function ItemsModal({ sale, close }) {
   .footer{text-align:center;font-size:10px;color:#999;margin-top:10px}
   @media print{@page{size:80mm auto;margin:0}body{padding:3mm 2mm}}
 </style></head><body>
-  <h1>MARKET POS</h1>
+  <h1>${storeName.toUpperCase()}</h1>
   <p>Items for: <strong>${sale.customerName}</strong></p>
   ${sale.phone ? `<p>Phone: ${sale.phone}</p>` : ""}
   <p>${new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}</p>

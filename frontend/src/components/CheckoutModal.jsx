@@ -7,12 +7,13 @@ import { useCurrency } from "../context/CurrencyContext";
 import VoiceButton from "./common/VoiceButton";
 import useOfflineSales from "../hooks/useOfflineSales";
 import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
 import {
   X, Banknote, CreditCard, Clock, User, Phone,
   ChevronRight, Printer, CheckCircle2, ShoppingBag, ArrowLeftRight
 } from "lucide-react";
 
-function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change }) {
+function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change, storeName }) {
   const win = window.open("", "_blank", "width=360,height=620");
   if (!win) { window.print(); return; }
 
@@ -63,8 +64,8 @@ function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change 
   @media print { @page { size:80mm auto; margin:0; } body { padding:4mm 2mm; } }
 </style></head><body>
   <div class="store">
-    <h1>MARKET POS</h1>
-    <p>Nemer's Market</p>
+    <h1>${storeName.toUpperCase()}</h1>
+    <p>${storeName}</p>
     <p>${now.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})} &nbsp;·&nbsp; ${now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</p>
   </div>
   <hr/>
@@ -94,6 +95,7 @@ export default function CheckoutModal({ cart, total, close }) {
   const { t } = useTranslation();
   const { saveOffline } = useOfflineSales();
   const { toLBP, formatLBP, formatUSD, exchangeRate } = useCurrency();
+  const { storeName } = useAuth();
 
   const [method, setMethod] = useState("cash");
   const [amount, setAmount] = useState("");
@@ -212,7 +214,7 @@ export default function CheckoutModal({ cart, total, close }) {
           </div>
           <div className="px-6 pb-6 flex gap-3">
             <button
-              onClick={() => printReceipt(receipt, { toLBP, formatLBP, formatUSD, exchangeRate, change })}
+              onClick={() => printReceipt(receipt, { toLBP, formatLBP, formatUSD, exchangeRate, change, storeName })}
               className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold transition"
             >
               <Printer size={16}/> Print
