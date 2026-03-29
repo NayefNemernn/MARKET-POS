@@ -1,39 +1,54 @@
-export default function Button({
-  children,
-  onClick,
-  type = "button",
-  variant = "primary",
-  size = "md",
-  disabled = false,
+import React from "react";
+import { Mic, MicOff } from "lucide-react";
+import { useVoiceInput } from "../../hooks/useVoiceInput";
+
+/**
+ * VoiceButton
+ *
+ * Props:
+ *   onResult(text)   — called with the recognised transcript
+ *   lang             — BCP-47 code, default "ar-LB"
+ *   size             — "sm" | "md" (default "md")
+ *   color            — tailwind active color key: "blue"|"green"|"purple"|"red" (default "blue")
+ *   className        — extra classes
+ */
+const COLORS = {
+  blue:   { idle: "bg-blue-100 dark:bg-blue-900/30 text-blue-500 hover:bg-blue-200 dark:hover:bg-blue-900/50",   active: "bg-blue-600 text-white shadow-[0_0_14px_rgba(59,130,246,0.6)]"   },
+  green:  { idle: "bg-green-100 dark:bg-green-900/30 text-green-500 hover:bg-green-200",                          active: "bg-green-600 text-white shadow-[0_0_14px_rgba(34,197,94,0.6)]"  },
+  purple: { idle: "bg-purple-100 dark:bg-purple-900/30 text-purple-500 hover:bg-purple-200",                      active: "bg-purple-600 text-white shadow-[0_0_14px_rgba(147,51,234,0.6)]" },
+  red:    { idle: "bg-red-100 dark:bg-red-900/30 text-red-500 hover:bg-red-200",                                  active: "bg-red-600 text-white shadow-[0_0_14px_rgba(239,68,68,0.6)]"   },
+};
+
+export default function VoiceButton({
+  onResult,
+  lang      = "ar-LB",
+  size      = "md",
+  color     = "blue",
   className = "",
-  ...props
 }) {
-  const base =
-    "inline-flex items-center justify-center font-semibold rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed";
+  const { listening, toggle, supported } = useVoiceInput(onResult, lang);
 
-  const variants = {
-    primary:   "bg-blue-600 hover:bg-blue-700 text-white focus-visible:ring-blue-500",
-    danger:    "bg-red-600  hover:bg-red-700  text-white focus-visible:ring-red-500",
-    secondary: "bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white",
-    ghost:     "bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300",
-    success:   "bg-green-600 hover:bg-green-700 text-white focus-visible:ring-green-500",
-  };
+  if (!supported) return null;
 
-  const sizes = {
-    sm: "px-3 py-1.5 text-xs",
-    md: "px-4 py-2   text-sm",
-    lg: "px-5 py-3   text-base",
-  };
+  const scheme = COLORS[color] || COLORS.blue;
+  const dim    = size === "sm" ? "w-8 h-8" : "w-10 h-10";
+  const iconSz = size === "sm" ? 13 : 16;
 
   return (
     <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={`${base} ${variants[variant] ?? variants.primary} ${sizes[size] ?? sizes.md} ${className}`}
-      {...props}
+      type="button"
+      onMouseDown={e => e.preventDefault()}
+      onClick={toggle}
+      title={listening ? "Stop listening" : "Tap to speak"}
+      className={`
+        flex-shrink-0 flex items-center justify-center rounded-xl
+        transition-all duration-200
+        ${dim}
+        ${listening ? scheme.active + " animate-pulse" : scheme.idle}
+        ${className}
+      `}
     >
-      {children}
+      {listening ? <MicOff size={iconSz} /> : <Mic size={iconSz} />}
     </button>
   );
 }

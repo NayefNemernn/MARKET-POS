@@ -1,15 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 
-/**
- * useVoiceInput
- * Provides speech-to-text for any input field.
- *
- * Usage:
- *   const { listening, startListening, stopListening, supported } = useVoiceInput((text) => {
- *     setMyValue(text);
- *   });
- */
-export function useVoiceInput(onResult) {
+export function useVoiceInput(onResult, lang = "ar-LB") {
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
 
@@ -24,13 +15,13 @@ export function useVoiceInput(onResult) {
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
     const recognition = new SpeechRecognition();
-    recognition.lang = "ar-LB"; // Lebanese Arabic — falls back to en-US
+    recognition.lang = lang;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
     recognition.continuous = false;
 
     recognition.onstart = () => setListening(true);
-    recognition.onend = () => setListening(false);
+    recognition.onend   = () => setListening(false);
     recognition.onerror = () => setListening(false);
 
     recognition.onresult = (event) => {
@@ -40,7 +31,7 @@ export function useVoiceInput(onResult) {
 
     recognition.start();
     recognitionRef.current = recognition;
-  }, [supported, onResult]);
+  }, [supported, onResult, lang]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
@@ -50,11 +41,8 @@ export function useVoiceInput(onResult) {
   }, []);
 
   const toggle = useCallback(() => {
-    if (listening) {
-      stopListening();
-    } else {
-      startListening();
-    }
+    if (listening) stopListening();
+    else startListening();
   }, [listening, startListening, stopListening]);
 
   return { listening, startListening, stopListening, toggle, supported };

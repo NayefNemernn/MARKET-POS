@@ -5,7 +5,7 @@ import { useUsersTranslation } from "../hooks/useUsersTranslation";
 import { useLang } from "../context/LanguageContext";
 import RequireAdmin from "../components/RequireAdmin";
 import { motion, AnimatePresence } from "framer-motion";
-import { KeyRound, X, UserPlus, Search, Shield, User } from "lucide-react";
+import { KeyRound, X, UserPlus, Search, Shield, User, Monitor, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function Users() {
@@ -178,6 +178,27 @@ export default function Users() {
                     : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"}`}>
                   {user.active ? t.active : t.disabled}
                 </span>
+
+                {/* Device info */}
+                <div className="space-y-1.5">
+                  {user.deviceName ? (
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <Monitor size={12} className="shrink-0 text-blue-400"/>
+                      <span className="truncate">{user.deviceName}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-600">
+                      <Monitor size={12} className="shrink-0"/>
+                      <span>Not logged in</span>
+                    </div>
+                  )}
+                  {user.lastLoginAt && (
+                    <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-600">
+                      <Clock size={12} className="shrink-0"/>
+                      <span>{new Date(user.lastLoginAt).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Actions */}
                 <div className="flex flex-col gap-2">

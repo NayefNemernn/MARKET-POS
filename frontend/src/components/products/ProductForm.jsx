@@ -209,6 +209,7 @@ export default function ProductForm({
                 const num = text.replace(/[^0-9.]/g, "");
                 if (num) handlePriceChange(num);
               }}
+              color="green"
             />
           </div>
 
@@ -238,6 +239,7 @@ export default function ProductForm({
                   const filtered = field.voiceFilter(text);
                   if (filtered) field.onChange(filtered);
                 }}
+                color={field.type === "text" ? "blue" : "green"}
               />
             </div>
           </div>

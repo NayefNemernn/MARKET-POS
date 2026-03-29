@@ -30,6 +30,14 @@ const userSchema = new mongoose.Schema(
     sessionToken: {
       type: String,
       default: null
+    },
+    deviceName: {
+      type: String,
+      default: null
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }

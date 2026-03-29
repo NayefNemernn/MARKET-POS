@@ -232,7 +232,7 @@ export default function Products() {
   }, [inventoryMode, products]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-neutral-950">
+    <div className={`h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-neutral-950 transition-all duration-300 ${editingProduct ? "pr-[400px]" : ""}`}>
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto">
