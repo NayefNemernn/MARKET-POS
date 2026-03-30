@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useLang } from "../context/LanguageContext";
 import {
   LayoutDashboard, ShoppingCart, Package, Tags,
-  Users, BarChart3, Clock, Sun, Moon, LogOut, Pencil, Check, X
+  Users, BarChart3, Clock, Sun, Moon, LogOut, Pencil, Check, X, Shield
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -11,17 +11,19 @@ import toast from "react-hot-toast";
 
 const NAV_LABELS = {
   dashboard: "Dashboard", pos: "POS", products: "Products",
-  categories: "Categories", users: "Users", reports: "Reports", paylater: "Pay Later"
+  categories: "Categories", users: "Users", reports: "Reports",
+  paylater: "Pay Later", adminpanel: "Admin Panel"
 };
 
 const NAV_COLORS = {
-  dashboard: { bg: "#6366f1", glow: "rgba(99,102,241,0.5)"  },
-  pos:        { bg: "#10b981", glow: "rgba(16,185,129,0.5)" },
-  products:   { bg: "#3b82f6", glow: "rgba(59,130,246,0.5)" },
-  categories: { bg: "#f59e0b", glow: "rgba(245,158,11,0.5)" },
-  users:      { bg: "#ec4899", glow: "rgba(236,72,153,0.5)" },
-  reports:    { bg: "#8b5cf6", glow: "rgba(139,92,246,0.5)" },
-  paylater:   { bg: "#ef4444", glow: "rgba(239,68,68,0.5)"  },
+  dashboard:  { bg: "#6366f1", glow: "rgba(99,102,241,0.5)"  },
+  pos:        { bg: "#10b981", glow: "rgba(16,185,129,0.5)"  },
+  products:   { bg: "#3b82f6", glow: "rgba(59,130,246,0.5)"  },
+  categories: { bg: "#f59e0b", glow: "rgba(245,158,11,0.5)"  },
+  users:      { bg: "#ec4899", glow: "rgba(236,72,153,0.5)"  },
+  reports:    { bg: "#8b5cf6", glow: "rgba(139,92,246,0.5)"  },
+  paylater:   { bg: "#ef4444", glow: "rgba(239,68,68,0.5)"   },
+  adminpanel: { bg: "#0f172a", glow: "rgba(15,23,42,0.6)"    },
 };
 
 export default function DashboardLayout({ children, page, setPage, user }) {
@@ -78,6 +80,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     { key: "users",      icon: Users,           adminOnly: true  },
     { key: "reports",    icon: BarChart3,       adminOnly: false },
     { key: "paylater",   icon: Clock,           adminOnly: false },
+    { key: "adminpanel", icon: Shield,          adminOnly: true  },
   ].filter(item => !item.adminOnly || isAdmin);
 
   const toggle  = useCallback(() => setOpen(v => !v), []);

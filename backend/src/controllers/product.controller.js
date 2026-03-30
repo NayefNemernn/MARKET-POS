@@ -270,3 +270,84 @@ export const deleteProduct = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+/* =========================
+   IMPORT PRODUCTS FROM EXCEL / CSV
+========================= */
+export const importProducts = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+    const XLSX = await import("xlsx");
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheet    = workbook.Sheets[workbook.SheetNames[0]];
+
+    // row 1 = headers, row 2 = hint text (skip), row 3+ = data
+    const allRows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+    const dataRows = allRows.slice(2).filter(r => String(r[0]).trim() || String(r[1]).trim());
+
+    const userId   = req.user._id;
+    const Category = (await import("../models/Category.js")).default;
+
+    // Build category map (name → _id)
+    const catDocs  = await Category.find({});
+    const catMap   = {};
+    catDocs.forEach(c => { catMap[c.name.toLowerCase()] = c._id; });
+
+    let inserted = 0, skipped = 0;
+    const errors = [];
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const row     = dataRows[i];
+      const rowNum  = i + 3;
+      const barcode = String(row[0] || "").trim();
+      const name    = String(row[1] || "").trim();
+
+      if (!barcode || !name) {
+        errors.push({ row: rowNum, reason: "Missing barcode or name" });
+        continue;
+      }
+
+      const exists = await Product.findOne({ barcode, userId });
+      if (exists) { skipped++; continue; }
+
+      const price       = parseFloat(row[2]) || 0;
+      const cost        = parseFloat(row[3]) || 0;
+      const stock       = parseInt(row[4])   || 0;
+      const categoryRaw = String(row[5] || "").trim().toLowerCase();
+      const expiryRaw   = String(row[6] || "").trim();
+      const imageUrl    = String(row[7] || "").trim();
+
+      // Resolve category
+      let categoryId = null;
+      if (categoryRaw) {
+        if (catMap[categoryRaw]) {
+          categoryId = catMap[categoryRaw];
+        } else {
+          const match = Object.keys(catMap).find(k => k.includes(categoryRaw) || categoryRaw.includes(k.split(" ")[0]));
+          if (match) {
+            categoryId = catMap[match];
+          } else {
+            const newCat = await Category.create({ name: String(row[5]).trim() });
+            catMap[categoryRaw] = newCat._id;
+            categoryId = newCat._id;
+          }
+        }
+      }
+
+      // Parse expiry
+      let expiryDate = null;
+      if (expiryRaw.match(/\d{4}-\d{2}-\d{2}/)) expiryDate = new Date(expiryRaw);
+
+      await Product.create({ name, barcode, price, cost, stock, category: categoryId, expiryDate, image: imageUrl || "", userId });
+      inserted++;
+    }
+
+    res.json({
+      message: `Import done: ${inserted} added, ${skipped} skipped, ${errors.length} errors`,
+      inserted, skipped, errors,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

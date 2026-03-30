@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, ShoppingCart, Package, Tags,
   Users, BarChart3, ChevronLeft, ChevronRight,
-  CreditCard, LogOut, Moon, Sun, Pencil, Check, X
+  CreditCard, LogOut, Moon, Sun, Pencil, Check, X, Shield
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
@@ -115,8 +115,9 @@ export default function Sidebar({ user, page, setPage }) {
       <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto mt-2">
         {isAdmin && (
           <>
-            <Item id="dashboard" label="Dashboard" icon={LayoutDashboard} />
-            <Item id="users"     label="Users"     icon={Users} />
+            <Item id="dashboard"   label="Dashboard"    icon={LayoutDashboard} />
+            <Item id="users"       label="Users"        icon={Users} />
+            <Item id="adminpanel"  label="Admin Panel"  icon={Shield} />
           </>
         )}
         <Item id="pos"        label="Point of Sale" icon={ShoppingCart} />

@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useRefresh } from "../context/RefreshContext";
-import { Search, Barcode, Printer, ScanLine, X, Plus, Package } from "lucide-react";
+import { Search, Barcode, Printer, ScanLine, X, Plus, Package, Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle } from "lucide-react";
 
 import {
   getAllProducts,
   createProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  importProductsExcel,
 } from "../api/product.api";
 
 import { getCategories, createCategory } from "../api/category.api";
@@ -35,6 +36,13 @@ export default function Products() {
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
   const [form, setForm] = useState({ name: "", price: "", cost: "", stock: "", category: "" });
+
+  // ── IMPORT STATE
+  const [showImport, setShowImport]       = useState(false);
+  const [importFile, setImportFile]       = useState(null);
+  const [importing, setImporting]         = useState(false);
+  const [importResult, setImportResult]   = useState(null);
+  const importInputRef                    = useRef(null);
 
   const previewBarcodeRef = useRef(null);
 
@@ -124,6 +132,53 @@ export default function Products() {
     await deleteProduct(id);
     toast.success(t.deleted);
     refresh();
+  };
+
+  /* IMPORT EXCEL */
+  const handleImport = async () => {
+    if (!importFile) { toast.error("Please select an Excel file"); return; }
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const result = await importProductsExcel(importFile);
+      setImportResult(result);
+      toast.success(result.message);
+      refresh();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  /* EXPORT EXCEL */
+  const handleExport = () => {
+    if (products.length === 0) { toast.error("No products to export"); return; }
+
+    const headers = ["Barcode", "Product Name", "Price (USD)", "Cost (USD)", "Stock", "Category", "Expiry Date", "Image URL"];
+    const rows = products.map(p => [
+      p.barcode,
+      p.name,
+      p.price,
+      p.cost,
+      p.stock,
+      p.category?.name || "",
+      p.expiryDate ? new Date(p.expiryDate).toISOString().slice(0, 10) : "",
+      p.image || "",
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `products_export_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${products.length} products`);
   };
 
   const printLabel = () => {
@@ -289,6 +344,23 @@ export default function Products() {
                 <ScanLine size={14}/>
                 {inventoryMode ? "Stop Scan" : "Inventory Scan"}
               </button>
+
+              {/* Export */}
+              <button onClick={handleExport}
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium
+                  bg-gray-100 dark:bg-[#1c1c1c] hover:bg-gray-200 dark:hover:bg-[#252525]
+                  text-gray-700 dark:text-gray-300 transition">
+                <Download size={14}/> Export
+              </button>
+
+              {/* Import */}
+              <button
+                onClick={() => { setShowImport(true); setImportFile(null); setImportResult(null); }}
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium
+                  bg-green-600 hover:bg-green-700 text-white
+                  shadow-[0_0_12px_rgba(34,197,94,0.3)] transition">
+                <Upload size={14}/> Import Excel
+              </button>
             </div>
           </div>
 
@@ -400,6 +472,132 @@ export default function Products() {
         editPreview={preview}
         setEditPreview={setPreview}
       />
+
+      {/* ── IMPORT MODAL ── */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-white dark:bg-[#141414] rounded-3xl shadow-2xl overflow-hidden">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <FileSpreadsheet size={18} className="text-green-600 dark:text-green-400"/>
+                </div>
+                <div>
+                  <h2 className="font-bold text-sm">Import Products from Excel</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Add hundreds of products at once</p>
+                </div>
+              </div>
+              <button onClick={() => setShowImport(false)} className="text-gray-400 hover:text-gray-600 transition">
+                <X size={20}/>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+
+              {/* Step 1 — Download template */}
+              <div className="rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 p-4">
+                <p className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">Step 1 — Download template</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mb-3">Fill in your products then upload it below</p>
+                <a
+                  href="/products_import_template.xlsx"
+                  download
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+                    bg-blue-600 hover:bg-blue-700 text-white transition"
+                >
+                  <Download size={13}/> Download Template (.xlsx)
+                </a>
+              </div>
+
+              {/* Step 2 — Upload file */}
+              <div>
+                <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-2">Step 2 — Upload your filled file</p>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={e => { setImportFile(e.target.files[0]); setImportResult(null); }}
+                />
+                <div
+                  onClick={() => importInputRef.current?.click()}
+                  className="cursor-pointer border-2 border-dashed rounded-2xl p-6
+                    flex flex-col items-center gap-2 text-center transition
+                    border-gray-200 dark:border-white/10
+                    hover:border-green-400 dark:hover:border-green-500/50"
+                >
+                  {importFile ? (
+                    <>
+                      <FileSpreadsheet size={28} className="text-green-500"/>
+                      <p className="text-sm font-medium text-green-600 dark:text-green-400">{importFile.name}</p>
+                      <p className="text-xs text-gray-400">Click to change file</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={28} className="text-gray-300 dark:text-gray-600"/>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Click to select your Excel or CSV file</p>
+                      <p className="text-xs text-gray-400">.xlsx · .xls · .csv</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Result */}
+              {importResult && (
+                <div className="rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-500/30 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle size={15} className="text-green-500"/>
+                    <span className="text-sm font-semibold text-green-700 dark:text-green-300">Import Complete</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    {[
+                      { label: "Added",   value: importResult.inserted, color: "text-green-600 dark:text-green-400" },
+                      { label: "Skipped", value: importResult.skipped,  color: "text-amber-600 dark:text-amber-400" },
+                      { label: "Errors",  value: importResult.errors?.length || 0, color: "text-red-500" },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} className="bg-white dark:bg-white/5 rounded-xl p-2 text-center">
+                        <p className={`text-xl font-bold ${color}`}>{value}</p>
+                        <p className="text-xs text-gray-400">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {importResult.errors?.slice(0,3).map((e, i) => (
+                    <div key={i} className="flex items-center gap-1.5 text-xs text-red-500 mt-1">
+                      <AlertCircle size={11}/> Row {e.row}: {e.reason}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setShowImport(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium
+                    bg-gray-100 dark:bg-[#1c1c1c] hover:bg-gray-200 dark:hover:bg-[#252525]
+                    text-gray-700 dark:text-gray-300 transition"
+                >
+                  {importResult ? "Close" : "Cancel"}
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={!importFile || importing}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold
+                    bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed
+                    text-white transition"
+                >
+                  {importing
+                    ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Importing...</>
+                    : <><Upload size={14}/> Import Now</>
+                  }
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

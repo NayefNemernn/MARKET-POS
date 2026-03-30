@@ -1,40 +1,36 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+const deviceSchema = new mongoose.Schema({
+  deviceId:     { type: String, required: true },
+  deviceName:   { type: String, default: null },
+  deviceOS:     { type: String, default: null },
+  deviceBrowser:{ type: String, default: null },
+  lastLoginAt:  { type: Date,   default: null },
+  lastLoginIP:  { type: String, default: null },
+  sessionToken: { type: String, default: null },
+}, { _id: false });
+
 const userSchema = new mongoose.Schema(
   {
-    username: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true
-    },
-    password: {
-      type: String,
-      required: true
-    },
-    role: {
-      type: String,
-      enum: ["admin", "cashier"],
-      default: "cashier"
-    },
-    active: {
-      type: Boolean,
-      default: true
-    },
-    storeName: {
-      type: String,
-      default: "Market POS"
-    },
-    // One-device enforcement
-    deviceId: {
-      type: String,
-      default: null
-    },
-    sessionToken: {
-      type: String,
-      default: null
-    }
+    username:  { type: String, required: true, unique: true, trim: true },
+    password:  { type: String, required: true },
+    role:      { type: String, enum: ["admin", "cashier"], default: "cashier" },
+    active:    { type: Boolean, default: true },
+    storeName: { type: String, default: "Market POS" },
+
+    // Multi-device support
+    maxDevices: { type: Number, default: 1, min: 1, max: 10 },
+    devices:    { type: [deviceSchema], default: [] },
+
+    // Keep legacy fields for backward compat
+    deviceId:      { type: String, default: null },
+    deviceName:    { type: String, default: null },
+    deviceOS:      { type: String, default: null },
+    deviceBrowser: { type: String, default: null },
+    lastLoginAt:   { type: Date,   default: null },
+    lastLoginIP:   { type: String, default: null },
+    sessionToken:  { type: String, default: null },
   },
   { timestamps: true }
 );

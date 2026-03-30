@@ -10,11 +10,12 @@ import Products from "./pages/Products";
 import Categories from "./pages/Categories";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
+import AdminPanel from "./pages/AdminPanel";
 import Login from "./pages/Login";
 import PayLater from "./pages/PayLater";
 import useOfflineSales from "./hooks/useOfflineSales";
 
-const ADMIN_PAGES = ["dashboard", "users"];
+const ADMIN_PAGES = ["dashboard", "users", "adminpanel"];
 
 function AppInner() {
   const { user } = useAuth();
@@ -42,10 +43,10 @@ function AppInner() {
       setIsOnline(false);
       toast("📴 You're offline — sales will be saved locally", { icon: "⚠️", duration: 4000 });
     };
-    window.addEventListener("online", handleOnline);
+    window.addEventListener("online",  handleOnline);
     window.addEventListener("offline", handleOffline);
     return () => {
-      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("online",  handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
@@ -59,6 +60,7 @@ function AppInner() {
       case "products":   return <Products />;
       case "categories": return <Categories />;
       case "users":      return user?.role === "admin" ? <Users /> : <POS setPage={setPage} user={user} />;
+      case "adminpanel": return user?.role === "admin" ? <AdminPanel /> : <POS setPage={setPage} user={user} />;
       case "reports":    return <Reports />;
       case "paylater":   return <PayLater />;
       default:           return <POS setPage={setPage} user={user} />;
