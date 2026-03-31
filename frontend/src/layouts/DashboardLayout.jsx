@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useLang } from "../context/LanguageContext";
 import {
   LayoutDashboard, ShoppingCart, Package, Tags,
-  Users, BarChart3, Clock, Sun, Moon, LogOut, Pencil, Check, X, Shield
+  Users, BarChart3, Clock, Sun, Moon, LogOut, Pencil, Check, X, Shield, Store
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 const NAV_LABELS = {
   dashboard: "Dashboard", pos: "POS", products: "Products",
   categories: "Categories", users: "Users", reports: "Reports",
-  paylater: "Pay Later", adminpanel: "Admin Panel"
+  paylater: "Pay Later", adminpanel: "Admin Panel", storesettings: "Store Settings"
 };
 
 const NAV_COLORS = {
@@ -23,13 +23,14 @@ const NAV_COLORS = {
   users:      { bg: "#ec4899", glow: "rgba(236,72,153,0.5)"  },
   reports:    { bg: "#8b5cf6", glow: "rgba(139,92,246,0.5)"  },
   paylater:   { bg: "#ef4444", glow: "rgba(239,68,68,0.5)"   },
-  adminpanel: { bg: "#0f172a", glow: "rgba(15,23,42,0.6)"    },
+  adminpanel:    { bg: "#0f172a", glow: "rgba(15,23,42,0.6)"    },
+  storesettings: { bg: "#6366f1", glow: "rgba(99,102,241,0.5)" },
 };
 
 export default function DashboardLayout({ children, page, setPage, user }) {
   const { theme, toggleTheme } = useTheme();
   const { lang, toggleLang }   = useLang();
-  const { logout, storeName, updateStoreName } = useAuth();
+  const { logout, storeName, updateStore } = useAuth();
 
   const isAdmin = user?.role === "admin";
   const isPOS   = page === "pos";
@@ -62,7 +63,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     if (!nameInput.trim()) return;
     setSavingName(true);
     try {
-      await updateStoreName(nameInput.trim());
+      await updateStore({ name: nameInput.trim() });
       toast.success("Store name updated");
       setEditingName(false);
     } catch {
@@ -80,7 +81,8 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     { key: "users",      icon: Users,           adminOnly: true  },
     { key: "reports",    icon: BarChart3,       adminOnly: false },
     { key: "paylater",   icon: Clock,           adminOnly: false },
-    { key: "adminpanel", icon: Shield,          adminOnly: true  },
+    { key: "adminpanel",    icon: Shield,          adminOnly: true  },
+    { key: "storesettings", icon: Store,          adminOnly: true  },
   ].filter(item => !item.adminOnly || isAdmin);
 
   const toggle  = useCallback(() => setOpen(v => !v), []);

@@ -5,36 +5,55 @@ import api from "../api/axios";
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(
-    () => JSON.parse(localStorage.getItem("user"))
-  );
+  const [user, setUser]   = useState(() => JSON.parse(localStorage.getItem("user")));
+  const [store, setStore] = useState(() => JSON.parse(localStorage.getItem("store")));
 
+  /* ── Login: save user + store from API response ── */
   const login = (data) => {
     localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
+    localStorage.setItem("user",  JSON.stringify(data.user));
+    localStorage.setItem("store", JSON.stringify(data.store));
     setUser(data.user);
+    setStore(data.store);
   };
 
+  /* ── Logout ── */
   const logout = async () => {
     await logoutApi();
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("store");
     setUser(null);
+    setStore(null);
   };
 
-  // Update the store name for this account
-  const updateStoreName = async (name) => {
-    const res = await api.patch("/users/me/store-name", { storeName: name });
-    const updated = { ...user, storeName: res.data.storeName };
-    localStorage.setItem("user", JSON.stringify(updated));
-    setUser(updated);
-    return res.data.storeName;
+  /* ── Update store settings locally (after PUT /api/store) ── */
+  const updateStore = (updatedFields) => {
+    const updated = { ...store, ...updatedFields };
+    localStorage.setItem("store", JSON.stringify(updated));
+    setStore(updated);
   };
 
-  // Derived helper — always has a fallback
-  const storeName = user?.storeName || "Market POS";
+  /* ── Helpers ── */
+  const storeName      = store?.name           || "Market POS";
+  const currency       = store?.currency       || "USD";
+  const currencySymbol = store?.currencySymbol || "$";
+  const taxRate        = store?.taxRate        || 0;
+  const language       = store?.language       || "en";
+  const storePlan      = store?.plan           || "trial";
+  const isAdmin        = user?.role === "admin" || user?.role === "superadmin";
+  const isSuperAdmin   = user?.role === "superadmin";
 
-  // Global 401 interceptor
+  /* ── Plan expiry warning ── */
+  const planExpired = store?.planExpiresAt
+    ? new Date(store.planExpiresAt) < new Date()
+    : false;
+
+  const daysUntilExpiry = store?.planExpiresAt
+    ? Math.ceil((new Date(store.planExpiresAt) - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  /* ── Global 401 interceptor ── */
   useEffect(() => {
     const interceptor = api.interceptors.response.use(
       (res) => res,
@@ -42,7 +61,9 @@ export const AuthProvider = ({ children }) => {
         if (error.response?.status === 401 && localStorage.getItem("token")) {
           localStorage.removeItem("token");
           localStorage.removeItem("user");
+          localStorage.removeItem("store");
           setUser(null);
+          setStore(null);
         }
         return Promise.reject(error);
       }
@@ -51,7 +72,15 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, storeName, updateStoreName }}>
+    <AuthContext.Provider
+      value={{
+        user, store,
+        login, logout, updateStore,
+        storeName, currency, currencySymbol, taxRate, language,
+        storePlan, isAdmin, isSuperAdmin,
+        planExpired, daysUntilExpiry,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -2,20 +2,19 @@ import mongoose from "mongoose";
 
 const categorySchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
+    name: { type: String, required: true, trim: true },
+
+    // ── Multi-tenancy ─────────────────────────────────────────
+    storeId: {
+      type:     mongoose.Schema.Types.ObjectId,
+      ref:      "Store",
       required: true,
-      trim: true
     },
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true
-    }
   },
   { timestamps: true }
 );
 
-categorySchema.index({ name: 1, userId: 1 }, { unique: true });
+// Category name unique per store
+categorySchema.index({ name: 1, storeId: 1 }, { unique: true });
 
 export default mongoose.model("Category", categorySchema);

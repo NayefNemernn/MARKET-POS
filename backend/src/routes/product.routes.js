@@ -1,18 +1,12 @@
 import express from "express";
 import upload from "../middleware/upload.middleware.js";
+import multer from "multer";
 import { protect } from "../middleware/auth.middleware.js";
 import {
-  getAllProducts,
-  getProductByBarcode,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  importProducts,
-  getProductStats,
-  getProfitabilityReport,
-  getAlerts,
+  getAllProducts, getProductByBarcode, createProduct,
+  updateProduct, deleteProduct, importProducts,
+  getProductStats, getProfitabilityReport, getAlerts,
 } from "../controllers/product.controller.js";
-import multer from "multer";
 
 const router = express.Router();
 const excelUpload = multer({ storage: multer.memoryStorage() });

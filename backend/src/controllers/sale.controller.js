@@ -1,48 +1,54 @@
 import Sale from "../models/Sale.js";
 import Product from "../models/Product.js";
 
-// Create sale (checkout) — user-scoped
 export const createSale = async (req, res) => {
   try {
-    const { items, paymentMethod } = req.body;
-    const userId = req.user._id;
+    const { items, paymentMethod, customerName, notes } = req.body;
+    const storeId = req.storeId;
+    const taxRate = req.store?.taxRate || 0;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    let total = 0;
+    let subtotal = 0;
     const saleItems = [];
 
     for (const item of items) {
-      const product = await Product.findOne({ _id: item.productId, userId });
+      const product = await Product.findOne({ _id: item.productId, storeId });
       if (!product) return res.status(404).json({ message: "Product not found" });
       if (product.stock < item.quantity) {
-        return res.status(400).json({ message: `${product.name} not enough stock` });
+        return res.status(400).json({ message: `${product.name} - not enough stock` });
       }
 
-      const subtotal = product.price * item.quantity;
-      const costTotal = (product.cost || 0) * item.quantity;
-      total += subtotal;
+      const itemSubtotal = product.price * item.quantity;
+      subtotal += itemSubtotal;
 
       saleItems.push({
         productId: product._id,
-        name: product.name,
-        price: product.price,
-        cost: product.cost || 0,
-        quantity: item.quantity,
-        subtotal
+        name:      product.name,
+        price:     product.price,
+        cost:      product.cost || 0,
+        quantity:  item.quantity,
+        subtotal:  itemSubtotal,
       });
 
       await Product.findByIdAndUpdate(product._id, { $inc: { stock: -item.quantity } });
     }
 
+    const taxAmount = +(subtotal * (taxRate / 100)).toFixed(2);
+    const total     = +(subtotal + taxAmount).toFixed(2);
+
     const sale = await Sale.create({
-      userId,
-      items: saleItems,
+      storeId,
+      userId:        req.user._id,
+      items:         saleItems,
       total,
+      taxAmount,
       paymentMethod,
-      paid: paymentMethod === "paylater" ? false : true
+      paid:          paymentMethod !== "paylater",
+      customerName:  customerName || "",
+      notes:         notes || "",
     });
 
     res.status(201).json({ message: "Sale completed", sale });
@@ -51,20 +57,20 @@ export const createSale = async (req, res) => {
   }
 };
 
-// Get all sales — user-scoped
 export const getSales = async (req, res) => {
   try {
-    const sales = await Sale.find({ userId: req.user._id }).sort({ createdAt: -1 });
+    const sales = await Sale.find({ storeId: req.storeId })
+      .sort({ createdAt: -1 })
+      .populate("userId", "username");
     res.json(sales);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Get single sale (receipt) — user-scoped
 export const getSaleById = async (req, res) => {
   try {
-    const sale = await Sale.findOne({ _id: req.params.id, userId: req.user._id });
+    const sale = await Sale.findOne({ _id: req.params.id, storeId: req.storeId });
     if (!sale) return res.status(404).json({ message: "Sale not found" });
     res.json(sale);
   } catch (error) {

@@ -1,94 +1,72 @@
 import React, { useState, useEffect, useRef } from "react";
-import { login as loginApi, getLoginUsers } from "../api/auth.api";
+import { login as loginApi } from "../api/auth.api";
 import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaUserShield, FaUser, FaCashRegister } from "react-icons/fa";
 import ThemeToggle from "../components/ThemeToggle";
 
-const ROLE_ICONS = { admin: <FaUserShield />, cashier: <FaUser /> };
-
-export default function Login() {
+export default function Login({ onShowRegister }) {
   const { login } = useAuth();
 
-  const [users, setUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [fetchError, setFetchError] = useState("");
-
-  const [usernameInput, setUsernameInput] = useState("");
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState("");
+  const [pin,      setPin]      = useState("");
+  const [step,     setStep]     = useState("username"); // "username" | "pin"
+  const [error,    setError]    = useState("");
+  const [loading,  setLoading]  = useState(false);
 
   const inputRef = useRef(null);
 
-  // Fetch all users silently on mount (names stay hidden until typed)
+  // Focus input on mount and on step change
   useEffect(() => {
-    getLoginUsers()
-      .then(setUsers)
-      .catch(() => setFetchError("Server unavailable"))
-      .finally(() => setLoadingUsers(false));
-  }, []);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, [step]);
 
-  // Focus input on load
+  // Keyboard PIN entry
   useEffect(() => {
-    if (!loadingUsers) setTimeout(() => inputRef.current?.focus(), 100);
-  }, [loadingUsers]);
-
-  // Keyboard PIN entry when user selected
-  useEffect(() => {
+    if (step !== "pin") return;
     const handleKey = (e) => {
-      if (!selectedUser) return;
       if (e.target.tagName === "INPUT") return;
-      if (e.key === "Backspace") setPin(p => p.slice(0, -1));
-      else if (e.key === "Escape") { setPin(""); setError(""); }
-      else if (e.key === "Enter" && pin.length >= 4) submitLogin(pin);
+      if (e.key === "Backspace")                        setPin(p => p.slice(0, -1));
+      else if (e.key === "Escape")                      { setPin(""); setError(""); }
+      else if (e.key === "Enter" && pin.length >= 4)    submitLogin(pin);
       else if (/^[0-9]$/.test(e.key) && pin.length < 6) setPin(p => p + e.key);
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [selectedUser, pin]);
+  }, [step, pin]);
 
   // Auto-submit at 6 digits
   useEffect(() => {
     if (pin.length === 6) submitLogin(pin);
   }, [pin]);
 
+  const goToPin = () => {
+    if (!username.trim()) { setError("Please enter your username"); return; }
+    setError("");
+    setPin("");
+    setStep("pin");
+  };
+
   const submitLogin = async (currentPin) => {
-    if (!selectedUser || loading) return;
+    if (loading) return;
     setLoading(true);
     setError("");
     try {
-      const data = await loginApi({ username: selectedUser.username, password: currentPin });
+      const data = await loginApi({ username: username.trim(), password: currentPin });
       login(data);
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid PIN");
+      setError(err.response?.data?.message || "Invalid credentials");
       setPin("");
     } finally {
       setLoading(false);
     }
   };
 
-  const selectUser = (u) => {
-    setSelectedUser(u);
-    setUsernameInput(u.username);
-    setPin("");
-    setError("");
-  };
-
   const clearSelection = () => {
-    setSelectedUser(null);
-    setUsernameInput("");
+    setStep("username");
     setPin("");
     setError("");
-    setTimeout(() => inputRef.current?.focus(), 100);
   };
-
-  // Only show matching users AFTER at least 1 character is typed
-  const showSuggestions = usernameInput.trim().length > 0 && !selectedUser;
-  const filteredUsers = showSuggestions
-    ? users.filter(u => u.username.toLowerCase().includes(usernameInput.toLowerCase().trim()))
-    : [];
 
   return (
     <div className="min-h-screen bg-[#0b0b0b] flex items-center justify-center relative overflow-hidden">
@@ -111,28 +89,25 @@ export default function Login() {
           </div>
           <h1 className="text-2xl text-white font-bold">Market POS</h1>
           <p className="text-gray-500 text-sm mt-1">
-            {selectedUser ? `Enter PIN for ${selectedUser.username}` : "Type your username to continue"}
+            {step === "pin" ? `Enter PIN for ${username}` : "Type your username to continue"}
           </p>
         </div>
 
         <AnimatePresence mode="wait">
 
-          {/* ── STEP 1: Username input ── */}
-          {!selectedUser ? (
+          {/* ── STEP 1: Username ── */}
+          {step === "username" && (
             <motion.div key="step-username"
               initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
 
-              {/* Input */}
-              <div className="relative mb-2">
+              <div className="relative mb-3">
                 <input
                   ref={inputRef}
                   type="text"
                   placeholder="Enter your username..."
-                  value={usernameInput}
-                  onChange={e => setUsernameInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && filteredUsers.length === 1) selectUser(filteredUsers[0]);
-                  }}
+                  value={username}
+                  onChange={e => { setUsername(e.target.value); setError(""); }}
+                  onKeyDown={e => { if (e.key === "Enter") goToPin(); }}
                   className="w-full px-4 py-3.5 rounded-2xl
                     bg-[#1c1c1c] border border-white/10
                     text-white placeholder-gray-600
@@ -142,73 +117,37 @@ export default function Login() {
                 />
               </div>
 
-              {/* Matching users — only shown when typing */}
-              <AnimatePresence>
-                {showSuggestions && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="flex flex-col gap-2 mt-3 max-h-52 overflow-y-auto"
-                  >
-                    {loadingUsers ? (
-                      <div className="flex justify-center py-4">
-                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    ) : filteredUsers.length > 0 ? (
-                      filteredUsers.map(u => (
-                        <motion.button
-                          key={u._id}
-                          whileHover={{ scale: 1.02, x: 4 }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => selectUser(u)}
-                          className="flex items-center gap-4 px-4 py-3 rounded-2xl
-                            bg-[#222] border border-white/5
-                            hover:border-blue-500/40
-                            hover:shadow-[0_0_12px_rgba(59,130,246,0.1)]
-                            transition text-left"
-                        >
-                          <div className="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center
-                            text-blue-400 text-base flex-shrink-0">
-                            {ROLE_ICONS[u.role] || <FaUser />}
-                          </div>
-                          <div>
-                            <p className="text-white font-semibold text-sm">{u.username}</p>
-                            <p className="text-gray-500 text-xs capitalize">{u.role}</p>
-                          </div>
-                          <span className="ml-auto text-gray-600 text-sm">→</span>
-                        </motion.button>
-                      ))
-                    ) : (
-                      <p className="text-gray-600 text-center text-sm py-3">No matching users</p>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Hint when nothing typed yet */}
-              {!showSuggestions && !loadingUsers && !fetchError && (
-                <p className="text-center text-gray-700 text-xs mt-4">
-                  Start typing to find your account
-                </p>
+              {error && (
+                <p className="text-red-400 text-center text-sm mb-3">{error}</p>
               )}
 
-              {fetchError && (
-                <p className="text-center text-red-500 text-xs mt-4">{fetchError}</p>
-              )}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={goToPin}
+                className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition
+                  shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+              >
+                Continue →
+              </motion.button>
+
+              <p className="text-center text-gray-700 text-xs mt-4">
+                Start typing to find your account
+              </p>
             </motion.div>
+          )}
 
-          ) : (
-            /* ── STEP 2: PIN pad ── */
+          {/* ── STEP 2: PIN pad ── */}
+          {step === "pin" && (
             <motion.div key="step-pin"
               initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
 
               {/* Selected user chip */}
               <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-2xl bg-[#1c1c1c]">
                 <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center text-blue-400 text-sm">
-                  {ROLE_ICONS[selectedUser.role] || <FaUser />}
+                  <FaUser />
                 </div>
-                <span className="text-white font-medium text-sm flex-1">{selectedUser.username}</span>
+                <span className="text-white font-medium text-sm flex-1">{username}</span>
                 <button onClick={clearSelection}
                   className="text-gray-500 hover:text-gray-300 text-xs transition-colors px-2 py-1 rounded-lg hover:bg-white/5">
                   ← Change
@@ -289,7 +228,17 @@ export default function Login() {
           )}
         </AnimatePresence>
 
-        <p className="text-center text-xs text-gray-700 mt-6">
+        {/* Register link */}
+        {onShowRegister && (
+          <p className="text-center text-xs text-gray-600 mt-5">
+            New store?{" "}
+            <button onClick={onShowRegister} className="text-blue-500 hover:text-blue-400 transition">
+              Create an account
+            </button>
+          </p>
+        )}
+
+        <p className="text-center text-xs text-gray-700 mt-3">
           Done by <span className="text-blue-500">Abbas El Nemer</span>
         </p>
       </motion.div>

@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, ShoppingCart, Package, Tags,
   Users, BarChart3, ChevronLeft, ChevronRight,
-  CreditCard, LogOut, Moon, Sun, Pencil, Check, X, Shield
+  CreditCard, LogOut, Moon, Sun, Pencil, Check, X, Shield, Store
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
@@ -11,7 +11,7 @@ import toast from "react-hot-toast";
 export default function Sidebar({ user, page, setPage }) {
   const [collapsed, setCollapsed]   = useState(false);
   const { dark, setDark }           = useTheme();
-  const { logout, storeName, updateStoreName } = useAuth();
+  const { logout, storeName, updateStore } = useAuth();
 
   const [editing, setEditing]       = useState(false);
   const [nameInput, setNameInput]   = useState("");
@@ -28,7 +28,7 @@ export default function Sidebar({ user, page, setPage }) {
     if (!nameInput.trim()) return;
     setSaving(true);
     try {
-      await updateStoreName(nameInput.trim());
+      await updateStore({ name: nameInput.trim() });
       toast.success("Store name updated");
       setEditing(false);
     } catch {
@@ -117,7 +117,8 @@ export default function Sidebar({ user, page, setPage }) {
           <>
             <Item id="dashboard"   label="Dashboard"    icon={LayoutDashboard} />
             <Item id="users"       label="Users"        icon={Users} />
-            <Item id="adminpanel"  label="Admin Panel"  icon={Shield} />
+            <Item id="adminpanel"    label="Admin Panel"    icon={Shield} />
+            <Item id="storesettings" label="Store Settings" icon={Store} />
           </>
         )}
         <Item id="pos"        label="Point of Sale" icon={ShoppingCart} />

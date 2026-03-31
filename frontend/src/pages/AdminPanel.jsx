@@ -482,7 +482,7 @@ export default function AdminPanel() {
                             { label: "Today Revenue",    value: fmt(user.stats?.todayRevenue),  icon: DollarSign },
                             { label: "Today Orders",     value: user.stats?.todayOrders || 0,   icon: ShoppingCart },
                             { label: "Total Revenue",    value: fmt(user.stats?.totalRevenue),  icon: DollarSign },
-                            { label: "Store Name",       value: user.storeName || "Market POS", icon: Package },
+                            { label: "Store ID",         value: String(user._id).slice(-6),      icon: Package },
                             { label: "Device Cap",       value: `${user.maxDevices || 1} device${(user.maxDevices||1)>1?"s":""}`, icon: Smartphone },
                           ].map(({ label, value, icon: Icon }) => (
                             <div key={label}>
@@ -595,4 +595,4 @@ export default function AdminPanel() {
 
     </RequireAdmin>
   );
-}
+} 

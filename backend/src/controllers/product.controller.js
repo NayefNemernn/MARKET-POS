@@ -1,15 +1,15 @@
 import mongoose from "mongoose";
 import Product from "../models/Product.js";
 import Sale from "../models/Sale.js";
+import Category from "../models/Category.js";
 import supabase from "../config/supabase.js";
 import { v4 as uuid } from "uuid";
 
-/* =========================
-   GET ALL PRODUCTS (user-scoped)
-========================= */
+const storeFilter = (req) => ({ storeId: req.storeId });
+
 export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find({ userId: req.user._id })
+    const products = await Product.find(storeFilter(req))
       .populate("category", "name")
       .sort({ createdAt: -1 });
     res.json(products);
@@ -18,16 +18,12 @@ export const getAllProducts = async (req, res) => {
   }
 };
 
-/* =========================
-   GET PRODUCT BY BARCODE (user-scoped)
-========================= */
 export const getProductByBarcode = async (req, res) => {
   try {
     const product = await Product.findOne({
       barcode: req.params.barcode,
-      userId: req.user._id
+      ...storeFilter(req),
     }).populate("category", "name");
-
     if (!product) return res.status(404).json({ message: "Product not found" });
     res.json(product);
   } catch (err) {
@@ -35,54 +31,27 @@ export const getProductByBarcode = async (req, res) => {
   }
 };
 
-/* =========================
-   GET ALERTS (low stock + near/expired)
-========================= */
 export const getAlerts = async (req, res) => {
   try {
-    const userId  = req.user._id;
-    const today   = new Date();
+    const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const in30    = new Date(today);
-    in30.setDate(in30.getDate() + 30);
-
-    const products = await Product.find({ userId })
-      .populate("category", "name")
-      .lean();
+    const products = await Product.find(storeFilter(req)).populate("category", "name").lean();
 
     const lowStock = products
       .filter(p => p.stock <= 5)
-      .map(p => ({
-        _id:        p._id,
-        name:       p.name,
-        image:      p.image,
-        stock:      p.stock,
-        category:   p.category?.name || "",
-        price:      p.price,
-        expiryDate: p.expiryDate || null,
-      }))
+      .map(p => ({ _id: p._id, name: p.name, image: p.image, stock: p.stock, category: p.category?.name || "", price: p.price, expiryDate: p.expiryDate || null }))
       .sort((a, b) => a.stock - b.stock);
 
     const expiring = products
       .filter(p => p.expiryDate)
       .map(p => {
-        const exp     = new Date(p.expiryDate);
+        const exp = new Date(p.expiryDate);
         const daysLeft = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
         return { ...p, daysLeft };
       })
       .filter(p => p.daysLeft <= 30)
-      .map(p => ({
-        _id:        p._id,
-        name:       p.name,
-        image:      p.image,
-        stock:      p.stock,
-        category:   p.category?.name || "",
-        price:      p.price,
-        expiryDate: p.expiryDate,
-        daysLeft:   p.daysLeft,
-        expired:    p.daysLeft < 0,
-      }))
+      .map(p => ({ _id: p._id, name: p.name, image: p.image, stock: p.stock, category: p.category?.name || "", price: p.price, expiryDate: p.expiryDate, daysLeft: p.daysLeft, expired: p.daysLeft < 0 }))
       .sort((a, b) => a.daysLeft - b.daysLeft);
 
     res.json({ lowStock, expiring });
@@ -91,99 +60,58 @@ export const getAlerts = async (req, res) => {
   }
 };
 
-/* =========================
-   GET PROFITABILITY REPORT
-   Returns per-product cost/revenue/profit across all sales
-========================= */
 export const getProfitabilityReport = async (req, res) => {
   try {
-    const userId = req.user._id;
-
-    // All products with their current cost
-    const products = await Product.find({ userId }).select("name price cost stock image").lean();
+    const storeId = req.storeId;
+    const products = await Product.find({ storeId }).select("name price cost stock image").lean();
     const productMap = {};
     products.forEach(p => { productMap[String(p._id)] = p; });
 
-    // Aggregate sales per product
     const salesAgg = await Sale.aggregate([
-      { $match: { userId } },
+      { $match: { storeId } },
       { $unwind: "$items" },
       {
         $group: {
-          _id:      "$items.productId",
-          name:     { $first: "$items.name" },
-          unitsSold:{ $sum: "$items.quantity" },
-          revenue:  { $sum: "$items.subtotal" },
-          // cost stored in sale item (if available), fallback to 0
-          cogs:     { $sum: { $multiply: [{ $ifNull: ["$items.cost", 0] }, "$items.quantity"] } },
+          _id:       "$items.productId",
+          name:      { $first: "$items.name" },
+          unitsSold: { $sum: "$items.quantity" },
+          revenue:   { $sum: "$items.subtotal" },
+          cogs:      { $sum: { $multiply: [{ $ifNull: ["$items.cost", 0] }, "$items.quantity"] } },
         }
       },
-      { $sort: { revenue: -1 } }
+      { $sort: { revenue: -1 } },
     ]);
 
     const rows = salesAgg.map(row => {
       const prod    = productMap[String(row._id)] || {};
-      const revenue = row.revenue  || 0;
-      const cogs    = row.cogs     || 0;
+      const revenue = row.revenue || 0;
+      const cogs    = row.cogs    || 0;
       const profit  = revenue - cogs;
       const margin  = revenue > 0 ? (profit / revenue) * 100 : 0;
-      return {
-        productId:  row._id,
-        name:       row.name,
-        image:      prod.image || "",
-        price:      prod.price || 0,
-        cost:       prod.cost  || 0,
-        stock:      prod.stock || 0,
-        unitsSold:  row.unitsSold,
-        revenue:    +revenue.toFixed(2),
-        cogs:       +cogs.toFixed(2),
-        profit:     +profit.toFixed(2),
-        margin:     +margin.toFixed(1),
-      };
+      return { productId: row._id, name: row.name, image: prod.image || "", price: prod.price || 0, cost: prod.cost || 0, stock: prod.stock || 0, unitsSold: row.unitsSold, revenue: +revenue.toFixed(2), cogs: +cogs.toFixed(2), profit: +profit.toFixed(2), margin: +margin.toFixed(1) };
     });
 
-    // Summary totals
-    const totals = rows.reduce((acc, r) => ({
-      revenue: acc.revenue + r.revenue,
-      cogs:    acc.cogs    + r.cogs,
-      profit:  acc.profit  + r.profit,
-      units:   acc.units   + r.unitsSold,
-    }), { revenue: 0, cogs: 0, profit: 0, units: 0 });
-
-    // Total inventory value (cost × stock for all products)
+    const totals = rows.reduce((acc, r) => ({ revenue: acc.revenue + r.revenue, cogs: acc.cogs + r.cogs, profit: acc.profit + r.profit, units: acc.units + r.unitsSold }), { revenue: 0, cogs: 0, profit: 0, units: 0 });
     const inventoryValue = products.reduce((s, p) => s + (p.cost || 0) * (p.stock || 0), 0);
 
-    res.json({
-      rows,
-      totals: {
-        revenue:        +totals.revenue.toFixed(2),
-        cogs:           +totals.cogs.toFixed(2),
-        profit:         +totals.profit.toFixed(2),
-        margin:         totals.revenue > 0 ? +((totals.profit / totals.revenue) * 100).toFixed(1) : 0,
-        units:          totals.units,
-        inventoryValue: +inventoryValue.toFixed(2),
-      }
-    });
+    res.json({ rows, totals: { revenue: +totals.revenue.toFixed(2), cogs: +totals.cogs.toFixed(2), profit: +totals.profit.toFixed(2), margin: totals.revenue > 0 ? +((totals.profit / totals.revenue) * 100).toFixed(1) : 0, units: totals.units, inventoryValue: +inventoryValue.toFixed(2) } });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-/* =========================
-   GET PRODUCT SALES STATS
-========================= */
 export const getProductStats = async (req, res) => {
   try {
-    const productId     = new mongoose.Types.ObjectId(req.params.id);
-    const userId        = req.user._id;
-    const thirtyDaysAgo = new Date();
+    const productId      = new mongoose.Types.ObjectId(req.params.id);
+    const storeId        = req.storeId;
+    const thirtyDaysAgo  = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const pipeline = (extraMatch) => [
-      { $match: { userId, ...extraMatch } },
+      { $match: { storeId, ...extraMatch } },
       { $unwind: "$items" },
       { $match: { "items.productId": productId } },
-      { $group: { _id: null, sold: { $sum: "$items.quantity" }, revenue: { $sum: "$items.subtotal" } } }
+      { $group: { _id: null, sold: { $sum: "$items.quantity" }, revenue: { $sum: "$items.subtotal" } } },
     ];
 
     const [allTime, last30] = await Promise.all([
@@ -200,11 +128,15 @@ export const getProductStats = async (req, res) => {
   }
 };
 
-/* =========================
-   CREATE PRODUCT (user-scoped)
-========================= */
 export const createProduct = async (req, res) => {
   try {
+    // Check plan product limit
+    const store = req.store;
+    const count = await Product.countDocuments({ storeId: req.storeId });
+    if (count >= store.maxProducts) {
+      return res.status(403).json({ message: `Product limit (${store.maxProducts}) reached. Upgrade your plan.` });
+    }
+
     const { name, barcode, price, cost, stock, category, expiryDate } = req.body;
     let imageUrl = "";
 
@@ -218,10 +150,10 @@ export const createProduct = async (req, res) => {
     }
 
     const product = await Product.create({
-      name, barcode, price, cost: cost || 0, stock, category,
-      expiryDate: expiryDate || null,
-      image: imageUrl,
-      userId: req.user._id
+      name, barcode, price, cost: cost || 0, stock,
+      category, expiryDate: expiryDate || null,
+      image:   imageUrl,
+      storeId: req.storeId,
     });
 
     res.status(201).json(product);
@@ -230,9 +162,6 @@ export const createProduct = async (req, res) => {
   }
 };
 
-/* =========================
-   UPDATE PRODUCT (user-scoped)
-========================= */
 export const updateProduct = async (req, res) => {
   try {
     const updateData = { ...req.body };
@@ -247,7 +176,7 @@ export const updateProduct = async (req, res) => {
     }
 
     const product = await Product.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user._id },
+      { _id: req.params.id, storeId: req.storeId },
       updateData,
       { new: true }
     ).populate("category", "name");
@@ -259,56 +188,49 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-/* =========================
-   DELETE PRODUCT (user-scoped)
-========================= */
 export const deleteProduct = async (req, res) => {
   try {
-    await Product.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
+    await Product.findOneAndDelete({ _id: req.params.id, storeId: req.storeId });
     res.json({ message: "Product deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-/* =========================
-   IMPORT PRODUCTS FROM EXCEL / CSV
-========================= */
 export const importProducts = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-    const XLSX = await import("xlsx");
+    const store = req.store;
+    const currentCount = await Product.countDocuments({ storeId: req.storeId });
+
+    const XLSX     = await import("xlsx");
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheet    = workbook.Sheets[workbook.SheetNames[0]];
-
-    // row 1 = headers, row 2 = hint text (skip), row 3+ = data
     const allRows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
     const dataRows = allRows.slice(2).filter(r => String(r[0]).trim() || String(r[1]).trim());
 
-    const userId   = req.user._id;
-    const Category = (await import("../models/Category.js")).default;
-
-    // Build category map (name → _id)
-    const catDocs  = await Category.find({});
-    const catMap   = {};
+    const catDocs = await Category.find({ storeId: req.storeId });
+    const catMap  = {};
     catDocs.forEach(c => { catMap[c.name.toLowerCase()] = c._id; });
 
     let inserted = 0, skipped = 0;
     const errors = [];
 
     for (let i = 0; i < dataRows.length; i++) {
-      const row     = dataRows[i];
-      const rowNum  = i + 3;
+      if (currentCount + inserted >= store.maxProducts) {
+        errors.push({ row: i + 3, reason: "Product limit reached" });
+        break;
+      }
+
+      const row    = dataRows[i];
+      const rowNum = i + 3;
       const barcode = String(row[0] || "").trim();
       const name    = String(row[1] || "").trim();
 
-      if (!barcode || !name) {
-        errors.push({ row: rowNum, reason: "Missing barcode or name" });
-        continue;
-      }
+      if (!barcode || !name) { errors.push({ row: rowNum, reason: "Missing barcode or name" }); continue; }
 
-      const exists = await Product.findOne({ barcode, userId });
+      const exists = await Product.findOne({ barcode, storeId: req.storeId });
       if (exists) { skipped++; continue; }
 
       const price       = parseFloat(row[2]) || 0;
@@ -318,35 +240,25 @@ export const importProducts = async (req, res) => {
       const expiryRaw   = String(row[6] || "").trim();
       const imageUrl    = String(row[7] || "").trim();
 
-      // Resolve category
       let categoryId = null;
       if (categoryRaw) {
         if (catMap[categoryRaw]) {
           categoryId = catMap[categoryRaw];
         } else {
-          const match = Object.keys(catMap).find(k => k.includes(categoryRaw) || categoryRaw.includes(k.split(" ")[0]));
-          if (match) {
-            categoryId = catMap[match];
-          } else {
-            const newCat = await Category.create({ name: String(row[5]).trim() });
-            catMap[categoryRaw] = newCat._id;
-            categoryId = newCat._id;
-          }
+          const newCat = await Category.create({ name: String(row[5]).trim(), storeId: req.storeId });
+          catMap[categoryRaw] = newCat._id;
+          categoryId = newCat._id;
         }
       }
 
-      // Parse expiry
       let expiryDate = null;
       if (expiryRaw.match(/\d{4}-\d{2}-\d{2}/)) expiryDate = new Date(expiryRaw);
 
-      await Product.create({ name, barcode, price, cost, stock, category: categoryId, expiryDate, image: imageUrl || "", userId });
+      await Product.create({ name, barcode, price, cost, stock, category: categoryId, expiryDate, image: imageUrl || "", storeId: req.storeId });
       inserted++;
     }
 
-    res.json({
-      message: `Import done: ${inserted} added, ${skipped} skipped, ${errors.length} errors`,
-      inserted, skipped, errors,
-    });
+    res.json({ message: `Import done: ${inserted} added, ${skipped} skipped, ${errors.length} errors`, inserted, skipped, errors });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
