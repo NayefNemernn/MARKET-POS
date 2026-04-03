@@ -1,60 +1,67 @@
-import { useRefresh } from "../context/RefreshContext";
+import { useRefresh }    from "../context/RefreshContext";
 import { useEffect, useState, useMemo } from "react";
 import { getAllProducts } from "../api/product.api";
 import { getCategories } from "../api/category.api";
-import { useCart } from "../hooks/useCart";
-import CheckoutModal from "../components/CheckoutModal";
-import Cart from "../components/pos/Cart";
-import BarcodeScanner from "../components/pos/BarcodeScanner";
-import { useAuth } from "../context/AuthContext";
+import { useCart }       from "../hooks/useCart";
+import CheckoutModal     from "../components/CheckoutModal";
+import Cart              from "../components/pos/Cart";
+import BarcodeScanner    from "../components/pos/BarcodeScanner";
+import { useAuth }       from "../context/AuthContext";
 import { useTranslation } from "../hooks/useTranslation";
-import { useCurrency } from "../context/CurrencyContext";
-import ExchangeRateBar from "../components/ExchangeRateBar";
-import VoiceButton from "../components/common/VoiceButton";
-import toast from "react-hot-toast";
+import { useCurrency }   from "../context/CurrencyContext";
+import ExchangeRateBar   from "../components/ExchangeRateBar";
+import VoiceButton       from "../components/common/VoiceButton";
+import {
+  cacheProducts, getCachedProducts,
+  cacheCategories, getCachedCategories,
+} from "../lib/offlineDB";
+import toast             from "react-hot-toast";
 import { ShoppingBag, Search } from "lucide-react";
 
 export default function POS({ setPage }) {
   const { tick } = useRefresh();
-  // Seed state from cache immediately — no spinner on first render
-  const [products, setProducts]         = useState(() => {
-    try { return JSON.parse(localStorage.getItem("cached_products") || "[]"); } catch { return []; }
-  });
-  const [categories, setCategories]     = useState(() => {
-    try { return JSON.parse(localStorage.getItem("cached_categories") || "[]"); } catch { return []; }
-  });
+
+  const [products,   setProducts]   = useState([]);
+  const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [search, setSearch]             = useState("");
+  const [search,     setSearch]     = useState("");
   const [openCheckout, setOpenCheckout] = useState(false);
-  // Only show spinner when there's truly nothing to show (first ever load)
-  const [loading, setLoading]           = useState(() => {
-    return !localStorage.getItem("cached_products");
-  });
+  const [loading,    setLoading]    = useState(true);
 
   const { cart, addToCart, increase, decrease, total, clearCart } = useCart();
-  const { user } = useAuth();
-  const { t } = useTranslation();
+  const { user }   = useAuth();
+  const { t }      = useTranslation();
   const { toLBP, formatLBP, formatUSD, displayCurrency } = useCurrency();
 
-  useEffect(() => { load(); }, [tick]);
-
+  /* ── load products from server, fall back to IDB cache ─── */
   const load = async () => {
-    // Only show spinner if we have nothing cached yet
-    const hasCached = !!localStorage.getItem("cached_products");
-    if (!hasCached) setLoading(true);
+    /* Seed from IDB immediately so screen is never blank */
+    const cachedP = await getCachedProducts();
+    const cachedC = await getCachedCategories();
+    if (cachedP) { setProducts(cachedP); setLoading(false); }
+    if (cachedC) setCategories(cachedC);
+
     try {
       const [p, c] = await Promise.all([getAllProducts(), getCategories()]);
-      localStorage.setItem("cached_products",   JSON.stringify(p));
-      localStorage.setItem("cached_categories", JSON.stringify(c));
       setProducts(p);
       setCategories(c);
+      await cacheProducts(p);
+      await cacheCategories(c);
     } catch {
-      // Already showing cached data from initial state — nothing to do
-      if (!hasCached) toast("📦 Showing cached products", { icon: "💾" });
+      if (!cachedP) toast("📦 Showing cached products", { icon: "💾" });
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => { load(); }, [tick]);
+
+  /* refresh cache when coming back online */
+  useEffect(() => {
+    const onOnline = () => load();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, []);
 
   const barcodeMap = useMemo(() => {
     const map = {};
@@ -69,19 +76,12 @@ export default function POS({ setPage }) {
   };
 
   const handleSearchEnter = (e) => {
-    if (e.key === "Enter") {
-      const code = search.trim();
-      if (!code) return;
-      const product = barcodeMap[code];
-      if (product) {
-        addProductSafe(product);
-        setSearch(""); // clear after successful scan
-      } else {
-        // try partial name match before giving up
-        addProductSafe(product); // will show "not found" toast
-        setSearch("");
-      }
-    }
+    if (e.key !== "Enter") return;
+    const code = search.trim();
+    if (!code) return;
+    const product = barcodeMap[code];
+    addProductSafe(product);
+    setSearch("");
   };
 
   useEffect(() => {
@@ -113,10 +113,8 @@ export default function POS({ setPage }) {
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-[#0b0b0b] text-gray-900 dark:text-white overflow-hidden">
 
-      {/* Invisible hardware barcode scanner listener */}
       <BarcodeScanner barcodeMap={barcodeMap} onScan={addProductSafe} />
 
-      {/* Exchange rate strip */}
       <div className="px-4 pt-2 pb-1 shrink-0">
         <ExchangeRateBar />
       </div>

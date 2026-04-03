@@ -1,7 +1,8 @@
 import {
   LayoutDashboard, ShoppingCart, Package, Tags,
   Users, BarChart3, ChevronLeft, ChevronRight,
-  CreditCard, LogOut, Moon, Sun, Pencil, Check, X, Shield, Store
+  CreditCard, LogOut, Moon, Sun, Pencil, Check, X,
+  Shield, Store, UserCircle2,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
@@ -13,15 +14,11 @@ export default function Sidebar({ user, page, setPage }) {
   const { dark, setDark }           = useTheme();
   const { logout, storeName, updateStore } = useAuth();
 
-  const [editing, setEditing]       = useState(false);
-  const [nameInput, setNameInput]   = useState("");
-  const [saving, setSaving]         = useState(false);
+  const [editing,   setEditing]   = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [saving,    setSaving]    = useState(false);
 
-  const startEdit = () => {
-    setNameInput(storeName);
-    setEditing(true);
-  };
-
+  const startEdit  = () => { setNameInput(storeName); setEditing(true); };
   const cancelEdit = () => setEditing(false);
 
   const saveEdit = async () => {
@@ -33,9 +30,7 @@ export default function Sidebar({ user, page, setPage }) {
       setEditing(false);
     } catch {
       toast.error("Failed to update store name");
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const Item = ({ id, label, icon: Icon }) => (
@@ -45,8 +40,7 @@ export default function Sidebar({ user, page, setPage }) {
       className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all
         ${page === id
           ? "bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.4)]"
-          : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}
-      `}
+          : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
     >
       {Icon && <Icon size={18} className="flex-shrink-0" />}
       {!collapsed && <span className="text-sm font-medium">{label}</span>}
@@ -56,23 +50,17 @@ export default function Sidebar({ user, page, setPage }) {
   const isAdmin = user?.role === "admin";
 
   return (
-    <div
-      className={`h-screen flex flex-col bg-white dark:bg-gray-900 border-r dark:border-gray-800
-        shadow-sm transition-all duration-300 ${collapsed ? "w-20" : "w-64"}`}
-    >
-      {/* HEADER — store name */}
+    <div className={`h-screen flex flex-col bg-white dark:bg-gray-900 border-r dark:border-gray-800 shadow-sm transition-all duration-300 ${collapsed ? "w-20" : "w-64"}`}>
+
+      {/* HEADER */}
       <div className="flex items-center justify-between px-4 py-4 border-b dark:border-gray-800 min-h-[60px]">
         {!collapsed && (
           <div className="flex-1 min-w-0 mr-2">
             {editing ? (
               <div className="flex items-center gap-1">
-                <input
-                  autoFocus
-                  value={nameInput}
-                  onChange={e => setNameInput(e.target.value)}
+                <input autoFocus value={nameInput} onChange={e => setNameInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }}
-                  className="flex-1 min-w-0 text-sm font-bold bg-transparent border-b-2 border-blue-500 outline-none dark:text-white px-0.5"
-                />
+                  className="flex-1 min-w-0 text-sm font-bold bg-transparent border-b-2 border-blue-500 outline-none dark:text-white px-0.5"/>
                 <button onClick={saveEdit} disabled={saving}
                   className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition">
                   <Check size={14}/>
@@ -83,22 +71,17 @@ export default function Sidebar({ user, page, setPage }) {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={startEdit}
-                title="Click to rename your store"
-                className="group flex items-center gap-1.5 w-full text-left"
-              >
+              <button onClick={startEdit} title="Click to rename your store"
+                className="group flex items-center gap-1.5 w-full text-left">
                 <span className="font-bold text-base dark:text-white truncate">🧾 {storeName}</span>
                 <Pencil size={11} className="shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 transition"/>
               </button>
             )}
           </div>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 shrink-0"
-        >
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        <button onClick={() => setCollapsed(!collapsed)}
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 shrink-0">
+          {collapsed ? <ChevronRight size={18}/> : <ChevronLeft size={18}/>}
         </button>
       </div>
 
@@ -115,8 +98,8 @@ export default function Sidebar({ user, page, setPage }) {
       <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto mt-2">
         {isAdmin && (
           <>
-            <Item id="dashboard"   label="Dashboard"    icon={LayoutDashboard} />
-            <Item id="users"       label="Users"        icon={Users} />
+            <Item id="dashboard"     label="Dashboard"      icon={LayoutDashboard} />
+            <Item id="users"         label="Users"          icon={Users} />
             <Item id="adminpanel"    label="Admin Panel"    icon={Shield} />
             <Item id="storesettings" label="Store Settings" icon={Store} />
           </>
@@ -124,32 +107,21 @@ export default function Sidebar({ user, page, setPage }) {
         <Item id="pos"        label="Point of Sale" icon={ShoppingCart} />
         <Item id="products"   label="Products"      icon={Package} />
         <Item id="categories" label="Categories"    icon={Tags} />
+        <Item id="customers"  label="Customers"     icon={UserCircle2} />
         <Item id="reports"    label="Reports"       icon={BarChart3} />
         <Item id="paylater"   label="Pay Later"     icon={CreditCard} />
       </nav>
 
       {/* FOOTER */}
       <div className="p-3 flex flex-col gap-2 border-t dark:border-gray-800">
-        <button
-          onClick={() => setDark(!dark)}
-          title={collapsed ? (dark ? "Light Mode" : "Dark Mode") : ""}
-          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl
-            bg-gray-100 dark:bg-gray-800
-            text-gray-700 dark:text-gray-200
-            hover:bg-gray-200 dark:hover:bg-gray-700
-            transition-all text-sm"
-        >
-          {dark ? <Sun size={16} /> : <Moon size={16} />}
+        <button onClick={() => setDark(!dark)} title={collapsed ? (dark ? "Light Mode" : "Dark Mode") : ""}
+          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all text-sm">
+          {dark ? <Sun size={16}/> : <Moon size={16}/>}
           {!collapsed && <span>{dark ? "Light Mode" : "Dark Mode"}</span>}
         </button>
-        <button
-          onClick={logout}
-          title={collapsed ? "Logout" : ""}
-          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl
-            text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20
-            transition-all text-sm"
-        >
-          <LogOut size={16} />
+        <button onClick={logout} title={collapsed ? "Logout" : ""}
+          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-sm">
+          <LogOut size={16}/>
           {!collapsed && <span>Logout</span>}
         </button>
       </div>

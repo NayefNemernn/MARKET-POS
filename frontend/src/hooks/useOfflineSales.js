@@ -1,97 +1,101 @@
+import { useEffect, useCallback, useRef } from "react";
 import { createSale } from "../api/sale.api";
-
-const DB_NAME = "pos_offline_db";
-const STORE_NAME = "pending_sales";
-
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = (e) => {
-      e.target.result.createObjectStore(STORE_NAME, {
-        keyPath: "id",
-        autoIncrement: true,
-      });
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror  = () => reject(req.error);
-  });
-}
+import { returnSale  } from "../api/sale.api";
+import {
+  queueSale, getPendingSales, deletePendingSale, getPendingSaleCount,
+  queueReturn, getPendingReturns, deletePendingReturn,
+  saveToken,
+} from "../lib/offlineDB";
+import toast from "react-hot-toast";
 
 export default function useOfflineSales() {
 
-  const saveOffline = async (sale) => {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      tx.objectStore(STORE_NAME).add({
-        ...sale,
-        savedAt: new Date().toISOString(),
-      });
-      tx.oncomplete = () => {
-        console.log("✅ Sale saved offline:", sale);
-        resolve();
-      };
-      tx.onerror = () => reject(tx.error);
-    });
-  };
+  /* ── keep auth token synced into IDB for SW background sync ── */
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) saveToken(token).catch(() => {});
+  }, []);
 
-  const getPending = async () => {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx  = db.transaction(STORE_NAME, "readonly");
-      const req = tx.objectStore(STORE_NAME).getAll();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror   = () => reject(req.error);
-    });
-  };
+  /* ── listen for SW messages (background sync success) ──────── */
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
 
-  const deleteSale = async (id) => {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      tx.objectStore(STORE_NAME).delete(id);
-      tx.oncomplete = () => resolve();
-      tx.onerror    = () => reject(tx.error);
-    });
-  };
+    const handler = (e) => {
+      if (e.data?.type === "SYNC_SALE_SUCCESS") {
+        toast.success("✅ Offline sale synced!");
+        window.dispatchEvent(new Event("offlineSynced"));
+      }
+      if (e.data?.type === "SYNC_COMPLETE") {
+        window.dispatchEvent(new Event("offlineSynced"));
+      }
+    };
 
-  const getPendingCount = async () => {
-    const pending = await getPending();
-    return pending.length;
-  };
+    navigator.serviceWorker.addEventListener("message", handler);
+    return () => navigator.serviceWorker.removeEventListener("message", handler);
+  }, []);
 
-  const sync = async () => {
+  /* ── saveOffline: queue a sale to IndexedDB ─────────────────── */
+  const saveOffline = useCallback(async (saleData) => {
+    await queueSale(saleData);
+
+    /* Try to register a background sync (Chrome/Android) */
+    if ("serviceWorker" in navigator && "SyncManager" in window) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.sync.register("pos-sync-sales");
+      } catch { /* SyncManager not always available */ }
+    }
+  }, []);
+
+  /* ── saveReturnOffline: queue a return ──────────────────────── */
+  const saveReturnOffline = useCallback(async (saleId, returnData) => {
+    await queueReturn({ saleId, ...returnData });
+  }, []);
+
+  /* ── getPendingCount ────────────────────────────────────────── */
+  const getPendingCount = useCallback(async () => {
+    const sales   = await getPendingSaleCount();
+    const returns = (await getPendingReturns()).length;
+    return sales + returns;
+  }, []);
+
+  /* ── sync: manual drain of both queues ─────────────────────── */
+  const sync = useCallback(async () => {
     if (!navigator.onLine) return { synced: 0, failed: 0 };
-
-    const pending = await getPending();
-    console.log(`🔄 Syncing ${pending.length} offline sales...`, pending);
-
-    if (pending.length === 0) return { synced: 0, failed: 0 };
 
     let synced = 0;
     let failed = 0;
 
-    for (const sale of pending) {
+    /* sync pending sales */
+    const pendingSales = await getPendingSales();
+    for (const sale of pendingSales) {
       try {
-        // Strip IndexedDB meta fields before sending
         const { id, savedAt, ...saleData } = sale;
-
-        console.log("📤 Sending sale to server:", saleData);
-
-        const result = await createSale(saleData);
-
-        console.log("✅ Sale synced:", result);
-
-        await deleteSale(id);
+        await createSale(saleData);
+        await deletePendingSale(id);
         synced++;
       } catch (err) {
-        console.error("❌ Failed to sync sale:", err.response?.data || err.message);
+        console.error("[Sync] Sale failed:", err.response?.data || err.message);
+        failed++;
+      }
+    }
+
+    /* sync pending returns */
+    const pendingReturns = await getPendingReturns();
+    for (const ret of pendingReturns) {
+      try {
+        const { id, savedAt, saleId, ...returnData } = ret;
+        await returnSale(saleId, returnData);
+        await deletePendingReturn(id);
+        synced++;
+      } catch (err) {
+        console.error("[Sync] Return failed:", err.response?.data || err.message);
         failed++;
       }
     }
 
     return { synced, failed };
-  };
+  }, []);
 
-  return { saveOffline, sync, getPendingCount };
+  return { saveOffline, saveReturnOffline, sync, getPendingCount };
 }

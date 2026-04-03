@@ -1,20 +1,9 @@
+// src/api/sale.api.js
 import api from "./axios";
-import useOfflineSales from "../hooks/useOfflineSales";
 
-export const createSale = async (data) => {
-  const res = await api.post("/sales", data);
-  return res.data;
-};
-
-// Use this in CheckoutModal instead of createSale directly
-export const createSaleWithOfflineFallback = async (data) => {
-  if (navigator.onLine) {
-    const res = await api.post("/sales", data);
-    return { ...res.data, wasOffline: false };
-  } else {
-    // Save locally
-    const { saveOffline } = useOfflineSales();
-    await saveOffline(data);
-    return { wasOffline: true, message: "Saved offline, will sync when connected" };
-  }
-};
+export const createSale    = (data)           => api.post("/sales", data).then(r => r.data);
+export const getSales      = ()               => api.get("/sales").then(r => r.data);
+export const getSaleById   = (id)             => api.get(`/sales/${id}`).then(r => r.data);
+export const returnSale    = (id, data)       => api.post(`/sales/${id}/return`, data).then(r => r.data);
+export const voidSale      = (id, data)       => api.post(`/sales/${id}/void`, data).then(r => r.data);
+export const getProfitLoss = (from, to)       => api.get("/sales/profit-loss", { params: { from, to } }).then(r => r.data);
