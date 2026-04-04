@@ -20,12 +20,17 @@ import shiftRoutes      from "./routes/shift.routes.js";
 dotenv.config();
 const app = express();
 
-const ALLOWED_ORIGINS = [process.env.CLIENT_URL, "http://localhost:5173", "http://localhost:3000"].filter(Boolean);
+const ALLOWED_ORIGINS = [
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
+  "http://localhost:3000",
+].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (origin.endsWith(".vercel.app")) return callback(null, true);
+    if (origin.endsWith(".vercel.app"))   return callback(null, true);
+    if (origin.endsWith(".railway.app"))  return callback(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
