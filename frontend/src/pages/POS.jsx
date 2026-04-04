@@ -16,7 +16,8 @@ import {
   cacheCategories, getCachedCategories,
 } from "../lib/offlineDB";
 import toast             from "react-hot-toast";
-import { ShoppingBag, Search } from "lucide-react";
+import { ShoppingBag, Search, RotateCcw } from "lucide-react";
+import QuickReturn from "../components/QuickReturn";
 
 export default function POS({ setPage }) {
   const { tick } = useRefresh();
@@ -26,6 +27,7 @@ export default function POS({ setPage }) {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [search,     setSearch]     = useState("");
   const [openCheckout, setOpenCheckout] = useState(false);
+  const [openReturn,   setOpenReturn]   = useState(false);
   const [loading,    setLoading]    = useState(true);
 
   const { cart, addToCart, increase, decrease, total, clearCart } = useCart();
@@ -115,8 +117,15 @@ export default function POS({ setPage }) {
 
       <BarcodeScanner barcodeMap={barcodeMap} onScan={addProductSafe} />
 
-      <div className="px-4 pt-2 pb-1 shrink-0">
-        <ExchangeRateBar />
+      <div className="px-4 pt-2 pb-1 shrink-0 flex items-center gap-2">
+        <div className="flex-1"><ExchangeRateBar /></div>
+        <button
+          onClick={() => setOpenReturn(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold
+            bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400
+            hover:bg-blue-100 dark:hover:bg-blue-900/30 transition shrink-0 border border-blue-200 dark:border-blue-500/30">
+          <RotateCcw size={12}/> Return
+        </button>
       </div>
 
       <div className="flex flex-1 overflow-hidden gap-3 px-3 pb-3">
@@ -251,6 +260,12 @@ export default function POS({ setPage }) {
 
       {openCheckout && (
         <CheckoutModal cart={cart} total={total} close={() => setOpenCheckout(false)} />
+      )}
+      {openReturn && (
+        <QuickReturn
+          onClose={() => setOpenReturn(false)}
+          storeName={user?.storeName || "Market POS"}
+        />
       )}
     </div>
   );

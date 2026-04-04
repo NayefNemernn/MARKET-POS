@@ -11,9 +11,15 @@ const customerSchema = new mongoose.Schema(
     notes:   { type: String, default: "" },
 
     // ── Financials ────────────────────────────────────────────
-    totalSpent:    { type: Number, default: 0 },
-    totalOrders:   { type: Number, default: 0 },
-    outstandingBalance: { type: Number, default: 0 }, // unpaid paylater
+    totalSpent:         { type: Number, default: 0 },
+    totalOrders:        { type: Number, default: 0 },
+    outstandingBalance: { type: Number, default: 0 },
+    creditLimit:        { type: Number, default: 0 },   // 0 = no limit
+
+    // ── Loyalty ───────────────────────────────────────────────
+    loyaltyPoints:      { type: Number, default: 0 },   // 1 point per $1 spent
+    totalPointsEarned:  { type: Number, default: 0 },
+    totalPointsRedeemed:{ type: Number, default: 0 },
 
     // ── Status ────────────────────────────────────────────────
     active: { type: Boolean, default: true },
@@ -23,6 +29,6 @@ const customerSchema = new mongoose.Schema(
 
 customerSchema.index({ storeId: 1 });
 customerSchema.index({ storeId: 1, phone: 1 });
-customerSchema.index({ storeId: 1, name: "text" }); // text search
+customerSchema.index({ storeId: 1, name: "text" });
 
 export default mongoose.model("Customer", customerSchema);

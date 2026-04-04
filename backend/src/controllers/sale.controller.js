@@ -238,10 +238,33 @@ export const getProfitLoss = async (req, res) => {
 /* ── GET SALES ───────────────────────────────────────────────── */
 export const getSales = async (req, res) => {
   try {
-    const sales = await Sale.find({ storeId: req.storeId })
+    const { search, productId, limit = 100, status } = req.query;
+    const filter = { storeId: req.storeId };
+
+    if (status) filter.status = status;
+
+    // Filter by productId (for barcode return lookup)
+    if (productId) {
+      filter["items.productId"] = productId;
+    }
+
+    let sales = await Sale.find(filter)
       .sort({ createdAt: -1 })
+      .limit(Number(limit))
       .populate("userId", "username")
       .populate("customerId", "name phone");
+
+    // Text search on customer name or sale ID suffix
+    if (search) {
+      const q = search.toLowerCase().trim();
+      sales = sales.filter(s =>
+        s.customerName?.toLowerCase().includes(q) ||
+        s._id.toString().slice(-6).toLowerCase() === q ||
+        s._id.toString().toLowerCase().includes(q) ||
+        s.items?.some(i => i.name?.toLowerCase().includes(q))
+      );
+    }
+
     res.json(sales);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };

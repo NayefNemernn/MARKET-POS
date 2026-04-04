@@ -17,9 +17,13 @@ import StoreSettings              from "./pages/StoreSettings";
 import SuperAdminPanel            from "./pages/SuperAdminPanel";
 import Customers                  from "./pages/Customers";
 import ShiftPanel                 from "./pages/ShiftPanel";
+import StockPage                  from "./pages/StockPage";
+import ExpensesPage               from "./pages/ExpensesPage";
+import DiscountsPage              from "./pages/DiscountsPage";
+import SuppliersPage              from "./pages/SuppliersPage";
 import OfflineIndicator           from "./components/OfflineIndicator";
 
-const ADMIN_PAGES = ["dashboard", "users", "adminpanel", "storesettings"];
+const ADMIN_PAGES = ["dashboard", "users", "adminpanel", "storesettings", "stock", "expenses", "discounts", "suppliers"];
 
 function AppInner() {
   const { user, store, planExpired, daysUntilExpiry } = useAuth();
@@ -49,9 +53,13 @@ function AppInner() {
       case "paylater":      return <PayLater />;
       case "customers":     return <Customers />;
       case "shift":         return <ShiftPanel />;
-      case "users":         return user.role === "admin" ? <Users />         : <POS setPage={setPage} user={user} />;
-      case "adminpanel":    return user.role === "admin" ? <AdminPanel />    : <POS setPage={setPage} user={user} />;
-      case "storesettings": return user.role === "admin" ? <StoreSettings /> : <POS setPage={setPage} user={user} />;
+      case "stock":         return user.role === "admin" ? <StockPage />      : <POS setPage={setPage} user={user} />;
+      case "expenses":      return user.role === "admin" ? <ExpensesPage />   : <POS setPage={setPage} user={user} />;
+      case "discounts":     return user.role === "admin" ? <DiscountsPage />  : <POS setPage={setPage} user={user} />;
+      case "suppliers":     return user.role === "admin" ? <SuppliersPage />  : <POS setPage={setPage} user={user} />;
+      case "users":         return user.role === "admin" ? <Users />          : <POS setPage={setPage} user={user} />;
+      case "adminpanel":    return user.role === "admin" ? <AdminPanel />     : <POS setPage={setPage} user={user} />;
+      case "storesettings": return user.role === "admin" ? <StoreSettings />  : <POS setPage={setPage} user={user} />;
       default:              return <POS setPage={setPage} user={user} />;
     }
   };

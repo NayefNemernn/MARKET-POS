@@ -1,5 +1,12 @@
 import mongoose from "mongoose";
 
+const variantSchema = new mongoose.Schema({
+  name:   { type: String, required: true }, // e.g. "Red / Large"
+  price:  { type: Number, default: null },  // override price, null = use parent price
+  stock:  { type: Number, default: 0 },
+  barcode:{ type: String, default: "" },
+}, { _id: true });
+
 const productSchema = new mongoose.Schema(
   {
     name:       { type: String, required: true, trim: true },
@@ -12,9 +19,15 @@ const productSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref:  "Category",
     },
-    image: { type: String, default: "" },
+    image:      { type: String, default: "" },
+    imageUrl:   { type: String, default: "" }, // URL-based image (alternative to Supabase upload)
+    active:     { type: Boolean, default: true }, // auto-disabled when expired
 
-    // ── Multi-tenancy: scoped to store ────────────────────────
+    // ── Variants (sizes, colors, etc.) ────────────────────────
+    hasVariants: { type: Boolean, default: false },
+    variants:    { type: [variantSchema], default: [] },
+
+    // ── Multi-tenancy ─────────────────────────────────────────
     storeId: {
       type:     mongoose.Schema.Types.ObjectId,
       ref:      "Store",
@@ -24,7 +37,8 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Barcode must be unique per store (not globally)
 productSchema.index({ barcode: 1, storeId: 1 }, { unique: true });
+productSchema.index({ storeId: 1, active: 1 });
+productSchema.index({ storeId: 1, expiryDate: 1 });
 
 export default mongoose.model("Product", productSchema);

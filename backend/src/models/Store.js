@@ -40,6 +40,20 @@ const storeSchema = new mongoose.Schema(
 
     // ── Status ────────────────────────────────────────────────
     active: { type: Boolean, default: true },
+
+    // ── SuperAdmin extras ─────────────────────────────────────
+    monthlyPrice:   { type: Number, default: null },
+    internalNotes:  { type: String, default: "" },
+    welcomeMessage: { type: String, default: "" },
+    notifications: {
+      type: [{
+        message:   { type: String, required: true },
+        type:      { type: String, enum: ["info", "warning", "success", "error"], default: "info" },
+        createdAt: { type: Date, default: Date.now },
+        read:      { type: Boolean, default: false },
+      }],
+      default: [],
+    },
   },
   { timestamps: true }
 );

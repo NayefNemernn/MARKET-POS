@@ -16,6 +16,9 @@ import customerRoutes   from "./routes/customer.routes.js";
 import stockRoutes      from "./routes/stock.routes.js";
 import auditRoutes      from "./routes/audit.routes.js";
 import shiftRoutes      from "./routes/shift.routes.js";
+import expenseRoutes    from "./routes/expense.routes.js";
+import discountRoutes   from "./routes/discount.routes.js";
+import supplierRoutes   from "./routes/supplier.routes.js";
 
 dotenv.config();
 const app = express();
@@ -52,6 +55,9 @@ app.use("/api/customers",   customerRoutes);
 app.use("/api/stock",       stockRoutes);
 app.use("/api/audit",       auditRoutes);
 app.use("/api/shifts",      shiftRoutes);
+app.use("/api/expenses",    expenseRoutes);
+app.use("/api/discounts",   discountRoutes);
+app.use("/api/suppliers",   supplierRoutes);
 
 app.get("/", (req, res) => res.send("Market POS API running ✅"));
 app.use(errorHandler);

@@ -3,48 +3,60 @@ import { useLang } from "../context/LanguageContext";
 import {
   LayoutDashboard, ShoppingCart, Package, Tags, Users, BarChart3,
   Clock, Sun, Moon, LogOut, Pencil, Check, X, Shield, Store,
-  UserCircle2, ClipboardList,
+  UserCircle2, ClipboardList, TrendingDown, Tag, Truck, Globe,
 } from "lucide-react";
 import { useTheme }  from "../context/ThemeContext";
 import { useAuth }   from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
+import NotificationsBell from "../components/NotificationsBell";
 import toast from "react-hot-toast";
 
 const NAV_LABELS = {
-  dashboard:     "Dashboard",
-  pos:           "POS",
-  products:      "Products",
-  categories:    "Categories",
-  users:         "Users",
-  reports:       "Reports",
-  paylater:      "Pay Later",
-  customers:     "Customers",
-  shift:         "Shift / Z-Report",
-  adminpanel:    "Admin Panel",
-  storesettings: "Store Settings",
+  dashboard:       "Dashboard",
+  pos:             "POS",
+  products:        "Products",
+  categories:      "Categories",
+  users:           "Users",
+  reports:         "Reports",
+  paylater:        "Pay Later",
+  customers:       "Customers",
+  shift:           "Shift / Z-Report",
+  adminpanel:      "Admin Panel",
+  storesettings:   "Store Settings",
+  stock:           "Stock",
+  expenses:        "Expenses",
+  discounts:       "Discounts",
+  suppliers:       "Suppliers",
+  superadminpanel: "Super Admin",
 };
 
 const NAV_COLORS = {
-  dashboard:     { bg: "#6366f1", glow: "rgba(99,102,241,0.5)"   },
-  pos:           { bg: "#10b981", glow: "rgba(16,185,129,0.5)"   },
-  products:      { bg: "#3b82f6", glow: "rgba(59,130,246,0.5)"   },
-  categories:    { bg: "#f59e0b", glow: "rgba(245,158,11,0.5)"   },
-  users:         { bg: "#ec4899", glow: "rgba(236,72,153,0.5)"   },
-  reports:       { bg: "#8b5cf6", glow: "rgba(139,92,246,0.5)"   },
-  paylater:      { bg: "#ef4444", glow: "rgba(239,68,68,0.5)"    },
-  customers:     { bg: "#0ea5e9", glow: "rgba(14,165,233,0.5)"   },
-  shift:         { bg: "#4f46e5", glow: "rgba(79,70,229,0.5)"    },
-  adminpanel:    { bg: "#0f172a", glow: "rgba(15,23,42,0.6)"     },
-  storesettings: { bg: "#6366f1", glow: "rgba(99,102,241,0.5)"   },
+  dashboard:       { bg: "#6366f1", glow: "rgba(99,102,241,0.5)"   },
+  pos:             { bg: "#10b981", glow: "rgba(16,185,129,0.5)"   },
+  products:        { bg: "#3b82f6", glow: "rgba(59,130,246,0.5)"   },
+  categories:      { bg: "#f59e0b", glow: "rgba(245,158,11,0.5)"   },
+  users:           { bg: "#ec4899", glow: "rgba(236,72,153,0.5)"   },
+  reports:         { bg: "#8b5cf6", glow: "rgba(139,92,246,0.5)"   },
+  paylater:        { bg: "#ef4444", glow: "rgba(239,68,68,0.5)"    },
+  customers:       { bg: "#0ea5e9", glow: "rgba(14,165,233,0.5)"   },
+  shift:           { bg: "#4f46e5", glow: "rgba(79,70,229,0.5)"    },
+  adminpanel:      { bg: "#0f172a", glow: "rgba(15,23,42,0.6)"     },
+  storesettings:   { bg: "#6366f1", glow: "rgba(99,102,241,0.5)"   },
+  stock:           { bg: "#0891b2", glow: "rgba(8,145,178,0.5)"    },
+  expenses:        { bg: "#dc2626", glow: "rgba(220,38,38,0.5)"    },
+  discounts:       { bg: "#16a34a", glow: "rgba(22,163,74,0.5)"    },
+  suppliers:       { bg: "#7c3aed", glow: "rgba(124,58,237,0.5)"   },
+  superadminpanel: { bg: "#7c3aed", glow: "rgba(124,58,237,0.5)"   },
 };
 
 export default function DashboardLayout({ children, page, setPage, user }) {
   const { theme, toggleTheme } = useTheme();
   const { lang, toggleLang }   = useLang();
-  const { logout, storeName, updateStore } = useAuth();
+  const { logout, storeName, updateStore, store } = useAuth();
 
-  const isAdmin = user?.role === "admin";
-  const isPOS   = page === "pos";
+  const isAdmin      = user?.role === "admin";
+  const isSuperAdmin = user?.role === "superadmin";
+  const isPOS        = page === "pos";
 
   const [open,    setOpen]    = useState(false);
   const [hovered, setHovered] = useState(null);
@@ -56,9 +68,9 @@ export default function DashboardLayout({ children, page, setPage, user }) {
   const [savingName,  setSavingName]  = useState(false);
   const nameInputRef = useRef(null);
 
-  const startEditName = (e) => { e.stopPropagation(); setNameInput(storeName); setEditingName(true); setTimeout(() => nameInputRef.current?.focus(), 50); };
+  const startEditName  = (e) => { e.stopPropagation(); setNameInput(storeName); setEditingName(true); setTimeout(() => nameInputRef.current?.focus(), 50); };
   const cancelEditName = (e) => { e?.stopPropagation(); setEditingName(false); };
-  const saveEditName = async (e) => {
+  const saveEditName   = async (e) => {
     e?.stopPropagation();
     if (!nameInput.trim()) return;
     setSavingName(true);
@@ -67,20 +79,25 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     finally { setSavingName(false); }
   };
 
-  /* ── build menu based on role ── */
-  const menu = [
-    { key: "dashboard",     icon: LayoutDashboard, adminOnly: true  },
-    { key: "pos",           icon: ShoppingCart,    adminOnly: false },
-    { key: "products",      icon: Package,         adminOnly: false },
-    { key: "categories",    icon: Tags,            adminOnly: false },
-    { key: "customers",     icon: UserCircle2,     adminOnly: false },
-    { key: "users",         icon: Users,           adminOnly: true  },
-    { key: "reports",       icon: BarChart3,       adminOnly: false },
-    { key: "paylater",      icon: Clock,           adminOnly: false },
-    { key: "shift",         icon: ClipboardList,   adminOnly: false },
-    { key: "adminpanel",    icon: Shield,          adminOnly: true  },
-    { key: "storesettings", icon: Store,           adminOnly: true  },
-  ].filter(item => !item.adminOnly || isAdmin);
+  const menu = isSuperAdmin
+    ? [{ key: "superadminpanel", icon: Globe }]
+    : [
+        { key: "dashboard",     icon: LayoutDashboard, adminOnly: true  },
+        { key: "pos",           icon: ShoppingCart,    adminOnly: false },
+        { key: "products",      icon: Package,         adminOnly: false },
+        { key: "categories",    icon: Tags,            adminOnly: false },
+        { key: "customers",     icon: UserCircle2,     adminOnly: false },
+        { key: "users",         icon: Users,           adminOnly: true  },
+        { key: "reports",       icon: BarChart3,       adminOnly: false },
+        { key: "paylater",      icon: Clock,           adminOnly: false },
+        { key: "shift",         icon: ClipboardList,   adminOnly: false },
+        { key: "stock",         icon: Package,         adminOnly: true  },
+        { key: "expenses",      icon: TrendingDown,    adminOnly: true  },
+        { key: "discounts",     icon: Tag,             adminOnly: true  },
+        { key: "suppliers",     icon: Truck,           adminOnly: true  },
+        { key: "adminpanel",    icon: Shield,          adminOnly: true  },
+        { key: "storesettings", icon: Store,           adminOnly: true  },
+      ].filter(item => !item.adminOnly || isAdmin);
 
   const toggle  = useCallback(() => setOpen(v => !v), []);
   const close   = useCallback(() => { setOpen(false); setEditingName(false); }, []);
@@ -107,8 +124,18 @@ export default function DashboardLayout({ children, page, setPage, user }) {
 
   const activeColor = NAV_COLORS[page] || NAV_COLORS.pos;
 
+  // Welcome message display
+  const welcomeMsg = store?.welcomeMessage;
+
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-neutral-950 text-gray-900 dark:text-white overflow-hidden">
+
+      {/* Welcome message banner */}
+      {welcomeMsg && (
+        <div className="fixed top-0 left-0 right-0 z-[200] bg-blue-600 text-white text-center text-xs py-1.5 px-4">
+          💬 {welcomeMsg}
+        </div>
+      )}
 
       {/* FLOATING NAV */}
       <div ref={navRef} className="fixed bottom-5 left-5 z-50">
@@ -196,6 +223,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
                   className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-neutral-700 shadow text-[10px] font-bold text-gray-700 dark:text-gray-300" title="Switch language">
                   {lang === "en" ? "AR" : "EN"}
                 </motion.button>
+                {!isSuperAdmin && <NotificationsBell />}
                 <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }} onClick={() => logout()}
                   className="w-8 h-8 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/40 shadow" title="Logout">
                   <LogOut size={13} className="text-red-500"/>
@@ -252,31 +280,38 @@ export default function DashboardLayout({ children, page, setPage, user }) {
                 <span className="font-bold text-gray-800 dark:text-white">{user?.username}</span>
                 <span className="ml-1.5 capitalize text-blue-500">({user?.role})</span>
               </div>
-              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 shadow border border-gray-100 dark:border-neutral-700 min-w-[140px]">
-                {editingName ? (
-                  <div className="flex items-center gap-1">
-                    <input ref={nameInputRef} value={nameInput} onChange={e => setNameInput(e.target.value)}
-                      onKeyDown={e => { e.stopPropagation(); if (e.key === "Enter") saveEditName(); if (e.key === "Escape") cancelEditName(); }}
-                      className="flex-1 min-w-0 text-[11px] font-semibold bg-transparent border-b border-blue-500 outline-none text-gray-800 dark:text-white w-28"
-                      placeholder="Store name…"
-                    />
-                    <button onClick={saveEditName} disabled={savingName} className="p-0.5 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition"><Check size={12}/></button>
-                    <button onClick={cancelEditName} className="p-0.5 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"><X size={12}/></button>
-                  </div>
-                ) : (
-                  <button onClick={startEditName} title="Click to rename your store" className="group flex items-center gap-1.5 w-full text-left">
-                    <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[120px]">🧾 {storeName}</span>
-                    <Pencil size={10} className="shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 transition"/>
-                  </button>
-                )}
-              </div>
+
+              {isSuperAdmin ? (
+                <div className="px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-900/20 shadow border border-purple-100 dark:border-purple-800">
+                  <span className="text-[11px] font-semibold text-purple-700 dark:text-purple-300">🌐 Market POS Platform</span>
+                </div>
+              ) : (
+                <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 shadow border border-gray-100 dark:border-neutral-700 min-w-[140px]">
+                  {editingName ? (
+                    <div className="flex items-center gap-1">
+                      <input ref={nameInputRef} value={nameInput} onChange={e => setNameInput(e.target.value)}
+                        onKeyDown={e => { e.stopPropagation(); if (e.key === "Enter") saveEditName(); if (e.key === "Escape") cancelEditName(); }}
+                        className="flex-1 min-w-0 text-[11px] font-semibold bg-transparent border-b border-blue-500 outline-none text-gray-800 dark:text-white w-28"
+                        placeholder="Store name…"
+                      />
+                      <button onClick={saveEditName} disabled={savingName} className="p-0.5 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition"><Check size={12}/></button>
+                      <button onClick={cancelEditName} className="p-0.5 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"><X size={12}/></button>
+                    </div>
+                  ) : (
+                    <button onClick={startEditName} title="Click to rename your store" className="group flex items-center gap-1.5 w-full text-left">
+                      <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[120px]">🧾 {storeName}</span>
+                      <Pencil size={10} className="shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 transition"/>
+                    </button>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
       {/* MAIN CONTENT */}
-      <main className={`flex-1 overflow-hidden ${!isPOS ? "overflow-y-auto p-6 pb-10" : ""}`}>
+      <main className={`flex-1 overflow-hidden ${!isPOS ? "overflow-y-auto p-6 pb-10" : ""} ${welcomeMsg ? "pt-8" : ""}`}>
         {children}
       </main>
     </div>

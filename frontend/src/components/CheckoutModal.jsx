@@ -59,25 +59,27 @@ function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change,
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Receipt</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Courier New',monospace;font-size:13px;color:#111;width:80mm;padding:6mm 3mm}
+  body{font-family:'Courier New',monospace;font-size:14px;font-weight:700;color:#000;width:80mm;padding:6mm 3mm}
   .store{text-align:center;margin-bottom:8px}
-  .store h1{font-size:20px;font-weight:900;letter-spacing:2px}
-  .store p{font-size:10px;color:#666;margin-top:2px}
-  hr{border:none;border-top:1px dashed #aaa;margin:8px 0}
+  .store h1{font-size:22px;font-weight:900;letter-spacing:3px}
+  .store p{font-size:11px;font-weight:700;color:#333;margin-top:3px}
+  hr{border:none;border-top:2px solid #000;margin:8px 0}
+  hr.thin{border-top:1px dashed #555;margin:6px 0}
   table{width:100%;border-collapse:collapse}
-  thead th{font-size:10px;text-transform:uppercase;color:#999;padding-bottom:5px;font-weight:600}
+  thead th{font-size:11px;text-transform:uppercase;color:#000;padding-bottom:6px;font-weight:900;border-bottom:1px solid #000}
   thead th:nth-child(2){text-align:center}
   thead th:last-child{text-align:right}
-  td{padding:3px 0;vertical-align:top}
-  .sub-row td{font-size:10px;color:#999;padding-bottom:5px}
-  .disc-row td{color:#b45309;font-size:12px;padding-top:3px}
-  .total-row td{font-weight:800;font-size:15px;padding-top:6px}
-  .lbp-row td{font-size:10px;color:#b45309;padding-bottom:6px}
-  .change-row td{color:#15803d;font-weight:700;padding-top:4px}
-  .method{margin-top:8px;font-size:11px}
-  .badge{background:#f0fdf4;border:1px solid #86efac;color:#166534;border-radius:4px;padding:2px 6px;font-weight:700;font-size:10px}
-  .footer{text-align:center;font-size:10px;color:#999;margin-top:10px}
-  .id{text-align:center;font-size:9px;color:#ccc;margin-top:4px}
+  td{padding:4px 0;vertical-align:top;font-weight:700}
+  .item-name{font-size:13px;font-weight:900}
+  .sub-row td{font-size:11px;color:#444;font-weight:700;padding-bottom:5px}
+  .disc-row td{color:#7c2d12;font-size:13px;font-weight:900;padding-top:3px}
+  .total-row td{font-weight:900;font-size:17px;padding-top:8px;border-top:2px solid #000}
+  .lbp-row td{font-size:11px;font-weight:700;color:#7c2d12;padding-bottom:6px}
+  .change-row td{color:#14532d;font-weight:900;font-size:14px;padding-top:4px}
+  .method{margin-top:8px;font-size:12px;font-weight:700}
+  .badge{background:#000;color:#fff;border-radius:4px;padding:3px 8px;font-weight:900;font-size:11px;letter-spacing:1px}
+  .footer{text-align:center;font-size:12px;font-weight:900;color:#000;margin-top:10px;letter-spacing:1px}
+  .id{text-align:center;font-size:10px;font-weight:700;color:#555;margin-top:4px}
   @media print{@page{size:80mm auto;margin:0}body{padding:4mm 2mm}}
 </style></head><body>
   <div class="store">
