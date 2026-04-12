@@ -1,11 +1,16 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Minus, Printer, Tag, Package, TrendingUp, Save, RefreshCw, DollarSign, ShoppingCart, Calendar } from "lucide-react";
+import { X, Plus, Minus, Printer, Tag, Package, TrendingUp, Save, RefreshCw, DollarSign, ShoppingCart, Calendar, Layers, Trash2, Loader2 } from "lucide-react";
 import VoiceButton from "../common/VoiceButton";
 import { toast } from "sonner";
 import JsBarcode from "jsbarcode";
-import { useEffect, useRef, useState } from "react";
+import imageCompression from "browser-image-compression";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 import { getProductStats } from "../../api/product.api";
+import ImageCropModal from "./ImageCropModal";
+
+const BARCODE_FORMATS = ["CODE128", "CODE39", "EAN13", "UPCA"];
+const COMPRESSION_OPTIONS = { maxSizeMB: 0.5, maxWidthOrHeight: 800, useWebWorker: true };
 
 export default function ProductEditPanel({
   editingProduct,
@@ -19,10 +24,15 @@ export default function ProductEditPanel({
 }) {
   const t          = useProductsTranslation();
   const barcodeRef = useRef(null);
-  const [saving, setSaving]           = useState(false);
-  const [stats, setStats]             = useState(null);
-  const [loadingStats, setLoadingStats] = useState(false);
 
+  const [saving,        setSaving]        = useState(false);
+  const [stats,         setStats]         = useState(null);
+  const [loadingStats,  setLoadingStats]  = useState(false);
+  const [barcodeFormat, setBarcodeFormat] = useState("CODE128");
+  const [cropSrc,       setCropSrc]       = useState(null);
+  const [compressing,   setCompressing]   = useState(false);
+
+  /* Load stats when product changes */
   useEffect(() => {
     if (!editingProduct?._id) return;
     setStats(null);
@@ -33,26 +43,34 @@ export default function ProductEditPanel({
       .finally(() => setLoadingStats(false));
   }, [editingProduct?._id]);
 
+  /* Render barcode SVG */
   useEffect(() => {
     if (!editingProduct?.barcode || !barcodeRef.current) return;
     try {
       JsBarcode(barcodeRef.current, String(editingProduct.barcode), {
-        format: "CODE128", width: 2, height: 50,
+        format: barcodeFormat, width: 2, height: 50,
         displayValue: true, fontSize: 12, margin: 6,
         background: "transparent", lineColor: "#111111",
       });
     } catch {}
-  }, [editingProduct?.barcode]);
+  }, [editingProduct?.barcode, barcodeFormat]);
 
+  /* Print label */
   const printLabel = () => {
     if (!editingProduct?.barcode) return;
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     document.body.appendChild(svg);
-    JsBarcode(svg, String(editingProduct.barcode), {
-      format: "CODE128", width: 3, height: 80,
-      displayValue: true, fontSize: 14, margin: 10,
-      background: "#ffffff", lineColor: "#000000",
-    });
+    try {
+      JsBarcode(svg, String(editingProduct.barcode), {
+        format: barcodeFormat, width: 3, height: 80,
+        displayValue: true, fontSize: 14, margin: 10,
+        background: "#ffffff", lineColor: "#000000",
+      });
+    } catch {
+      document.body.removeChild(svg);
+      toast.error(`Cannot print: barcode incompatible with ${barcodeFormat}`);
+      return;
+    }
     const svgData = new XMLSerializer().serializeToString(svg);
     document.body.removeChild(svg);
     const svgUrl = URL.createObjectURL(new Blob([svgData], { type: "image/svg+xml;charset=utf-8" }));
@@ -78,6 +96,55 @@ export default function ProductEditPanel({
     img.src = svgUrl;
   };
 
+  /* Image crop + compress */
+  const handleImageFile = useCallback((file) => {
+    setCropSrc(URL.createObjectURL(file));
+  }, []);
+
+  const handleCropDone = async (blob, croppedUrl) => {
+    setCropSrc(null);
+    setCompressing(true);
+    try {
+      const file       = new File([blob], "product.jpg", { type: "image/jpeg" });
+      const compressed = await imageCompression(file, COMPRESSION_OPTIONS);
+      setEditImage(compressed);
+      setEditPreview(URL.createObjectURL(compressed));
+    } catch {
+      setEditImage(blob);
+      setEditPreview(croppedUrl);
+    } finally {
+      setCompressing(false);
+    }
+  };
+
+  /* Variant helpers */
+  const addVariant = () => {
+    setEditingProduct(prev => ({
+      ...prev,
+      hasVariants: true,
+      variants: [...(prev.variants || []), { name: "", price: null, stock: 0, barcode: "" }],
+    }));
+  };
+
+  const removeVariant = (idx) => {
+    const variants = (editingProduct.variants || []).filter((_, i) => i !== idx);
+    setEditingProduct({ ...editingProduct, variants, hasVariants: variants.length > 0 });
+  };
+
+  const updateVariant = (idx, field, raw) => {
+    const variants = (editingProduct.variants || []).map((v, i) => {
+      if (i !== idx) return v;
+      const value = (field === "price")
+        ? (raw === "" ? null : Number(raw))
+        : (field === "stock")
+          ? (Number(raw) || 0)
+          : raw;
+      return { ...v, [field]: value };
+    });
+    setEditingProduct({ ...editingProduct, variants });
+  };
+
+  /* Save */
   const handleSave = async () => {
     if (!editingProduct.name) { toast.error("Product name is required"); return; }
     setSaving(true);
@@ -88,8 +155,21 @@ export default function ProductEditPanel({
       data.append("cost",    String(editingProduct.cost || 0));
       data.append("stock",   String(editingProduct.stock));
       data.append("barcode", editingProduct.barcode);
+      data.append("hasVariants", String(!!editingProduct.hasVariants));
+      if (editingProduct.variants?.length) {
+        data.append("variants", JSON.stringify(
+          editingProduct.variants.map(v => ({
+            ...(v._id ? { _id: v._id } : {}),
+            name:    v.name,
+            price:   v.price !== "" ? v.price : null,
+            stock:   Number(v.stock) || 0,
+            barcode: v.barcode || "",
+          }))
+        ));
+      }
       if (editingProduct.expiryDate) data.append("expiryDate", editingProduct.expiryDate);
       if (editImage) data.append("image", editImage);
+
       const updated = await updateProduct(editingProduct._id, data);
       setProducts(prev => prev.map(p => p._id === updated._id ? updated : p));
       setEditingProduct(null);
@@ -120,7 +200,7 @@ export default function ProductEditPanel({
     <AnimatePresence>
       {editingProduct && (
         <>
-          {/* Backdrop — click to close */}
+          {/* Backdrop */}
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }}
@@ -130,14 +210,14 @@ export default function ProductEditPanel({
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
           />
 
-          {/* Right-side drawer */}
+          {/* Drawer */}
           <motion.div
             key="drawer"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 320, damping: 32 }}
-            className="fixed top-0 right-0 bottom-0 z-50 w-[400px] max-w-full
+            className="fixed top-0 right-0 bottom-0 z-50 w-[420px] max-w-full
               bg-white dark:bg-[#161616]
               border-l border-gray-200 dark:border-white/10
               shadow-[-20px_0_60px_rgba(0,0,0,0.15)]
@@ -170,10 +250,10 @@ export default function ProductEditPanel({
               </button>
             </div>
 
-            {/* Scrollable body */}
+            {/* Body */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
-              {/* Image dropzone */}
+              {/* ── Image dropzone with crop+compress ── */}
               <div
                 className="relative rounded-xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-white/10 cursor-pointer group"
                 style={{ height: 120 }}
@@ -181,36 +261,43 @@ export default function ProductEditPanel({
                 onDrop={e => {
                   e.preventDefault();
                   const file = e.dataTransfer.files[0];
-                  if (!file) return;
-                  setEditImage(file);
-                  setEditPreview(URL.createObjectURL(file));
+                  if (file) handleImageFile(file);
                 }}
                 onClick={() => {
                   const input = document.createElement("input");
                   input.type = "file"; input.accept = "image/*";
                   input.onchange = e => {
                     const file = e.target.files[0];
-                    if (!file) return;
-                    setEditImage(file);
-                    setEditPreview(URL.createObjectURL(file));
+                    if (file) handleImageFile(file);
                   };
                   input.click();
                 }}
               >
-                {(editPreview || editingProduct.image) ? (
-                  <img src={editPreview || editingProduct.image} className="w-full h-full object-cover" onError={e => e.target.src = "/placeholder.png"}/>
+                {compressing ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-blue-500">
+                    <Loader2 size={24} className="animate-spin"/>
+                    <p className="text-xs">Compressing…</p>
+                  </div>
+                ) : (editPreview || editingProduct.image) ? (
+                  <img
+                    src={editPreview || editingProduct.image}
+                    className="w-full h-full object-cover"
+                    onError={e => e.target.src = "/placeholder.png"}
+                  />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-600 gap-1.5">
                     <Package size={24}/>
                     <p className="text-xs">Click or drag image</p>
                   </div>
                 )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                  <p className="text-white text-xs font-medium">{t.dragImageReplace}</p>
-                </div>
+                {!compressing && (
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                    <p className="text-white text-xs font-medium">Crop &amp; replace image</p>
+                  </div>
+                )}
               </div>
 
-              {/* Name */}
+              {/* ── Name ── */}
               <div>
                 <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.productName}</label>
                 <div className="flex items-center gap-2 mt-1">
@@ -223,7 +310,7 @@ export default function ProductEditPanel({
                 </div>
               </div>
 
-              {/* Price + Cost */}
+              {/* ── Price + Cost ── */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.price} ($)</label>
@@ -245,7 +332,7 @@ export default function ProductEditPanel({
                 </div>
               </div>
 
-              {/* Margin pill */}
+              {/* ── Margin pill ── */}
               {editingProduct.price > 0 && editingProduct.cost > 0 && (() => {
                 const margin = ((editingProduct.price - editingProduct.cost) / editingProduct.price * 100);
                 const profit = editingProduct.price - editingProduct.cost;
@@ -258,7 +345,7 @@ export default function ProductEditPanel({
                 );
               })()}
 
-              {/* Stock */}
+              {/* ── Stock ── */}
               <div>
                 <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.stock}</label>
                 <div className="flex items-center gap-2 mt-1">
@@ -277,7 +364,7 @@ export default function ProductEditPanel({
                 </div>
               </div>
 
-              {/* Expiry date */}
+              {/* ── Expiry date ── */}
               <div>
                 <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                   <Calendar size={11}/> {t.expiryDate || "Expiry Date"} <span className="normal-case text-gray-300 dark:text-gray-600 font-normal">(optional)</span>
@@ -295,21 +382,38 @@ export default function ProductEditPanel({
                 })()}
               </div>
 
-              {/* Barcode */}
+              {/* ── Barcode ── */}
               <div>
-                <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.barcode}</label>
-                <div className="flex gap-2 mt-1">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.barcode}</label>
+                  <select
+                    value={barcodeFormat}
+                    onChange={e => setBarcodeFormat(e.target.value)}
+                    className="text-[11px] px-2 py-0.5 rounded-lg
+                      bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10
+                      text-gray-600 dark:text-gray-400 outline-none"
+                  >
+                    {BARCODE_FORMATS.map(f => <option key={f}>{f}</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-2">
                   <input value={editingProduct.barcode}
                     onChange={e => setEditingProduct({ ...editingProduct, barcode: e.target.value })}
                     className={inp + " flex-1"}/>
-                  <button onClick={() => setEditingProduct({ ...editingProduct, barcode: Date.now().toString() })}
+                  <button
+                    onClick={() => {
+                      const ts = Date.now().toString();
+                      const code = barcodeFormat === "EAN13" ? ts.slice(-12).padStart(12, "0")
+                        : barcodeFormat === "UPCA" ? ts.slice(-11).padStart(11, "0") : ts;
+                      setEditingProduct({ ...editingProduct, barcode: code });
+                    }}
                     className="px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-1 text-xs font-medium shrink-0">
                     <RefreshCw size={11}/> {t.generate}
                   </button>
                 </div>
               </div>
 
-              {/* Barcode preview */}
+              {/* ── Barcode preview ── */}
               <div className="rounded-xl bg-gray-50 dark:bg-[#1c1c1c] border border-gray-100 dark:border-white/8 p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
@@ -324,7 +428,82 @@ export default function ProductEditPanel({
                 <svg ref={barcodeRef} className="w-full"/>
               </div>
 
-              {/* Sales stats */}
+              {/* ── Variants ── */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Layers size={12} className="text-gray-400"/>
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Variants</span>
+                  </div>
+                  <button
+                    onClick={addVariant}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg
+                      bg-blue-600 hover:bg-blue-700 text-white transition font-medium"
+                  >
+                    <Plus size={11}/> Add Variant
+                  </button>
+                </div>
+
+                {(!editingProduct.variants || editingProduct.variants.length === 0) ? (
+                  <p className="text-xs text-gray-400 italic text-center py-2">
+                    No variants — click "Add Variant" to add sizes, colors, etc.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {editingProduct.variants.map((v, i) => (
+                      <div key={i} className="rounded-xl bg-gray-50 dark:bg-[#1c1c1c] border border-gray-100 dark:border-white/8 p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            placeholder="Name (e.g. Red / Large)"
+                            value={v.name}
+                            onChange={e => updateVariant(i, "name", e.target.value)}
+                            className={inp + " flex-1 text-xs"}
+                          />
+                          <button
+                            onClick={() => removeVariant(i)}
+                            className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg
+                              bg-red-100 dark:bg-red-900/30 text-red-500 hover:bg-red-200 dark:hover:bg-red-900/50 transition"
+                          >
+                            <Trash2 size={12}/>
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <p className="text-[10px] text-gray-400 mb-1">Price ($) <span className="text-gray-300">(optional)</span></p>
+                            <input
+                              type="number" min="0" step="0.01"
+                              placeholder="Parent"
+                              value={v.price ?? ""}
+                              onChange={e => updateVariant(i, "price", e.target.value)}
+                              className={inp + " text-xs"}
+                            />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400 mb-1">Stock</p>
+                            <input
+                              type="number" min="0"
+                              value={v.stock}
+                              onChange={e => updateVariant(i, "stock", e.target.value)}
+                              className={inp + " text-xs"}
+                            />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400 mb-1">Barcode</p>
+                            <input
+                              placeholder="Optional"
+                              value={v.barcode || ""}
+                              onChange={e => updateVariant(i, "barcode", e.target.value)}
+                              className={inp + " text-xs"}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Sales stats ── */}
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
                   <TrendingUp size={12} className="text-gray-400"/>
@@ -374,6 +553,15 @@ export default function ProductEditPanel({
             </div>
 
           </motion.div>
+
+          {/* Crop modal (above the drawer) */}
+          {cropSrc && (
+            <ImageCropModal
+              src={cropSrc}
+              onDone={handleCropDone}
+              onCancel={() => setCropSrc(null)}
+            />
+          )}
         </>
       )}
     </AnimatePresence>

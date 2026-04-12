@@ -1,9 +1,12 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { Check } from "lucide-react";
 
-export default function ProductCard({ product, onDelete, onEdit }) {
+const LOW_STOCK_THRESHOLD = 5;
 
-  const lowStock = product.stock <= 3;
+export default function ProductCard({ product, onDelete, onEdit, selected, onToggleSelect }) {
+
+  const lowStock = product.stock <= LOW_STOCK_THRESHOLD;
 
   return (
 
@@ -13,8 +16,8 @@ export default function ProductCard({ product, onDelete, onEdit }) {
       whileTap={{ scale: 0.98 }}
       onClick={() => onEdit(product)}
       className="
-      p-4 space-y-3 cursor-pointer
-      
+      relative p-4 space-y-3 cursor-pointer
+
       rounded-3xl
       bg-gray-100 dark:bg-[#141414]
 
@@ -22,6 +25,19 @@ export default function ProductCard({ product, onDelete, onEdit }) {
       dark:shadow-[10px_10px_25px_#050505,-10px_-10px_25px_#1f1f1f]
       "
     >
+      {/* Bulk-select checkbox */}
+      <div
+        className="absolute top-2 left-2 z-10"
+        onClick={e => { e.stopPropagation(); onToggleSelect?.(product._id); }}
+      >
+        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all
+          ${selected
+            ? "bg-blue-600 border-blue-600 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+            : "bg-white/80 dark:bg-black/60 border-gray-300 dark:border-white/30 hover:border-blue-400"
+          }`}>
+          {selected && <Check size={11} className="text-white" strokeWidth={3}/>}
+        </div>
+      </div>
 
       {/* IMAGE AREA */}
 

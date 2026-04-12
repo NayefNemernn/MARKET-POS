@@ -36,3 +36,9 @@ export const importProductsExcel = async (file) => {
   const res = await api.post("/products/import", data);
   return res.data;
 };
+
+// AI — parse free-text / voice description into product fields
+export const parseProductPrompt = async (prompt) => {
+  const res = await api.post("/products/parse-prompt", { prompt });
+  return res.data;
+};

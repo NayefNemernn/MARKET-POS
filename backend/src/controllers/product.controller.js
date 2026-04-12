@@ -166,6 +166,14 @@ export const updateProduct = async (req, res) => {
   try {
     const updateData = { ...req.body };
 
+    // Parse fields that arrive as strings via FormData
+    if (typeof updateData.hasVariants === "string") {
+      updateData.hasVariants = updateData.hasVariants === "true";
+    }
+    if (typeof updateData.variants === "string") {
+      try { updateData.variants = JSON.parse(updateData.variants); } catch {}
+    }
+
     if (req.file) {
       const fileName = `products/${uuid()}`;
       const { error } = await supabase.storage

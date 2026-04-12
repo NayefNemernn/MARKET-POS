@@ -5,8 +5,8 @@ import api from "../api/axios";
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser]   = useState(() => JSON.parse(localStorage.getItem("user")));
-  const [store, setStore] = useState(() => JSON.parse(localStorage.getItem("store")));
+  const [user, setUser]   = useState(() => { try { return JSON.parse(localStorage.getItem("user"));  } catch { localStorage.removeItem("user");  return null; } });
+  const [store, setStore] = useState(() => { try { return JSON.parse(localStorage.getItem("store")); } catch { localStorage.removeItem("store"); return null; } });
 
   /* ── Login: save user + store from API response ── */
   const login = (data) => {

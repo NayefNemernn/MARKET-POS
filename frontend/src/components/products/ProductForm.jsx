@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 import { useCurrency } from "../../context/CurrencyContext";
 import VoiceButton from "../common/VoiceButton";
@@ -23,6 +23,20 @@ export default function ProductForm({
 
   // The raw value typed into the price field
   const [priceInput, setPriceInput] = useState(form.price || "");
+
+  // Sync price display when form.price is set externally (e.g. AI fill)
+  const prevFormPrice = useRef(form.price);
+  useEffect(() => {
+    if (form.price !== prevFormPrice.current && form.price !== "") {
+      setPriceInput(String(form.price));
+      setPriceCurrency("usd");
+      prevFormPrice.current = form.price;
+    }
+    if (form.price === "" && prevFormPrice.current !== "") {
+      setPriceInput("");
+      prevFormPrice.current = "";
+    }
+  }, [form.price]);
 
   // When price input changes, convert and store USD in form (backend always gets USD)
   const handlePriceChange = (raw) => {
