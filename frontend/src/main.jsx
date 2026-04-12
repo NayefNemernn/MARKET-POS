@@ -11,8 +11,15 @@ import { saveToken } from "./lib/offlineDB";
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
-      /* Unregister any stale SWs from vite-plugin-pwa dev builds */
       const registrations = await navigator.serviceWorker.getRegistrations();
+
+      if (import.meta.env.DEV) {
+        /* In dev mode: unregister all SWs so Vite HMR and Ctrl+R work normally */
+        for (const reg of registrations) await reg.unregister();
+        return;
+      }
+
+      /* Unregister any stale SWs from vite-plugin-pwa dev builds */
       for (const reg of registrations) {
         const swUrl = reg.active?.scriptURL || reg.installing?.scriptURL || "";
         if (!swUrl.endsWith("/sw.js")) await reg.unregister();

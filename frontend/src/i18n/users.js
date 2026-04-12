@@ -29,6 +29,7 @@ export const usersTranslations = {
     failDelete:       "Failed to delete user",
     failPin:          "Failed to change PIN",
     pinMinLength:     "PIN must be at least 4 digits",
+    notLoggedIn:      "Not logged in",
   },
   ar: {
     title:            "إدارة الموظفين",
@@ -60,5 +61,6 @@ export const usersTranslations = {
     failDelete:       "فشل حذف المستخدم",
     failPin:          "فشل تغيير الرمز",
     pinMinLength:     "يجب أن يكون الرمز 4 أرقام على الأقل",
+    notLoggedIn:      "غير مسجّل الدخول",
   }
 };

@@ -4,9 +4,11 @@ import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaUserShield, FaUser, FaCashRegister } from "react-icons/fa";
 import ThemeToggle from "../components/ThemeToggle";
+import { useAuthTranslation } from "../hooks/useAuthTranslation";
 
 export default function Login({ onShowRegister }) {
   const { login } = useAuth();
+  const t = useAuthTranslation();
 
   const [username, setUsername] = useState("");
   const [pin,      setPin]      = useState("");
@@ -41,7 +43,7 @@ export default function Login({ onShowRegister }) {
   }, [pin]);
 
   const goToPin = () => {
-    if (!username.trim()) { setError("Please enter your username"); return; }
+    if (!username.trim()) { setError(t.enterUsername); return; }
     setError("");
     setPin("");
     setStep("pin");
@@ -55,7 +57,7 @@ export default function Login({ onShowRegister }) {
       const data = await loginApi({ username: username.trim(), password: currentPin });
       login(data);
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid credentials");
+      setError(err.response?.data?.message || t.invalidCredentials);
       setPin("");
     } finally {
       setLoading(false);
@@ -89,7 +91,7 @@ export default function Login({ onShowRegister }) {
           </div>
           <h1 className="text-2xl text-white font-bold">Market POS</h1>
           <p className="text-gray-500 text-sm mt-1">
-            {step === "pin" ? `Enter PIN for ${username}` : "Type your username to continue"}
+            {step === "pin" ? `${t.enterPinFor} ${username}` : t.typeUsernameHint}
           </p>
         </div>
 
@@ -104,7 +106,7 @@ export default function Login({ onShowRegister }) {
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Enter your username..."
+                  placeholder={t.usernamePlaceholder}
                   value={username}
                   onChange={e => { setUsername(e.target.value); setError(""); }}
                   onKeyDown={e => { if (e.key === "Enter") goToPin(); }}
@@ -128,11 +130,11 @@ export default function Login({ onShowRegister }) {
                 className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition
                   shadow-[0_0_20px_rgba(59,130,246,0.3)]"
               >
-                Continue →
+                {t.continueBtn}
               </motion.button>
 
               <p className="text-center text-gray-700 text-xs mt-4">
-                Start typing to find your account
+                {t.startTypingHint}
               </p>
             </motion.div>
           )}
@@ -150,7 +152,7 @@ export default function Login({ onShowRegister }) {
                 <span className="text-white font-medium text-sm flex-1">{username}</span>
                 <button onClick={clearSelection}
                   className="text-gray-500 hover:text-gray-300 text-xs transition-colors px-2 py-1 rounded-lg hover:bg-white/5">
-                  ← Change
+                  {t.changeUser}
                 </button>
               </div>
 
@@ -170,7 +172,7 @@ export default function Login({ onShowRegister }) {
               </div>
 
               <p className="text-center text-gray-600 text-xs mb-3">
-                Tap or use keyboard numbers · Enter to confirm
+                {t.tapOrKeyboard}
               </p>
 
               {/* Error */}
@@ -231,15 +233,15 @@ export default function Login({ onShowRegister }) {
         {/* Register link */}
         {onShowRegister && (
           <p className="text-center text-xs text-gray-600 mt-5">
-            New store?{" "}
+            {t.newStore}{" "}
             <button onClick={onShowRegister} className="text-blue-500 hover:text-blue-400 transition">
-              Create an account
+              {t.createAccount}
             </button>
           </p>
         )}
 
         <p className="text-center text-xs text-gray-700 mt-3">
-          Done by <span className="text-blue-500">Abbas El Nemer</span>
+          {t.madeBy} <span className="text-blue-500">Abbas El Nemer</span>
         </p>
       </motion.div>
     </div>

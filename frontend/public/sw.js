@@ -7,7 +7,7 @@
    Background Sync → replay queued POST requests when online
 ================================================================ */
 
-const CACHE_VERSION  = "v3";
+const CACHE_VERSION  = "v4";
 const SHELL_CACHE    = `pos-shell-${CACHE_VERSION}`;
 const API_CACHE      = `pos-api-${CACHE_VERSION}`;
 const SYNC_TAG       = "pos-sync-sales";

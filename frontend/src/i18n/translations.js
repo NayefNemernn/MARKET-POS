@@ -46,7 +46,10 @@ amountReceived: "Amount received",
 change: "Change",
 completeSale: "Complete Sale",
 enterCustomerName: "Enter customer name",
-checkoutFailed: "Checkout failed"
+checkoutFailed: "Checkout failed",
+loadingProducts: "Loading products…",
+noProductsFound: "No products found",
+returnBtn: "Return",
 
   },
 
@@ -84,7 +87,10 @@ amountReceived: "المبلغ المستلم",
 change: "الباقي",
 completeSale: "إتمام البيع",
 enterCustomerName: "أدخل اسم الزبون",
-checkoutFailed: "فشل الدفع"
+checkoutFailed: "فشل الدفع",
+loadingProducts: "جارٍ تحميل المنتجات…",
+noProductsFound: "لا توجد منتجات",
+returnBtn: "إرجاع",
 
   }
 

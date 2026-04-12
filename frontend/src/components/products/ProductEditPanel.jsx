@@ -68,7 +68,7 @@ export default function ProductEditPanel({
       });
     } catch {
       document.body.removeChild(svg);
-      toast.error(`Cannot print: barcode incompatible with ${barcodeFormat}`);
+      toast.error(`${t.cannotPrint} ${barcodeFormat}`);
       return;
     }
     const svgData = new XMLSerializer().serializeToString(svg);
@@ -146,7 +146,7 @@ export default function ProductEditPanel({
 
   /* Save */
   const handleSave = async () => {
-    if (!editingProduct.name) { toast.error("Product name is required"); return; }
+    if (!editingProduct.name) { toast.error(t.nameRequired2); return; }
     setSaving(true);
     try {
       const data = new FormData();
@@ -176,7 +176,7 @@ export default function ProductEditPanel({
       setEditImage(null);
       toast.success(t.productUpdated);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update product");
+      toast.error(err.response?.data?.message || t.failedToUpdate);
     } finally {
       setSaving(false);
     }
@@ -276,7 +276,7 @@ export default function ProductEditPanel({
                 {compressing ? (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-blue-500">
                     <Loader2 size={24} className="animate-spin"/>
-                    <p className="text-xs">Compressing…</p>
+                    <p className="text-xs">{t.compressing}</p>
                   </div>
                 ) : (editPreview || editingProduct.image) ? (
                   <img
@@ -287,12 +287,12 @@ export default function ProductEditPanel({
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-600 gap-1.5">
                     <Package size={24}/>
-                    <p className="text-xs">Click or drag image</p>
+                    <p className="text-xs">{t.clickOrDragImage}</p>
                   </div>
                 )}
                 {!compressing && (
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                    <p className="text-white text-xs font-medium">Crop &amp; replace image</p>
+                    <p className="text-white text-xs font-medium">{t.cropReplaceImage}</p>
                   </div>
                 )}
               </div>
@@ -339,8 +339,8 @@ export default function ProductEditPanel({
                 const color  = margin >= 20 ? "text-green-600 dark:text-green-400" : margin >= 5 ? "text-amber-500" : "text-red-500";
                 return (
                   <div className={`text-xs px-3 py-2 rounded-xl bg-gray-50 dark:bg-[#1c1c1c] border border-gray-100 dark:border-white/8 flex justify-between ${color}`}>
-                    <span>Margin <b>{margin.toFixed(1)}%</b></span>
-                    <span>Profit/unit <b>${profit.toFixed(2)}</b></span>
+                    <span>{t.margin} <b>{margin.toFixed(1)}%</b></span>
+                    <span>{t.profitUnit} <b>${profit.toFixed(2)}</b></span>
                   </div>
                 );
               })()}
@@ -367,7 +367,7 @@ export default function ProductEditPanel({
               {/* ── Expiry date ── */}
               <div>
                 <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                  <Calendar size={11}/> {t.expiryDate || "Expiry Date"} <span className="normal-case text-gray-300 dark:text-gray-600 font-normal">(optional)</span>
+                  <Calendar size={11}/> {t.expiryDate} <span className="normal-case text-gray-300 dark:text-gray-600 font-normal">{t.optional}</span>
                 </label>
                 <input type="date"
                   value={editingProduct.expiryDate ? editingProduct.expiryDate.slice(0, 10) : ""}
@@ -377,7 +377,7 @@ export default function ProductEditPanel({
                 {editingProduct.expiryDate && (() => {
                   const days = Math.ceil((new Date(editingProduct.expiryDate) - new Date()) / 86400000);
                   const color = days < 0 ? "text-red-500" : days <= 7 ? "text-red-500" : days <= 30 ? "text-amber-500" : "text-green-500";
-                  const msg   = days < 0 ? "Expired!" : days === 0 ? "Expires today!" : `Expires in ${days} day${days !== 1 ? "s" : ""}`;
+                  const msg   = days < 0 ? t.expired || "Expired!" : days === 0 ? t.expiresToday || "Expires today!" : `${t.expiresIn || "Expires in"} ${days} ${t.days || "days"}`;
                   return <p className={`text-xs mt-1 font-medium ${color}`}>{msg}</p>;
                 })()}
               </div>
@@ -418,7 +418,7 @@ export default function ProductEditPanel({
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
                     <Tag size={12} className="text-gray-400"/>
-                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Preview</span>
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.preview}</span>
                   </div>
                   <button onClick={printLabel}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-[#2a2a2a] border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 text-xs font-medium transition">
@@ -433,20 +433,20 @@ export default function ProductEditPanel({
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
                     <Layers size={12} className="text-gray-400"/>
-                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Variants</span>
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.variants}</span>
                   </div>
                   <button
                     onClick={addVariant}
                     className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg
                       bg-blue-600 hover:bg-blue-700 text-white transition font-medium"
                   >
-                    <Plus size={11}/> Add Variant
+                    <Plus size={11}/> {t.addVariant}
                   </button>
                 </div>
 
                 {(!editingProduct.variants || editingProduct.variants.length === 0) ? (
                   <p className="text-xs text-gray-400 italic text-center py-2">
-                    No variants — click "Add Variant" to add sizes, colors, etc.
+                    {t.noVariants}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -454,7 +454,7 @@ export default function ProductEditPanel({
                       <div key={i} className="rounded-xl bg-gray-50 dark:bg-[#1c1c1c] border border-gray-100 dark:border-white/8 p-3 space-y-2">
                         <div className="flex items-center gap-2">
                           <input
-                            placeholder="Name (e.g. Red / Large)"
+                            placeholder={t.variantName}
                             value={v.name}
                             onChange={e => updateVariant(i, "name", e.target.value)}
                             className={inp + " flex-1 text-xs"}
@@ -469,7 +469,7 @@ export default function ProductEditPanel({
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <p className="text-[10px] text-gray-400 mb-1">Price ($) <span className="text-gray-300">(optional)</span></p>
+                            <p className="text-[10px] text-gray-400 mb-1">{t.priceOptional}</p>
                             <input
                               type="number" min="0" step="0.01"
                               placeholder="Parent"
@@ -479,7 +479,7 @@ export default function ProductEditPanel({
                             />
                           </div>
                           <div>
-                            <p className="text-[10px] text-gray-400 mb-1">Stock</p>
+                            <p className="text-[10px] text-gray-400 mb-1">{t.variantStock}</p>
                             <input
                               type="number" min="0"
                               value={v.stock}
@@ -488,7 +488,7 @@ export default function ProductEditPanel({
                             />
                           </div>
                           <div>
-                            <p className="text-[10px] text-gray-400 mb-1">Barcode</p>
+                            <p className="text-[10px] text-gray-400 mb-1">{t.variantBarcode}</p>
                             <input
                               placeholder="Optional"
                               value={v.barcode || ""}
@@ -515,23 +515,23 @@ export default function ProductEditPanel({
                   </div>
                 ) : stats ? (
                   <div className="space-y-2">
-                    <p className="text-[11px] text-gray-400 font-medium">All time</p>
+                    <p className="text-[11px] text-gray-400 font-medium">{t.allTime}</p>
                     <div className="flex gap-2">
-                      <StatCard icon={ShoppingCart} label="Units sold" value={stats.allTime.sold}
+                      <StatCard icon={ShoppingCart} label={t.unitsSold} value={stats.allTime.sold}
                         color="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"/>
-                      <StatCard icon={DollarSign} label="Revenue" value={`$${stats.allTime.revenue.toFixed(2)}`}
+                      <StatCard icon={DollarSign} label={t.revenue} value={`$${stats.allTime.revenue.toFixed(2)}`}
                         color="bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400"/>
                     </div>
                     <p className="text-[11px] text-gray-400 font-medium mt-1">{t.last30Days}</p>
                     <div className="flex gap-2">
-                      <StatCard icon={ShoppingCart} label="Units sold" value={stats.last30.sold}
+                      <StatCard icon={ShoppingCart} label={t.unitsSold} value={stats.last30.sold}
                         color="bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400"/>
-                      <StatCard icon={DollarSign} label="Revenue" value={`$${stats.last30.revenue.toFixed(2)}`}
+                      <StatCard icon={DollarSign} label={t.revenue} value={`$${stats.last30.revenue.toFixed(2)}`}
                         color="bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"/>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-4 text-xs text-gray-400">No sales data yet</div>
+                  <div className="text-center py-4 text-xs text-gray-400">{t.noSalesData}</div>
                 )}
               </div>
 

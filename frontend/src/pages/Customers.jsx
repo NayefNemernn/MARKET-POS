@@ -3,6 +3,7 @@ import { getCustomers, createCustomer, updateCustomer, deleteCustomer, getCustom
 import { useCurrency } from "../context/CurrencyContext";
 import ReturnModal from "../components/ReturnModal";
 import toast from "react-hot-toast";
+import { useCustomersTranslation } from "../hooks/useCustomersTranslation";
 import {
   Users, Plus, Search, X, Phone, Mail, MapPin,
   Edit2, Trash2, ChevronRight, DollarSign, ShoppingBag,
@@ -12,7 +13,7 @@ import {
 const CARD = "rounded-2xl bg-white dark:bg-[#141414] shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff] dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]";
 
 /* ── small form modal ──────────────────────────────────────── */
-function CustomerFormModal({ customer, onSave, onClose }) {
+function CustomerFormModal({ customer, onSave, onClose, t }) {
   const [form, setForm] = useState({
     name:    customer?.name    || "",
     phone:   customer?.phone   || "",
@@ -25,16 +26,16 @@ function CustomerFormModal({ customer, onSave, onClose }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = async () => {
-    if (!form.name.trim()) { toast.error("Name is required"); return; }
+    if (!form.name.trim()) { toast.error(t.nameRequired); return; }
     setLoading(true);
     try {
       const saved = customer
         ? await updateCustomer(customer._id, form)
         : await createCustomer(form);
-      toast.success(customer ? "Customer updated" : "Customer added");
+      toast.success(customer ? t.customerUpdated : t.customerAdded);
       onSave(saved);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save");
+      toast.error(err.response?.data?.message || t.failedToSave);
     } finally { setLoading(false); }
   };
 
@@ -42,17 +43,17 @@ function CustomerFormModal({ customer, onSave, onClose }) {
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="w-full max-w-md bg-white dark:bg-[#141414] rounded-3xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/5">
-          <h2 className="font-bold text-base">{customer ? "Edit Customer" : "New Customer"}</h2>
+          <h2 className="font-bold text-base">{customer ? t.editCustomer : t.newCustomer}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#1c1c1c] flex items-center justify-center hover:bg-gray-200 transition">
             <X size={16}/>
           </button>
         </div>
         <div className="px-6 py-5 space-y-3">
           {[
-            { key:"name",    label:"Full name *",   placeholder:"Ahmad Khalil",       icon: Users },
-            { key:"phone",   label:"Phone",         placeholder:"+961 70 000 000",     icon: Phone },
-            { key:"email",   label:"Email",         placeholder:"ahmad@example.com",   icon: Mail  },
-            { key:"address", label:"Address",       placeholder:"Beirut, Lebanon",     icon: MapPin},
+            { key:"name",    label: t.fullName,   placeholder:"Ahmad Khalil",       icon: Users },
+            { key:"phone",   label: t.phone,       placeholder:"+961 70 000 000",     icon: Phone },
+            { key:"email",   label: t.email,       placeholder:"ahmad@example.com",   icon: Mail  },
+            { key:"address", label: t.address,     placeholder:"Beirut, Lebanon",     icon: MapPin},
           ].map(({ key, label, placeholder, icon: Icon }) => (
             <div key={key}>
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest block mb-1">{label}</label>
@@ -65,7 +66,7 @@ function CustomerFormModal({ customer, onSave, onClose }) {
             </div>
           ))}
           <div>
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest block mb-1">Notes</label>
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest block mb-1">{t.notes}</label>
             <textarea value={form.notes} onChange={e => set("notes", e.target.value)}
               rows={2} placeholder="Any notes about this customer..."
               className="w-full px-3 py-2.5 rounded-xl bg-gray-100 dark:bg-[#1c1c1c] border-2 border-transparent focus:border-blue-400 outline-none text-sm transition resize-none"/>
@@ -73,12 +74,12 @@ function CustomerFormModal({ customer, onSave, onClose }) {
         </div>
         <div className="px-6 pb-6 flex gap-3">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-[#1c1c1c] text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-200 transition">
-            Cancel
+            {t.cancel}
           </button>
           <button onClick={submit} disabled={loading}
             className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition disabled:opacity-50 flex items-center justify-center gap-2">
             {loading ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"/> : null}
-            {customer ? "Save Changes" : "Add Customer"}
+            {customer ? t.saveChanges : t.addCustomer}
           </button>
         </div>
       </div>
@@ -87,7 +88,7 @@ function CustomerFormModal({ customer, onSave, onClose }) {
 }
 
 /* ── customer detail drawer ────────────────────────────────── */
-function CustomerDetail({ customerId, onClose, onReturn }) {
+function CustomerDetail({ customerId, onClose, t }) {
   const { formatUSD } = useCurrency();
   const [data, setData]   = useState(null);
   const [loading, setLoading] = useState(true);
@@ -96,7 +97,7 @@ function CustomerDetail({ customerId, onClose, onReturn }) {
   useEffect(() => {
     getCustomerById(customerId)
       .then(setData)
-      .catch(() => toast.error("Failed to load customer"))
+      .catch(() => toast.error(t.failedToLoad))
       .finally(() => setLoading(false));
   }, [customerId]);
 
@@ -118,7 +119,7 @@ function CustomerDetail({ customerId, onClose, onReturn }) {
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
         <div className="w-full max-w-lg bg-white dark:bg-[#141414] rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/5">
-            <h2 className="font-bold text-base">Customer Profile</h2>
+            <h2 className="font-bold text-base">{t.customerProfile}</h2>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#1c1c1c] flex items-center justify-center hover:bg-gray-200 transition">
               <X size={16}/>
             </button>
@@ -148,9 +149,9 @@ function CustomerDetail({ customerId, onClose, onReturn }) {
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label:"Total Spent",   value: formatUSD(data.customer.totalSpent || 0),   color:"text-green-600 dark:text-green-400" },
-                    { label:"Orders",        value: data.customer.totalOrders || 0,             color:"text-blue-600 dark:text-blue-400"  },
-                    { label:"Outstanding",   value: formatUSD(data.customer.outstandingBalance || 0), color: data.customer.outstandingBalance > 0 ? "text-red-600 dark:text-red-400" : "text-gray-400" },
+                    { label: t.totalSpent,   value: formatUSD(data.customer.totalSpent || 0),   color:"text-green-600 dark:text-green-400" },
+                    { label: t.ordersLabel,  value: data.customer.totalOrders || 0,             color:"text-blue-600 dark:text-blue-400"  },
+                    { label: t.outstanding,  value: formatUSD(data.customer.outstandingBalance || 0), color: data.customer.outstandingBalance > 0 ? "text-red-600 dark:text-red-400" : "text-gray-400" },
                   ].map(s => (
                     <div key={s.label} className="bg-gray-50 dark:bg-[#1a1a1a] rounded-xl p-3 text-center">
                       <p className={`text-base font-bold ${s.color}`}>{s.value}</p>
@@ -163,15 +164,15 @@ function CustomerDetail({ customerId, onClose, onReturn }) {
                 {data.customer.outstandingBalance > 0 && (
                   <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-600 dark:text-red-400">
                     <AlertCircle size={14}/>
-                    Outstanding balance: {formatUSD(data.customer.outstandingBalance)}
+                    {t.outstandingBalance} {formatUSD(data.customer.outstandingBalance)}
                   </div>
                 )}
 
                 {/* Purchase history */}
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Purchase History</p>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">{t.purchaseHistory}</p>
                   {data.sales.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400 text-sm">No purchases yet</div>
+                    <div className="text-center py-8 text-gray-400 text-sm">{t.noPurchasesYet}</div>
                   ) : (
                     <div className="space-y-2">
                       {data.sales.map(sale => {
@@ -184,7 +185,7 @@ function CustomerDetail({ customerId, onClose, onReturn }) {
                                 <span className="text-sm font-semibold">{formatUSD(sale.total)}</span>
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${cls}`}>{label}</span>
                                 {sale.totalRefunded > 0 && (
-                                  <span className="text-[10px] text-gray-400">−{formatUSD(sale.totalRefunded)} refunded</span>
+                                  <span className="text-[10px] text-gray-400">−{formatUSD(sale.totalRefunded)} {t.refunded}</span>
                                 )}
                               </div>
                               <p className="text-xs text-gray-400 mt-0.5">
@@ -228,6 +229,7 @@ function CustomerDetail({ customerId, onClose, onReturn }) {
 ════════════════════════════════════════════════════════════ */
 export default function Customers() {
   const { formatUSD } = useCurrency();
+  const t = useCustomersTranslation();
   const [customers, setCustomers]     = useState([]);
   const [search, setSearch]           = useState("");
   const [loading, setLoading]         = useState(true);
@@ -238,15 +240,15 @@ export default function Customers() {
   const load = useCallback(async (q = "") => {
     setLoading(true);
     try { setCustomers(await getCustomers(q)); }
-    catch { toast.error("Failed to load customers"); }
+    catch { toast.error(t.failedToLoad); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    const t = setTimeout(() => load(search), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => load(search), 300);
+    return () => clearTimeout(timer);
   }, [search, load]);
 
   const handleSave = (saved) => {
@@ -263,8 +265,8 @@ export default function Customers() {
     try {
       await deleteCustomer(id);
       setCustomers(prev => prev.filter(c => c._id !== id));
-      toast.success("Customer removed");
-    } catch { toast.error("Failed"); }
+      toast.success(t.customerRemoved);
+    } catch { toast.error(t.failed); }
   };
 
   /* stats */
@@ -279,22 +281,22 @@ export default function Customers() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Users size={22} className="text-blue-500"/> Customers
+              <Users size={22} className="text-blue-500"/> {t.title}
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{customers.length} customers</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{customers.length} {t.customersCount}</p>
           </div>
           <button onClick={() => setShowForm(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition">
-            <Plus size={16}/> New Customer
+            <Plus size={16}/> {t.newCustomer}
           </button>
         </div>
 
         {/* KPI cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {[
-            { label:"Total Customers",   value: customers.length,       color:"text-blue-600 dark:text-blue-400",  bg:"bg-blue-50 dark:bg-blue-900/20"  },
-            { label:"Total Revenue",     value: formatUSD(totalSpent),  color:"text-green-600 dark:text-green-400",bg:"bg-green-50 dark:bg-green-900/20"},
-            { label:"Outstanding Debt",  value: formatUSD(totalOutstanding), color: totalOutstanding > 0 ? "text-red-600 dark:text-red-400" : "text-gray-400", bg:"bg-red-50 dark:bg-red-900/20" },
+            { label: t.totalCustomers,  value: customers.length,       color:"text-blue-600 dark:text-blue-400",  bg:"bg-blue-50 dark:bg-blue-900/20"  },
+            { label: t.totalRevenue,    value: formatUSD(totalSpent),  color:"text-green-600 dark:text-green-400",bg:"bg-green-50 dark:bg-green-900/20"},
+            { label: t.outstandingDebt, value: formatUSD(totalOutstanding), color: totalOutstanding > 0 ? "text-red-600 dark:text-red-400" : "text-gray-400", bg:"bg-red-50 dark:bg-red-900/20" },
           ].map(k => (
             <div key={k.label} className={`${CARD} p-4 ${k.bg}`}>
               <p className="text-xs text-gray-500 dark:text-gray-400">{k.label}</p>
@@ -307,7 +309,7 @@ export default function Customers() {
         <div className={`${CARD} flex items-center gap-2 px-4 py-2.5`}>
           <Search size={16} className="text-gray-400 shrink-0"/>
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name or phone..."
+            placeholder={t.searchPlaceholder}
             className="flex-1 bg-transparent outline-none text-sm placeholder-gray-400"/>
           {search && <button onClick={() => setSearch("")}><X size={14} className="text-gray-400"/></button>}
         </div>
@@ -320,7 +322,7 @@ export default function Customers() {
         ) : customers.length === 0 ? (
           <div className={`${CARD} p-12 text-center`}>
             <Users size={40} className="mx-auto mb-3 opacity-20"/>
-            <p className="text-gray-400 text-sm">{search ? "No customers found" : "No customers yet — add your first one"}</p>
+            <p className="text-gray-400 text-sm">{search ? t.noCustomersFound : t.noCustomersYet}</p>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -337,16 +339,16 @@ export default function Customers() {
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                     {c.phone && <span className="text-xs text-gray-400 flex items-center gap-1"><Phone size={10}/>{c.phone}</span>}
                     <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <ShoppingBag size={10}/>{c.totalOrders || 0} orders
+                      <ShoppingBag size={10}/>{c.totalOrders || 0} {t.orders}
                     </span>
                     {c.outstandingBalance > 0 && (
                       <span className="text-xs text-red-500 font-semibold flex items-center gap-1">
-                        <AlertCircle size={10}/>{formatUSD(c.outstandingBalance)} owed
+                        <AlertCircle size={10}/>{formatUSD(c.outstandingBalance)} {t.owed}
                       </span>
                     )}
                     {c.totalSpent > 0 && (
                       <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                        <DollarSign size={10}/>{formatUSD(c.totalSpent)} spent
+                        <DollarSign size={10}/>{formatUSD(c.totalSpent)} {t.spent}
                       </span>
                     )}
                   </div>
@@ -379,12 +381,14 @@ export default function Customers() {
           customer={editCustomer}
           onSave={handleSave}
           onClose={() => { setShowForm(false); setEditCustomer(null); }}
+          t={t}
         />
       )}
       {viewId && (
         <CustomerDetail
           customerId={viewId}
           onClose={() => setViewId(null)}
+          t={t}
         />
       )}
     </div>

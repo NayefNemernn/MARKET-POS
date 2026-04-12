@@ -7,16 +7,7 @@ import {
 } from "lucide-react";
 import VoiceButton from "../common/VoiceButton";
 import { parseProductPrompt } from "../../api/product.api";
-
-// ── Field meta — order matters (displayed as chips) ──────────────────────────
-const FIELD_META = [
-  { key: "name",       label: "Name",     Icon: Package,    color: "violet"  },
-  { key: "price",      label: "Price",    Icon: DollarSign, color: "green"   },
-  { key: "cost",       label: "Cost",     Icon: DollarSign, color: "blue"    },
-  { key: "stock",      label: "Stock",    Icon: Hash,       color: "amber"   },
-  { key: "category",   label: "Category", Icon: Tag,        color: "purple"  },
-  { key: "expiryDate", label: "Expiry",   Icon: Calendar,   color: "red"     },
-];
+import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 
 const COLOR_MAP = {
   violet: { bg: "bg-violet-50 dark:bg-violet-900/20",  border: "border-violet-200 dark:border-violet-500/30", text: "text-violet-700 dark:text-violet-300", icon: "text-violet-500" },
@@ -38,7 +29,7 @@ const chipVariants = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function formatFieldValue(key, value, currency) {
+function formatFieldValue(key, value, currency, t) {
   if (value === null || value === undefined || value === "" || (typeof value === "number" && value === 0 && key !== "stock")) return null;
   if (key === "price" || key === "cost") {
     const num = Number(value);
@@ -47,18 +38,30 @@ function formatFieldValue(key, value, currency) {
       ? `${num.toLocaleString()} ل.ل`
       : `$${num.toFixed(2)}`;
   }
-  if (key === "stock") return `${value} units`;
+  if (key === "stock") return `${value} ${t.chipUnits}`;
   return String(value);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function AIProductFill({ onFill }) {
+  const t = useProductsTranslation();
+
   const [open,    setOpen]    = useState(false);
   const [prompt,  setPrompt]  = useState("");
   const [parsing, setParsing] = useState(false);
   const [result,  setResult]  = useState(null);
   const [error,   setError]   = useState(null);
   const textareaRef = useRef(null);
+
+  // Field meta built from translation keys
+  const FIELD_META = [
+    { key: "name",       labelKey: "chipName",     Icon: Package,    color: "violet"  },
+    { key: "price",      labelKey: "chipPrice",    Icon: DollarSign, color: "green"   },
+    { key: "cost",       labelKey: "chipCost",     Icon: DollarSign, color: "blue"    },
+    { key: "stock",      labelKey: "chipStock",    Icon: Hash,       color: "amber"   },
+    { key: "category",   labelKey: "chipCategory", Icon: Tag,        color: "purple"  },
+    { key: "expiryDate", labelKey: "chipExpiry",   Icon: Calendar,   color: "red"     },
+  ];
 
   // Focus textarea when panel opens
   useEffect(() => {
@@ -77,7 +80,7 @@ export default function AIProductFill({ onFill }) {
       const data = await parseProductPrompt(trimmed);
       setResult(data);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to analyze. Please try again.");
+      setError(err.response?.data?.message || t.failedAnalyze);
     } finally {
       setParsing(false);
     }
@@ -97,7 +100,6 @@ export default function AIProductFill({ onFill }) {
   const apply = () => {
     if (!result) return;
     onFill(result);
-    // Brief visual feedback before collapsing
     setTimeout(() => {
       setResult(null);
       setPrompt("");
@@ -105,12 +107,13 @@ export default function AIProductFill({ onFill }) {
     }, 120);
   };
 
-  // Build visible chips from result
   const chips = result
     ? FIELD_META
-        .map(m => ({ ...m, display: formatFieldValue(m.key, result[m.key], result.priceCurrency) }))
+        .map(m => ({ ...m, label: t[m.labelKey], display: formatFieldValue(m.key, result[m.key], result.priceCurrency, t) }))
         .filter(m => m.display !== null)
     : [];
+
+  const aiPlaceholder = `${t.aiPlaceholderLine1}\n\n• ${t.aiPlaceholderEx1}\n• ${t.aiPlaceholderEx2}`;
 
   return (
     <div className={`rounded-2xl border transition-colors duration-300 overflow-hidden
@@ -128,7 +131,6 @@ export default function AIProductFill({ onFill }) {
         onClick={() => setOpen(v => !v)}
         className="w-full flex items-center gap-3 px-4 py-3.5 text-left group"
       >
-        {/* Gradient icon badge */}
         <div className="relative w-8 h-8 rounded-xl shrink-0 overflow-hidden
           bg-gradient-to-br from-violet-500 to-blue-500
           shadow-[0_3px_10px_rgba(139,92,246,0.45)]
@@ -139,17 +141,17 @@ export default function AIProductFill({ onFill }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-violet-900 dark:text-violet-100">
-              AI Product Fill
+              {t.aiProductFill}
             </span>
             <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full
               bg-violet-100 dark:bg-violet-900/50
               text-violet-600 dark:text-violet-400 font-semibold tracking-wide">
-              <Layers size={8}/> Claude
+              <Layers size={8}/> AI
             </span>
           </div>
           {!open && (
             <p className="text-xs text-violet-400 dark:text-violet-500 mt-0.5 truncate">
-              Describe a product in any language — AI fills all fields instantly
+              {t.aiSubtitle}
             </p>
           )}
         </div>
@@ -176,10 +178,9 @@ export default function AIProductFill({ onFill }) {
           >
             <div className="px-4 pb-4 pt-1 space-y-3">
 
-              {/* ── Divider ── */}
               <div className="h-px bg-gradient-to-r from-violet-200 via-blue-200 to-transparent dark:from-violet-500/30 dark:via-blue-500/20 dark:to-transparent"/>
 
-              {/* ── Prompt input area ── */}
+              {/* ── Prompt input ── */}
               <div className="relative">
                 <textarea
                   ref={textareaRef}
@@ -188,7 +189,7 @@ export default function AIProductFill({ onFill }) {
                   onChange={e => { setPrompt(e.target.value); if (error) setError(null); if (result) setResult(null); }}
                   onKeyDown={handleKeyDown}
                   disabled={parsing}
-                  placeholder={`Describe the product in any language…\n\nExamples:\n• "Pepsi 500ml, price $2, cost $1.2, 50 units, beverages"\n• "بيبسي نص لتر، سعر ٣٠٠٠ ل.ل، تكلفة ١٨٠٠ ل.ل"`}
+                  placeholder={aiPlaceholder}
                   className="w-full px-4 py-3 pr-14 rounded-xl text-sm resize-none outline-none transition-all
                     bg-white dark:bg-[#0c0c0c]
                     border border-violet-200 dark:border-violet-500/30
@@ -198,22 +199,20 @@ export default function AIProductFill({ onFill }) {
                     focus:shadow-[0_0_0_3px_rgba(139,92,246,0.12)]
                     disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                {/* Voice button pinned to bottom-right of textarea */}
                 <div className="absolute bottom-2.5 right-2.5">
                   <VoiceButton
                     onResult={text => { setPrompt(text); setError(null); setResult(null); }}
                     lang="ar-LB"
                   />
                 </div>
-                {/* Ctrl+Enter hint */}
                 {prompt.trim() && !parsing && !result && (
                   <p className="absolute bottom-2.5 left-3 text-[10px] text-violet-300 dark:text-violet-600 pointer-events-none select-none">
-                    ⌘↵ to analyze
+                    {t.ctrlEnterHint}
                   </p>
                 )}
               </div>
 
-              {/* ── Analyze button (only shown when no result yet) ── */}
+              {/* ── Analyze button ── */}
               <AnimatePresence>
                 {!result && (
                   <motion.button
@@ -242,19 +241,19 @@ export default function AIProductFill({ onFill }) {
                         >
                           <Sparkles size={15}/>
                         </motion.span>
-                        <span>Analyzing…</span>
+                        <span>{t.analyzing}</span>
                       </>
                     ) : (
                       <>
                         <Wand2 size={15}/>
-                        <span>Fill Fields with AI</span>
+                        <span>{t.fillWithAI}</span>
                       </>
                     )}
                   </motion.button>
                 )}
               </AnimatePresence>
 
-              {/* ── Error state ── */}
+              {/* ── Error ── */}
               <AnimatePresence>
                 {error && (
                   <motion.div
@@ -271,7 +270,7 @@ export default function AIProductFill({ onFill }) {
                 )}
               </AnimatePresence>
 
-              {/* ── Result preview ── */}
+              {/* ── Result ── */}
               <AnimatePresence>
                 {result && chips.length > 0 && (
                   <motion.div
@@ -281,7 +280,6 @@ export default function AIProductFill({ onFill }) {
                     exit={{ opacity: 0 }}
                     className="space-y-3"
                   >
-                    {/* Field chips */}
                     <motion.div
                       variants={containerVariants}
                       initial="hidden"
@@ -296,9 +294,7 @@ export default function AIProductFill({ onFill }) {
                             variants={chipVariants}
                             className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${c.bg} ${c.border}`}
                           >
-                            <div className={`shrink-0 ${c.icon}`}>
-                              <Icon size={13}/>
-                            </div>
+                            <div className={`shrink-0 ${c.icon}`}><Icon size={13}/></div>
                             <div className="min-w-0 flex-1">
                               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider leading-none mb-0.5">{label}</p>
                               <p className={`text-xs font-bold truncate ${c.text}`}>{display}</p>
@@ -308,18 +304,16 @@ export default function AIProductFill({ onFill }) {
                       })}
                     </motion.div>
 
-                    {/* LBP notice */}
                     {result.priceCurrency === "LBP" && (
                       <motion.p
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         className="text-[11px] text-amber-600 dark:text-amber-400 text-center"
                       >
-                        Prices detected in LBP — will be converted to USD automatically
+                        {t.lbpNotice}
                       </motion.p>
                     )}
 
-                    {/* Action buttons */}
                     <motion.div
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -334,7 +328,7 @@ export default function AIProductFill({ onFill }) {
                           text-gray-600 dark:text-gray-400
                           hover:bg-gray-50 dark:hover:bg-white/15"
                       >
-                        <RefreshCw size={12}/> Try Again
+                        <RefreshCw size={12}/> {t.tryAgain}
                       </button>
 
                       <motion.button
@@ -349,7 +343,7 @@ export default function AIProductFill({ onFill }) {
                           hover:shadow-[0_4px_20px_rgba(139,92,246,0.6)]"
                       >
                         <CheckCheck size={15}/>
-                        Apply to Form
+                        {t.applyToForm}
                       </motion.button>
                     </motion.div>
 

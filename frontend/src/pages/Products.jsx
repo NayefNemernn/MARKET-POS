@@ -34,14 +34,14 @@ const PAGE_SIZE         = 24;
 const LOW_STOCK_MAX     = 5;
 const BARCODE_FORMATS   = ["CODE128", "CODE39", "EAN13", "UPCA"];
 const SORT_OPTIONS      = [
-  { value: "date-desc",  label: "Newest"       },
-  { value: "date-asc",   label: "Oldest"        },
-  { value: "name-asc",   label: "Name A → Z"    },
-  { value: "name-desc",  label: "Name Z → A"    },
-  { value: "price-asc",  label: "Price ↑"       },
-  { value: "price-desc", label: "Price ↓"       },
-  { value: "stock-asc",  label: "Stock ↑"       },
-  { value: "stock-desc", label: "Stock ↓"       },
+  { value: "date-desc",  labelKey: "sortNewest"    },
+  { value: "date-asc",   labelKey: "sortOldest"    },
+  { value: "name-asc",   labelKey: "sortNameAZ"    },
+  { value: "name-desc",  labelKey: "sortNameZA"    },
+  { value: "price-asc",  labelKey: "sortPriceUp"   },
+  { value: "price-desc", labelKey: "sortPriceDown" },
+  { value: "stock-asc",  labelKey: "sortStockUp"   },
+  { value: "stock-desc", labelKey: "sortStockDown" },
 ];
 
 // ── Pagination helper ─────────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ export default function Products() {
       setProducts(p);
       setCategories(c);
     } catch {
-      toast.error("Failed to load products");
+      toast.error(t.failedToLoad);
     }
   };
   useEffect(() => { load(); }, [tick]);
@@ -183,14 +183,14 @@ export default function Products() {
   };
 
   const bulkDelete = async () => {
-    if (!window.confirm(`Delete ${selectedIds.size} product${selectedIds.size !== 1 ? "s" : ""}? This cannot be undone.`)) return;
+    if (!window.confirm(`${t.deleteProduct} (${selectedIds.size})`)) return;
     try {
       await Promise.all([...selectedIds].map(id => deleteProduct(id)));
-      toast.success(`Deleted ${selectedIds.size} products`);
+      toast.success(`${t.deleted} (${selectedIds.size})`);
       setSelectedIds(new Set());
       refresh();
     } catch {
-      toast.error("Some deletions failed");
+      toast.error(t.someDeletesFailed);
     }
   };
 
@@ -211,12 +211,12 @@ export default function Products() {
         displayValue: true, fontSize: 13, margin: 8,
       });
     } catch {
-      toast.error(`Invalid barcode value for ${barcodeFormat} format`);
+      toast.error(`${t.cannotPrint} ${barcodeFormat}`);
     }
   }, [barcode, barcodeFormat]);
 
   const printLabel = () => {
-    if (!barcode) { toast.error("Generate a barcode first"); return; }
+    if (!barcode) { toast.error(t.generateBarcodeFirst); return; }
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     document.body.appendChild(svg);
     try {
@@ -227,7 +227,7 @@ export default function Products() {
       });
     } catch {
       document.body.removeChild(svg);
-      toast.error(`Cannot print: barcode incompatible with ${barcodeFormat}`);
+      toast.error(`${t.cannotPrint} ${barcodeFormat}`);
       return;
     }
     const svgData = new XMLSerializer().serializeToString(svg);
@@ -263,7 +263,7 @@ export default function Products() {
 
     // Duplicate name detection
     const dup = products.find(p => p.name.trim().toLowerCase() === form.name.trim().toLowerCase());
-    if (dup && !window.confirm(`"${dup.name}" already exists. Add anyway?`)) return;
+    if (dup && !window.confirm(`"${dup.name}" ${t.alreadyExistsConfirm}`)) return;
 
     let categoryId = null;
     if (form.category) {
@@ -290,7 +290,7 @@ export default function Products() {
       setImage(null);
       refresh();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create product");
+      toast.error(err.response?.data?.message || t.failedToCreate);
     }
   };
 
@@ -304,7 +304,7 @@ export default function Products() {
 
   // ── Import / Export ───────────────────────────────────────────────────────
   const handleImport = async () => {
-    if (!importFile) { toast.error("Please select an Excel file"); return; }
+    if (!importFile) { toast.error(t.pleaseSelectExcel); return; }
     setImporting(true);
     setImportResult(null);
     try {
@@ -313,14 +313,14 @@ export default function Products() {
       toast.success(result.message);
       refresh();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Import failed");
+      toast.error(err.response?.data?.message || t.importFailed);
     } finally {
       setImporting(false);
     }
   };
 
   const handleExport = () => {
-    if (products.length === 0) { toast.error("No products to export"); return; }
+    if (products.length === 0) { toast.error(t.noProductsExport); return; }
     const headers = ["Barcode", "Product Name", "Price (USD)", "Cost (USD)", "Stock", "Category", "Expiry Date", "Image URL"];
     const rows = products.map(p => [
       p.barcode, p.name, p.price, p.cost, p.stock,
@@ -335,7 +335,7 @@ export default function Products() {
     a.href     = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     a.download = `products_export_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
-    toast.success(`Exported ${products.length} products`);
+    toast.success(`${t.export}: ${products.length} ${t.productsLabel}`);
   };
 
   // ── Inventory scan ────────────────────────────────────────────────────────
@@ -350,12 +350,12 @@ export default function Products() {
       if (e.key === "Enter") {
         const code = buffer.trim(); buffer = "";
         const product = products.find(p => p.barcode === code);
-        if (!product) { toast.error(`Barcode not found: ${code}`); return; }
+        if (!product) { toast.error(`${t.barcodeNotFound}: ${code}`); return; }
         try {
           const updated = await updateProduct(product._id, { stock: product.stock + 1 });
           setProducts(prev => prev.map(p => p._id === updated._id ? updated : p));
-          toast.success(`✅ ${product.name} → stock +1 (now ${product.stock + 1})`);
-        } catch { toast.error("Failed to update stock"); }
+          toast.success(`✅ ${product.name} → +1 (${product.stock + 1})`);
+        } catch { toast.error(t.failedUpdateStock); }
         return;
       }
       if (/^[0-9a-zA-Z\-]$/.test(e.key)) buffer += e.key;
@@ -387,7 +387,7 @@ export default function Products() {
       ...(fields.expiryDate          ? { expiryDate: fields.expiryDate     } : {}),
     }));
 
-    toast.success("Fields filled — review and generate a barcode.", { icon: "✨" });
+    toast.success(t.fieldsFilled, { icon: "✨" });
   }, [exchangeRate]);
 
   // ── Shared select/input class ─────────────────────────────────────────────
@@ -440,7 +440,7 @@ export default function Products() {
                 </select>
                 <button onClick={generateBarcode}
                   className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#252525] transition">
-                  <Barcode size={14}/> {t.generateBarcode || "Generate"}
+                  <Barcode size={14}/> {t.generateBarcode}
                 </button>
               </div>
 
@@ -448,7 +448,7 @@ export default function Products() {
                 className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm
                   bg-gray-100 dark:bg-[#1c1c1c] hover:bg-gray-200 dark:hover:bg-[#252525]
                   text-gray-700 dark:text-gray-300 transition">
-                <Printer size={14}/> {t.printLabel || "Print Label"}
+                <Printer size={14}/> {t.printLabel}
               </button>
 
               <button
@@ -460,14 +460,14 @@ export default function Products() {
                   }`}
               >
                 <ScanLine size={14}/>
-                {inventoryMode ? "Stop Scan" : "Inventory Scan"}
+                {inventoryMode ? t.stopScan : t.inventoryScan}
               </button>
 
               <button onClick={handleExport}
                 className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium
                   bg-gray-100 dark:bg-[#1c1c1c] hover:bg-gray-200 dark:hover:bg-[#252525]
                   text-gray-700 dark:text-gray-300 transition">
-                <Download size={14}/> Export
+                <Download size={14}/> {t.export}
               </button>
 
               <button
@@ -475,7 +475,7 @@ export default function Products() {
                 className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium
                   bg-green-600 hover:bg-green-700 text-white
                   shadow-[0_0_12px_rgba(34,197,94,0.3)] transition">
-                <Upload size={14}/> Import Excel
+                <Upload size={14}/> {t.importExcel}
               </button>
             </div>
           </div>
@@ -487,29 +487,29 @@ export default function Products() {
             dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]">
 
             <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0">
-              <Filter size={12}/> Filters
+              <Filter size={12}/> {t.filters}
             </div>
 
             {/* Category */}
             <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className={selectCls}>
-              <option value="">All Categories</option>
+              <option value="">{t.allCategories}</option>
               {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
             </select>
 
             {/* Stock level */}
             <select value={stockFilter} onChange={e => setStockFilter(e.target.value)} className={selectCls}>
-              <option value="all">All Stock Levels</option>
-              <option value="in">In Stock (&gt;{LOW_STOCK_MAX})</option>
-              <option value="low">Low Stock (1–{LOW_STOCK_MAX})</option>
-              <option value="out">Out of Stock</option>
+              <option value="all">{t.allStockLevels}</option>
+              <option value="in">{t.inStock} (&gt;{LOW_STOCK_MAX})</option>
+              <option value="low">{t.lowStock} (1–{LOW_STOCK_MAX})</option>
+              <option value="out">{t.outOfStock}</option>
             </select>
 
             {/* Sort */}
             <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0 ml-auto">
-              <ArrowUpDown size={12}/> Sort
+              <ArrowUpDown size={12}/> {t.sort}
             </div>
             <select value={sortKey} onChange={e => setSortKey(e.target.value)} className={selectCls}>
-              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{t[o.labelKey]}</option>)}
             </select>
 
             {/* Clear filters */}
@@ -519,7 +519,7 @@ export default function Products() {
                 className="flex items-center gap-1 text-xs px-3 py-2 rounded-xl
                   bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition"
               >
-                <X size={11}/> Clear
+                <X size={11}/> {t.clearFilters}
               </button>
             )}
           </div>
@@ -533,7 +533,7 @@ export default function Products() {
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"/>
                 <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                  Inventory Scan Active — scan barcodes to increase stock by 1
+                  {t.inventoryScanActive}
                 </span>
               </div>
               <button onClick={() => setInventoryMode(false)} className="text-blue-400 hover:text-blue-600 transition">
@@ -563,7 +563,7 @@ export default function Products() {
             overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-white/5 flex items-center gap-2">
               <Plus size={16} className="text-blue-500"/>
-              <span className="font-semibold text-sm">Add New Product</span>
+              <span className="font-semibold text-sm">{t.addNewProduct}</span>
             </div>
             <div className="p-5 space-y-5">
               {/* AI fill panel */}
@@ -598,26 +598,26 @@ export default function Products() {
               bg-blue-50 dark:bg-blue-900/20
               border border-blue-200 dark:border-blue-500/30">
               <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
-                {selectedIds.size} selected
+                {selectedIds.size} {t.selected}
               </span>
               <div className="flex items-center gap-2 ml-auto">
                 <button
                   onClick={toggleSelectPage}
                   className="text-xs px-3 py-1.5 rounded-lg bg-white dark:bg-white/10 border border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-white/20 transition"
                 >
-                  {isAllPageSelected ? "Deselect page" : "Select page"}
+                  {isAllPageSelected ? t.deselectPage : t.selectPage}
                 </button>
                 <button
                   onClick={() => setSelectedIds(new Set())}
                   className="text-xs px-3 py-1.5 rounded-lg bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/20 transition"
                 >
-                  Clear
+                  {t.clear}
                 </button>
                 <button
                   onClick={bulkDelete}
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition font-medium"
                 >
-                  <Trash2 size={12}/> Delete {selectedIds.size}
+                  <Trash2 size={12}/> {t.deleteSelected} {selectedIds.size}
                 </button>
               </div>
             </div>
@@ -630,15 +630,15 @@ export default function Products() {
               <div className="flex items-center gap-2">
                 <Package size={16} className="text-gray-400"/>
                 <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">
-                  {filtered.length} product{filtered.length !== 1 ? "s" : ""}
+                  {filtered.length} {t.productsLabel}
                   {filtered.length !== products.length && (
-                    <span className="font-normal text-gray-400"> of {products.length}</span>
+                    <span className="font-normal text-gray-400"> {t.of} {products.length}</span>
                   )}
                 </span>
               </div>
               {totalPages > 1 && (
                 <span className="text-xs text-gray-400">
-                  Page {safePage} / {totalPages}
+                  {t.page} {safePage} / {totalPages}
                 </span>
               )}
             </div>
@@ -647,7 +647,7 @@ export default function Products() {
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                 <Package size={40} className="opacity-20 mb-3"/>
-                <p className="text-sm">No products found</p>
+                <p className="text-sm">{t.noProductsFound}</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
@@ -675,7 +675,7 @@ export default function Products() {
                     disabled:opacity-40 disabled:cursor-not-allowed
                     hover:bg-gray-50 dark:hover:bg-white/5"
                 >
-                  <ChevronLeft size={14}/> Prev
+                  <ChevronLeft size={14}/> {t.prev}
                 </button>
 
                 {getPageNumbers(safePage, totalPages).map((p, i) =>
@@ -704,7 +704,7 @@ export default function Products() {
                     disabled:opacity-40 disabled:cursor-not-allowed
                     hover:bg-gray-50 dark:hover:bg-white/5"
                 >
-                  Next <ChevronRight size={14}/>
+                  {t.next} <ChevronRight size={14}/>
                 </button>
               </div>
             )}
@@ -736,8 +736,8 @@ export default function Products() {
                   <FileSpreadsheet size={18} className="text-green-600 dark:text-green-400"/>
                 </div>
                 <div>
-                  <h2 className="font-bold text-sm">Import Products from Excel</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Add hundreds of products at once</p>
+                  <h2 className="font-bold text-sm">{t.importTitle}</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">{t.importSubtitle}</p>
                 </div>
               </div>
               <button onClick={() => setShowImport(false)} className="text-gray-400 hover:text-gray-600 transition">
@@ -748,20 +748,20 @@ export default function Products() {
             <div className="p-6 space-y-4">
 
               <div className="rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 p-4">
-                <p className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">Step 1 — Download template</p>
-                <p className="text-xs text-blue-500 dark:text-blue-400 mb-3">Fill in your products then upload it below</p>
+                <p className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">{t.step1Title}</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mb-3">{t.step1Sub}</p>
                 <a
                   href="/products_import_template.xlsx"
                   download
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
                     bg-blue-600 hover:bg-blue-700 text-white transition"
                 >
-                  <Download size={13}/> Download Template (.xlsx)
+                  <Download size={13}/> {t.downloadTemplate}
                 </a>
               </div>
 
               <div>
-                <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-2">Step 2 — Upload your filled file</p>
+                <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-2">{t.step2Title}</p>
                 <input
                   ref={importInputRef}
                   type="file"
@@ -780,12 +780,12 @@ export default function Products() {
                     <>
                       <FileSpreadsheet size={28} className="text-green-500"/>
                       <p className="text-sm font-medium text-green-600 dark:text-green-400">{importFile.name}</p>
-                      <p className="text-xs text-gray-400">Click to change file</p>
+                      <p className="text-xs text-gray-400">{t.clickToChange}</p>
                     </>
                   ) : (
                     <>
                       <Upload size={28} className="text-gray-300 dark:text-gray-600"/>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Click to select your Excel or CSV file</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{t.clickToSelect}</p>
                       <p className="text-xs text-gray-400">.xlsx · .xls · .csv</p>
                     </>
                   )}
@@ -796,13 +796,13 @@ export default function Products() {
                 <div className="rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-500/30 p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <CheckCircle size={15} className="text-green-500"/>
-                    <span className="text-sm font-semibold text-green-700 dark:text-green-300">Import Complete</span>
+                    <span className="text-sm font-semibold text-green-700 dark:text-green-300">{t.importComplete}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 mb-3">
                     {[
-                      { label: "Added",   value: importResult.inserted,          color: "text-green-600 dark:text-green-400" },
-                      { label: "Skipped", value: importResult.skipped,            color: "text-amber-600 dark:text-amber-400" },
-                      { label: "Errors",  value: importResult.errors?.length || 0, color: "text-red-500" },
+                      { label: t.importAdded,   value: importResult.inserted,          color: "text-green-600 dark:text-green-400" },
+                      { label: t.importSkipped, value: importResult.skipped,            color: "text-amber-600 dark:text-amber-400" },
+                      { label: t.importErrors,  value: importResult.errors?.length || 0, color: "text-red-500" },
                     ].map(({ label, value, color }) => (
                       <div key={label} className="bg-white dark:bg-white/5 rounded-xl p-2 text-center">
                         <p className={`text-xl font-bold ${color}`}>{value}</p>
@@ -825,7 +825,7 @@ export default function Products() {
                     bg-gray-100 dark:bg-[#1c1c1c] hover:bg-gray-200 dark:hover:bg-[#252525]
                     text-gray-700 dark:text-gray-300 transition"
                 >
-                  {importResult ? "Close" : "Cancel"}
+                  {importResult ? t.clear : t.cancel}
                 </button>
                 <button
                   onClick={handleImport}
@@ -835,8 +835,8 @@ export default function Products() {
                     text-white transition"
                 >
                   {importing
-                    ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Importing…</>
-                    : <><Upload size={14}/> Import Now</>
+                    ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> {t.importing}</>
+                    : <><Upload size={14}/> {t.importExcel}</>
                   }
                 </button>
               </div>

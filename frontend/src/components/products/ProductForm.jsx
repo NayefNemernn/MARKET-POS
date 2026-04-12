@@ -262,7 +262,7 @@ export default function ProductForm({
         {/* === EXPIRY DATE — optional === */}
         <div>
           <label className={labelClass}>
-            {t.expiryDate || "Expiry Date"} <span className="normal-case text-gray-300 dark:text-gray-600 font-normal">(optional)</span>
+            {t.expiryDate || "Expiry Date"} <span className="normal-case text-gray-300 dark:text-gray-600 font-normal">{t.optional || "(optional)"}</span>
           </label>
           <input
             type="date"
@@ -274,7 +274,7 @@ export default function ProductForm({
           {form.expiryDate && (() => {
             const days  = Math.ceil((new Date(form.expiryDate) - new Date()) / 86400000);
             const color = days <= 7 ? "text-red-500" : days <= 30 ? "text-amber-500" : "text-green-500";
-            return <p className={`text-xs mt-1 font-medium ${color}`}>Expires in {days} day{days !== 1 ? "s" : ""}</p>;
+            return <p className={`text-xs mt-1 font-medium ${color}`}>{t.expiresIn || "Expires in"} {days} {t.days || "days"}</p>;
           })()}
         </div>
 

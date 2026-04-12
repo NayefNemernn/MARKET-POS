@@ -3,9 +3,11 @@ import { register } from "../api/auth.api";
 import { useAuth } from "../context/AuthContext";
 import { Store, User, Lock, Globe, ArrowRight, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
+import { useAuthTranslation } from "../hooks/useAuthTranslation";
 
 export default function Register({ onBackToLogin }) {
   const { login } = useAuth();
+  const t = useAuthTranslation();
   const [step,    setStep]    = useState(1); // 1 = store info, 2 = account info
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -33,15 +35,15 @@ export default function Register({ onBackToLogin }) {
   const selectedCurrency = CURRENCIES.find(c => c.code === form.currency) || CURRENCIES[0];
 
   const handleStep1 = () => {
-    if (!form.storeName.trim()) { setError("Store name is required"); return; }
+    if (!form.storeName.trim()) { setError(t.storeNameRequired); return; }
     setError(""); setStep(2);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (form.password !== form.confirmPw) { setError("Passwords don't match"); return; }
-    if (form.password.length < 4)         { setError("Password must be at least 4 characters"); return; }
+    if (form.password !== form.confirmPw) { setError(t.passwordMismatch); return; }
+    if (form.password.length < 4)         { setError(t.passwordTooShort); return; }
 
     setLoading(true);
     try {
@@ -53,12 +55,12 @@ export default function Register({ onBackToLogin }) {
         currencySymbol: selectedCurrency.symbol,
         language:       form.language,
       });
-      toast.success("Store created! Welcome 🎉");
+      toast.success(t.storeCreated);
       // Auto-login after register
       const loginData = await import("../api/auth.api").then(m => m.login({ username: form.username, password: form.password }));
       login(loginData);
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed");
+      setError(err.response?.data?.message || t.registrationFailed);
     } finally {
       setLoading(false);
     }
@@ -73,8 +75,8 @@ export default function Register({ onBackToLogin }) {
           <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <Store size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Create Your Store</h1>
-          <p className="text-sm text-gray-500 mt-1">Start your 14-day free trial — no credit card needed</p>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t.createYourStore}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t.freeTrial}</p>
         </div>
 
         {/* Step indicator */}
@@ -95,10 +97,10 @@ export default function Register({ onBackToLogin }) {
           {/* Step 1: Store Info */}
           {step === 1 && (
             <div className="space-y-5">
-              <h2 className="text-lg font-semibold text-gray-700 dark:text-white">Store Details</h2>
+              <h2 className="text-lg font-semibold text-gray-700 dark:text-white">{t.storeDetails}</h2>
 
               <div>
-                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Store Name *</label>
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">{t.storeName}</label>
                 <input
                   type="text"
                   placeholder="My Market"
@@ -110,7 +112,7 @@ export default function Register({ onBackToLogin }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Currency</label>
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">{t.currency}</label>
                 <select
                   value={form.currency}
                   onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
@@ -123,17 +125,17 @@ export default function Register({ onBackToLogin }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Language</label>
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">{t.language}</label>
                 <select
                   value={form.language}
                   onChange={e => setForm(f => ({ ...f, language: e.target.value }))}
                   className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-sm bg-white dark:bg-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="en">English</option>
-                  <option value="ar">Arabic</option>
-                  <option value="fr">French</option>
-                  <option value="es">Spanish</option>
-                  <option value="tr">Turkish</option>
+                  <option value="en">{t.langEnglish}</option>
+                  <option value="ar">{t.langArabic}</option>
+                  <option value="fr">{t.langFrench}</option>
+                  <option value="es">{t.langSpanish}</option>
+                  <option value="tr">{t.langTurkish}</option>
                 </select>
               </div>
 
@@ -141,7 +143,7 @@ export default function Register({ onBackToLogin }) {
 
               <button onClick={handleStep1}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition">
-                Next <ArrowRight size={15} />
+                {t.next} <ArrowRight size={15} />
               </button>
             </div>
           )}
@@ -149,11 +151,11 @@ export default function Register({ onBackToLogin }) {
           {/* Step 2: Account Info */}
           {step === 2 && (
             <form onSubmit={handleSubmit} className="space-y-5">
-              <h2 className="text-lg font-semibold text-gray-700 dark:text-white">Admin Account</h2>
-              <p className="text-xs text-gray-500">This is the main account for <span className="font-medium text-indigo-600">{form.storeName}</span></p>
+              <h2 className="text-lg font-semibold text-gray-700 dark:text-white">{t.adminAccount}</h2>
+              <p className="text-xs text-gray-500">{t.adminAccountDesc} <span className="font-medium text-indigo-600">{form.storeName}</span></p>
 
               <div>
-                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Username *</label>
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">{t.usernameLabel}</label>
                 <div className="relative">
                   <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
@@ -166,11 +168,11 @@ export default function Register({ onBackToLogin }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Password *</label>
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">{t.passwordLabel}</label>
                 <div className="relative">
                   <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
-                    required type="password" placeholder="Min 4 characters"
+                    required type="password" placeholder={t.passwordPlaceholder}
                     value={form.password}
                     onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                     className="w-full pl-10 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
@@ -179,11 +181,11 @@ export default function Register({ onBackToLogin }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Confirm Password *</label>
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">{t.confirmPassword}</label>
                 <div className="relative">
                   <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
-                    required type="password" placeholder="Repeat password"
+                    required type="password" placeholder={t.repeatPassword}
                     value={form.confirmPw}
                     onChange={e => setForm(f => ({ ...f, confirmPw: e.target.value }))}
                     className="w-full pl-10 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
@@ -196,11 +198,11 @@ export default function Register({ onBackToLogin }) {
               <div className="flex gap-3">
                 <button type="button" onClick={() => setStep(1)}
                   className="px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                  Back
+                  {t.back}
                 </button>
                 <button type="submit" disabled={loading}
                   className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition">
-                  {loading ? "Creating store..." : "Create Store 🚀"}
+                  {loading ? t.creatingStore : t.createStore}
                 </button>
               </div>
             </form>
@@ -209,8 +211,8 @@ export default function Register({ onBackToLogin }) {
 
         {/* Login link */}
         <p className="text-center text-sm text-gray-500 mt-6">
-          Already have a store?{" "}
-          <button onClick={onBackToLogin} className="text-indigo-600 font-medium hover:underline">Sign in</button>
+          {t.alreadyHaveStore}{" "}
+          <button onClick={onBackToLogin} className="text-indigo-600 font-medium hover:underline">{t.signIn}</button>
         </p>
       </div>
     </div>
