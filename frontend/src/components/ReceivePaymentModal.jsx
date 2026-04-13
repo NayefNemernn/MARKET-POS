@@ -4,6 +4,7 @@ import ReceiptPreview from "./ReceiptPreview";
 import { motion } from "framer-motion";
 import { useLang } from "../context/LanguageContext";
 import { usePayLaterTranslation } from "../hooks/usePayLaterTranslation";
+import toast from "react-hot-toast";
 import { X, DollarSign, Printer } from "lucide-react";
 
 export default function ReceivePaymentModal({ sale, close, reload }) {
@@ -20,14 +21,19 @@ export default function ReceivePaymentModal({ sale, close, reload }) {
   const setPercent = (pct) => setAmount(((sale.balance * pct) / 100).toFixed(2));
 
   const pay = async () => {
-    if (!amount || Number(amount) <= 0) return;
+    const num = Number(amount);
+    if (!amount || num <= 0) return;
+    if (num > sale.balance) {
+      toast.error(`Amount cannot exceed balance ($${sale.balance.toFixed(2)})`);
+      return;
+    }
     setLoading(true);
     try {
-      await api.post(`/hold-sales/${sale._id}/pay`, {
-        amount: Number(amount), method, notes
-      });
+      await api.post(`/hold-sales/${sale._id}/pay`, { amount: num, method, notes });
       reload();
       setShowReceipt(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Payment failed");
     } finally {
       setLoading(false);
     }

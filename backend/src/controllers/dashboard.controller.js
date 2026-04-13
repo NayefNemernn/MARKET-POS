@@ -1,5 +1,6 @@
-import Sale from "../models/Sale.js";
-import Product from "../models/Product.js";
+import Sale     from "../models/Sale.js";
+import Product  from "../models/Product.js";
+import Customer from "../models/Customer.js";
 
 export const getDashboardStats = async (req, res) => {
   try {
@@ -7,17 +8,23 @@ export const getDashboardStats = async (req, res) => {
 
     const start = new Date();
     start.setHours(0, 0, 0, 0);
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const [today, totalProducts, lowStockProducts, recentSales, salesChart, topProducts] = await Promise.all([
+    const [today, week, totalProducts, totalCustomers, lowStockProducts, recentSales, salesChart, topProducts] = await Promise.all([
       Sale.aggregate([
         { $match: { storeId, createdAt: { $gte: start } } },
         { $group: { _id: null, todaySales: { $sum: "$total" }, count: { $sum: 1 } } },
       ]),
+      Sale.aggregate([
+        { $match: { storeId, createdAt: { $gte: weekAgo } } },
+        { $group: { _id: null, weekSales: { $sum: "$total" }, count: { $sum: 1 } } },
+      ]),
       Product.countDocuments({ storeId }),
+      Customer.countDocuments({ storeId }),
       Product.find({ storeId, stock: { $lte: 5 } }).select("name stock").limit(5),
       Sale.find({ storeId }).sort({ createdAt: -1 }).limit(5).select("total customerName createdAt"),
       Sale.aggregate([
-        { $match: { storeId, createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } },
+        { $match: { storeId, createdAt: { $gte: weekAgo } } },
         { $group: { _id: { $dayOfMonth: "$createdAt" }, sales: { $sum: "$total" } } },
         { $sort: { _id: 1 } },
       ]),
@@ -33,7 +40,10 @@ export const getDashboardStats = async (req, res) => {
     res.json({
       todaySales:       today[0]?.todaySales || 0,
       todayOrders:      today[0]?.count || 0,
+      weekSales:        week[0]?.weekSales  || 0,
+      weekOrders:       week[0]?.count      || 0,
       totalProducts,
+      customers:        totalCustomers,
       lowStock:         lowStockProducts.length,
       lowStockProducts,
       recentSales,

@@ -517,9 +517,23 @@ export const getActivityFeed = async (req, res) => {
 /* ─────────────────────────────────────────────
    UPDATE SUPERADMIN PROFILE
 ───────────────────────────────────────────── */
+export const getSuperAdminProfile = async (req, res) => {
+  try {
+    const admin = await User.findById(req.user._id).select("username maxDevices devices createdAt");
+    if (!admin) return res.status(404).json({ message: "User not found" });
+    res.json({
+      username:     admin.username,
+      maxDevices:   admin.maxDevices || 1,
+      activeDevices: admin.devices?.length || 0,
+      devices:      admin.devices || [],
+      createdAt:    admin.createdAt,
+    });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
 export const updateSuperAdminProfile = async (req, res) => {
   try {
-    const { username, newPassword } = req.body;
+    const { username, newPassword, maxDevices } = req.body;
     const admin = await User.findById(req.user._id);
     if (!admin) return res.status(404).json({ message: "User not found" });
     if (username && username !== admin.username) {
@@ -528,8 +542,9 @@ export const updateSuperAdminProfile = async (req, res) => {
       admin.username = username;
     }
     if (newPassword) admin.password = newPassword;
+    if (maxDevices !== undefined) admin.maxDevices = Math.min(Math.max(parseInt(maxDevices) || 1, 1), 10);
     await admin.save();
-    res.json({ message: "Profile updated", username: admin.username });
+    res.json({ message: "Profile updated", username: admin.username, maxDevices: admin.maxDevices });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 

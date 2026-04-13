@@ -6,7 +6,7 @@ import {
   createCashier, impersonateStore, sendNotification,
   bulkNotify, bulkAction, transferOwner, cloneStore,
   exportStores, getPlatformAuditLog, updateStoreNotes,
-  setWelcomeMessage, getActivityFeed, updateSuperAdminProfile,
+  setWelcomeMessage, getActivityFeed, updateSuperAdminProfile, getSuperAdminProfile,
   getPlatformStats, createSuperAdmin,
   getStoreUsers, createStoreUser, updateStoreUser,
   deleteStoreUser, forceLogoutStoreUser, forceLogoutStoreDevice,
@@ -26,6 +26,7 @@ router.get("/stats",                         getPlatformStats);
 router.get("/activity",                      getActivityFeed);
 router.get("/audit",                         getPlatformAuditLog);
 router.get("/export",                        exportStores);
+router.get("/profile",                       getSuperAdminProfile);
 router.put("/profile",                       updateSuperAdminProfile);
 
 router.get("/stores",                        getAllStores);

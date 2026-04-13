@@ -3,6 +3,7 @@ import Product  from "../models/Product.js";
 import Customer from "../models/Customer.js";
 import AuditLog from "../models/AuditLog.js";
 import StockLog from "../models/StockLog.js";
+import HoldSale from "../models/HoldSale.js";
 
 async function audit(req, action, description, meta = {}) {
   try { await AuditLog.create({ storeId: req.storeId, userId: req.user._id, username: req.user.username, action, description, meta }); } catch {}
@@ -74,6 +75,30 @@ export const createSale = async (req, res) => {
 
     await audit(req, "sale_created", `Sale $${total} — ${paymentMethod}${customerName ? " — " + customerName : ""}`,
       { saleId: sale._id, total, paymentMethod, discount });
+
+    // If split payment includes paylater, create/update HoldSale so it appears in Pay Later page
+    if (paymentMethod === "split") {
+      const payLaterEntry = (splitPayments || []).find(p => p.method === "paylater");
+      if (payLaterEntry && payLaterEntry.amount > 0 && customerName) {
+        const cashPaid = +(total - payLaterEntry.amount).toFixed(2);
+        const holdItems = saleItems.map(i => ({ productId: i.productId, name: i.name, price: i.price, quantity: i.quantity }));
+        const existing = await HoldSale.findOne({ customerName, storeId });
+        if (existing) {
+          existing.items.push(...holdItems);
+          existing.total   = +(existing.total + total).toFixed(2);
+          existing.paid    = +(existing.paid + cashPaid).toFixed(2);
+          existing.balance = +(existing.total - existing.paid).toFixed(2);
+          await existing.save();
+        } else {
+          await HoldSale.create({
+            storeId, userId: req.user._id,
+            customerName, phone: phone || "",
+            items: holdItems,
+            total, paid: cashPaid, balance: payLaterEntry.amount,
+          });
+        }
+      }
+    }
 
     res.status(201).json({ message: "Sale completed", sale });
   } catch (error) { res.status(500).json({ message: error.message }); }

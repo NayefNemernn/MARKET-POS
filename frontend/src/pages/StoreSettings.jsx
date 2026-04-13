@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { getMyStore, updateStore, addCashier, updateCashier, removeCashier } from "../api/store.api";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useStoreSettingsTranslation } from "../hooks/useStoreSettingsTranslation";
+import { useLang } from "../context/LanguageContext";
 import toast from "react-hot-toast";
 import {
   Store, Users, Settings, CreditCard, UserPlus, Trash2,
@@ -18,6 +20,8 @@ const PLAN_COLORS = {
 
 export default function StoreSettings() {
   const { store: ctxStore, updateStore: updateCtxStore, user } = useAuth();
+  const t = useStoreSettingsTranslation();
+  const { lang } = useLang();
 
   const [tab,          setTab]          = useState("settings");
   const [store,        setStore]        = useState(null);
@@ -29,14 +33,12 @@ export default function StoreSettings() {
   const [newPassword,  setNewPassword]  = useState("");
   const [expanded,     setExpanded]     = useState({});
 
-  // Store settings form
   const [form, setForm] = useState({
     name: "", address: "", phone: "", email: "", taxNumber: "",
     currency: "USD", currencySymbol: "$", taxRate: 0,
     language: "en", receiptFooter: "",
   });
 
-  // New cashier form
   const [cashierForm, setCashierForm] = useState({ username: "", password: "", maxDevices: 1 });
 
   useEffect(() => { loadData(); }, []);
@@ -63,7 +65,7 @@ export default function StoreSettings() {
         receiptFooter:  storeData.receiptFooter  || "",
       });
     } catch {
-      toast.error("Failed to load store settings");
+      toast.error(t.failedToLoad);
     } finally {
       setLoading(false);
     }
@@ -75,9 +77,9 @@ export default function StoreSettings() {
       const res = await updateStore(form);
       updateCtxStore(res.store);
       setStore(res.store);
-      toast.success("Store settings saved");
+      toast.success(t.saved);
     } catch {
-      toast.error("Failed to save settings");
+      toast.error(t.failedToSave);
     } finally {
       setSaving(false);
     }
@@ -87,22 +89,22 @@ export default function StoreSettings() {
     e.preventDefault();
     try {
       await addCashier(cashierForm);
-      toast.success("Cashier added");
+      toast.success(t.cashierAdded);
       setCashierForm({ username: "", password: "", maxDevices: 1 });
       setShowAddForm(false);
       loadData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to add cashier");
+      toast.error(err.response?.data?.message || t.failedToAdd);
     }
   };
 
   const handleToggleCashier = async (cashier) => {
     try {
       await updateCashier(cashier._id, { active: !cashier.active });
-      toast.success(`${cashier.username} ${cashier.active ? "disabled" : "enabled"}`);
+      toast.success(`${cashier.username} ${cashier.active ? t.toastDisabled : t.toastEnabled}`);
       loadData();
     } catch {
-      toast.error("Failed to update cashier");
+      toast.error(t.failedToUpdate);
     }
   };
 
@@ -110,31 +112,31 @@ export default function StoreSettings() {
     if (!confirm(`Permanently delete "${cashier.username}"? This cannot be undone.`)) return;
     try {
       await api.delete(`/users/${cashier._id}`);
-      toast.success("User deleted");
+      toast.success(t.userDeleted);
       loadData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete user");
+      toast.error(err.response?.data?.message || t.failedToDelete);
     }
   };
 
   const handleForceLogout = async (cashier) => {
     try {
       await api.post(`/users/${cashier._id}/force-logout`);
-      toast.success(`${cashier.username} logged out`);
+      toast.success(`${cashier.username} ${t.loggedOut}`);
       loadData();
     } catch {
-      toast.error("Failed");
+      toast.error(t.failed);
     }
   };
 
   const handleChangePassword = async () => {
-    if (newPassword.length < 4) { toast.error("Min 4 characters"); return; }
+    if (newPassword.length < 4) { toast.error(t.minFourChars); return; }
     try {
       await api.post(`/users/${pwModal._id}/change-password`, { newPassword });
-      toast.success("Password changed");
+      toast.success(t.passwordChanged);
       setPwModal(null); setNewPassword("");
     } catch {
-      toast.error("Failed to change password");
+      toast.error(t.failedToChange);
     }
   };
 
@@ -143,14 +145,13 @@ export default function StoreSettings() {
     if (newMax < 1 || newMax > 10) return;
     try {
       await api.patch(`/users/${cashier._id}`, { maxDevices: newMax });
-      toast.success(`Max devices set to ${newMax}`);
+      toast.success(`${t.maxDevicesSet} ${newMax}`);
       loadData();
     } catch {
-      toast.error("Failed");
+      toast.error(t.failed);
     }
   };
 
-  // Plan info
   const expiry    = store?.planExpiresAt ? new Date(store.planExpiresAt) : null;
   const expired   = expiry && expiry < new Date();
   const daysLeft  = expiry ? Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24)) : null;
@@ -162,7 +163,7 @@ export default function StoreSettings() {
   );
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950">
+    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="p-5 space-y-5 max-w-5xl mx-auto">
 
         {/* Header */}
@@ -171,7 +172,7 @@ export default function StoreSettings() {
             <Store size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold dark:text-white">Store Settings</h1>
+            <h1 className="text-xl font-bold dark:text-white">{t.title}</h1>
             <p className="text-xs text-gray-500">{store?.name} · {store?.slug}</p>
           </div>
         </div>
@@ -186,14 +187,14 @@ export default function StoreSettings() {
                   {(store.plan || "trial").toUpperCase()} PLAN
                 </span>
                 {expired
-                  ? <span className="text-sm text-red-600 font-medium flex items-center gap-1"><AlertTriangle size={13}/> Subscription expired — contact support to renew</span>
+                  ? <span className="text-sm text-red-600 font-medium flex items-center gap-1"><AlertTriangle size={13}/> {t.planExpired}</span>
                   : daysLeft <= 7
-                  ? <span className="text-sm text-yellow-600 font-medium flex items-center gap-1"><Clock size={13}/> {daysLeft} days remaining</span>
-                  : <span className="text-sm text-gray-500">{daysLeft} days remaining · expires {expiry?.toLocaleDateString()}</span>
+                  ? <span className="text-sm text-yellow-600 font-medium flex items-center gap-1"><Clock size={13}/> {daysLeft} {t.daysRemaining}</span>
+                  : <span className="text-sm text-gray-500">{daysLeft} {t.daysRemaining} · {t.expires} {expiry?.toLocaleDateString()}</span>
                 }
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                {store.maxUsers} users · {store.maxProducts} products · {cashiers.length} users active
+                {store.maxUsers} {t.usersUsed} · {store.maxProducts} {t.totalProducts || "products"} · {cashiers.length} {t.devicesActive}
               </p>
             </div>
           </div>
@@ -202,8 +203,8 @@ export default function StoreSettings() {
         {/* Tabs */}
         <div className="flex gap-1 p-1 bg-white dark:bg-[#141414] rounded-xl border border-gray-200 dark:border-white/10 w-fit">
           {[
-            { id: "settings", label: "Store Info",  icon: Settings },
-            { id: "cashiers", label: "Team",        icon: Users },
+            { id: "settings", label: t.storeInfo,  icon: Settings },
+            { id: "cashiers", label: t.team,        icon: Users },
           ].map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition
@@ -218,14 +219,14 @@ export default function StoreSettings() {
           <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-100 dark:border-white/5 p-6 space-y-6">
 
             <div>
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Business Information</h2>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">{t.businessInfo}</h2>
               <div className="grid sm:grid-cols-2 gap-4">
                 {[
-                  { label: "Store Name",   key: "name",      placeholder: "My Store" },
-                  { label: "Phone",        key: "phone",     placeholder: "+1 555 0000" },
-                  { label: "Email",        key: "email",     placeholder: "store@example.com", type: "email" },
-                  { label: "Address",      key: "address",   placeholder: "123 Main St" },
-                  { label: "Tax Number",   key: "taxNumber", placeholder: "VAT/EIN" },
+                  { label: t.storeName,  key: "name",      placeholder: "My Store" },
+                  { label: t.phone,      key: "phone",     placeholder: "+1 555 0000" },
+                  { label: t.email,      key: "email",     placeholder: "store@example.com", type: "email" },
+                  { label: t.address,    key: "address",   placeholder: "123 Main St" },
+                  { label: t.taxNumber,  key: "taxNumber", placeholder: "VAT/EIN" },
                 ].map(({ label, key, placeholder, type }) => (
                   <div key={key}>
                     <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{label}</label>
@@ -242,10 +243,10 @@ export default function StoreSettings() {
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Currency & Tax</h2>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">{t.currencyTax}</h2>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Currency Code</label>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t.currencyCode}</label>
                   <input
                     value={form.currency}
                     onChange={e => setForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))}
@@ -255,7 +256,7 @@ export default function StoreSettings() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Currency Symbol</label>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t.currencySymbol}</label>
                   <input
                     value={form.currencySymbol}
                     onChange={e => setForm(f => ({ ...f, currencySymbol: e.target.value }))}
@@ -265,7 +266,7 @@ export default function StoreSettings() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Tax Rate (%)</label>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t.taxRate}</label>
                   <input
                     type="number" min="0" max="100" step="0.1"
                     value={form.taxRate}
@@ -277,11 +278,11 @@ export default function StoreSettings() {
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Receipt Footer</h2>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">{t.receiptFooter}</h2>
               <textarea
                 value={form.receiptFooter}
                 onChange={e => setForm(f => ({ ...f, receiptFooter: e.target.value }))}
-                placeholder="Thank you for shopping with us!"
+                placeholder={t.receiptFooterPlaceholder}
                 rows={3}
                 className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
               />
@@ -293,7 +294,7 @@ export default function StoreSettings() {
               className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition"
             >
               <Save size={14} />
-              {saving ? "Saving..." : "Save Settings"}
+              {saving ? t.saving : t.saveSettings}
             </button>
           </div>
         )}
@@ -302,31 +303,29 @@ export default function StoreSettings() {
         {tab === "cashiers" && (
           <div className="space-y-4">
 
-            {/* Add cashier button */}
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {cashiers.length} / {store?.maxUsers} users used
+                {cashiers.length} / {store?.maxUsers} {t.usersUsed}
               </p>
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition"
               >
-                <UserPlus size={14} /> Add Cashier
+                <UserPlus size={14} /> {t.addCashier}
               </button>
             </div>
 
-            {/* Add cashier form */}
             {showAddForm && (
               <form onSubmit={handleAddCashier}
                 className="p-4 rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 grid sm:grid-cols-4 gap-3">
                 <input
-                  required placeholder="Username"
+                  required placeholder={t.usernameLabel}
                   value={cashierForm.username}
                   onChange={e => setCashierForm(f => ({ ...f, username: e.target.value }))}
                   className="border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 bg-transparent text-sm outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
                 />
                 <input
-                  required type="password" placeholder="Password"
+                  required type="password" placeholder={t.passwordLabel}
                   value={cashierForm.password}
                   onChange={e => setCashierForm(f => ({ ...f, password: e.target.value }))}
                   className="border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 bg-transparent text-sm outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
@@ -336,15 +335,14 @@ export default function StoreSettings() {
                   onChange={e => setCashierForm(f => ({ ...f, maxDevices: +e.target.value }))}
                   className="border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 bg-white dark:bg-[#141414] dark:text-white text-sm outline-none"
                 >
-                  {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} device{n > 1 ? "s" : ""}</option>)}
+                  {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} {n > 1 ? t.devicesUnitPlural : t.devicesUnit}</option>)}
                 </select>
                 <button className="bg-green-600 text-white rounded-xl hover:bg-green-700 transition text-sm font-semibold py-2">
-                  Create
+                  {t.create}
                 </button>
               </form>
             )}
 
-            {/* Users list — shows ALL users including yourself */}
             <div className="space-y-3">
               {cashiers.map(cashier => {
                 const isSelf = cashier._id === user?._id;
@@ -353,7 +351,6 @@ export default function StoreSettings() {
                   ${isSelf ? "border-indigo-200 dark:border-indigo-500/30" : "border-gray-100 dark:border-white/5"}`}>
                   <div className="flex items-center gap-4 px-5 py-4 flex-wrap">
 
-                    {/* Avatar */}
                     <div className="flex items-center gap-3 flex-1 min-w-40">
                       <div className="relative">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
@@ -366,11 +363,11 @@ export default function StoreSettings() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-sm dark:text-white">{cashier.username}</p>
                           <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500">{cashier.role}</span>
-                          {isSelf && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 font-medium">You</span>}
-                          {!cashier.active && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">Disabled</span>}
+                          {isSelf && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 font-medium">{t.you}</span>}
+                          {!cashier.active && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">{t.disabled}</span>}
                         </div>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {cashier.activeDevices || 0}/{cashier.maxDevices || 1} devices active
+                          {cashier.activeDevices || 0}/{cashier.maxDevices || 1} {t.devicesActive}
                         </p>
                       </div>
                     </div>
@@ -382,25 +379,25 @@ export default function StoreSettings() {
                       <span className="text-sm font-semibold w-4 text-center dark:text-white">{cashier.maxDevices || 1}</span>
                       <button onClick={() => handleUpdateDevices(cashier, +1)} disabled={(cashier.maxDevices || 1) >= 10}
                         className="w-7 h-7 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 text-sm transition">+</button>
-                      <span className="text-xs text-gray-400">devices</span>
+                      <span className="text-xs text-gray-400">{t.devicesUnitPlural}</span>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="flex items-center gap-2 ms-auto">
                       <button onClick={() => { setPwModal(cashier); setNewPassword(""); }}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition">
-                        <KeyRound size={11} /> Password
+                        <KeyRound size={11} /> {t.passwordLabel}
                       </button>
                       {cashier.isOnline && !isSelf && (
                         <button onClick={() => handleForceLogout(cashier)}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-600 hover:bg-amber-100 transition">
-                          <LogOut size={11} /> Kick
+                          <LogOut size={11} /> {t.kick}
                         </button>
                       )}
                       <button onClick={() => handleToggleCashier(cashier)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition
                           ${cashier.active ? "bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100" : "bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100"}`}>
-                        {cashier.active ? <><XCircle size={11}/> Disable</> : <><CheckCircle size={11}/> Enable</>}
+                        {cashier.active ? <><XCircle size={11}/> {t.disable}</> : <><CheckCircle size={11}/> {t.enable}</>}
                       </button>
                       {!isSelf && (
                         <button onClick={() => handleRemoveCashier(cashier)}
@@ -417,7 +414,7 @@ export default function StoreSettings() {
               {cashiers.length === 0 && (
                 <div className="text-center py-12 text-gray-400">
                   <Users size={32} className="mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No users found.</p>
+                  <p className="text-sm">{t.noUsersFound}</p>
                 </div>
               )}
             </div>
@@ -431,17 +428,17 @@ export default function StoreSettings() {
           onClick={e => { if (e.target === e.currentTarget) setPwModal(null); }}>
           <div className="bg-white dark:bg-[#1a1a1a] rounded-3xl p-6 w-full max-w-sm shadow-2xl">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold dark:text-white">Change Password — <span className="text-indigo-500">{pwModal.username}</span></h2>
+              <h2 className="font-bold dark:text-white">{t.changePassword} — <span className="text-indigo-500">{pwModal.username}</span></h2>
               <button onClick={() => setPwModal(null)} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
             </div>
             <input
-              type="password" placeholder="New password (min 4 chars)" value={newPassword}
+              type="password" placeholder={t.newPasswordPlaceholder} value={newPassword}
               onChange={e => setNewPassword(e.target.value)} autoFocus
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-transparent dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm mb-4"
             />
             <button onClick={handleChangePassword} disabled={newPassword.length < 4}
               className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl font-semibold text-sm transition">
-              Update Password
+              {t.updatePassword}
             </button>
           </div>
         </div>

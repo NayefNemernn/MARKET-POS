@@ -55,6 +55,12 @@ export const shiftTranslations = {
     failed:               "Failed",
     denomsLabel:          "Count bills in drawer (LBP)",
     totalLabel:           "Total:",
+    cashierLabel:         "Cashier:",
+    grossRevenue:         "Gross Revenue",
+    cashSales:            "Cash Sales",
+    cardSales:            "Card Sales",
+    endOfShift:           "End of Shift Report",
+    notesPrefix:          "Notes:",
   },
   ar: {
     loading:              "جارٍ التحميل...",
@@ -112,5 +118,11 @@ export const shiftTranslations = {
     failed:               "فشل",
     denomsLabel:          "عدّ الأوراق النقدية (ل.ل)",
     totalLabel:           "المجموع:",
+    cashierLabel:         "أمين الصندوق:",
+    grossRevenue:         "الإيرادات الإجمالية",
+    cashSales:            "مبيعات نقدية",
+    cardSales:            "مبيعات بالبطاقة",
+    endOfShift:           "تقرير نهاية الوردية",
+    notesPrefix:          "ملاحظات:",
   }
 };

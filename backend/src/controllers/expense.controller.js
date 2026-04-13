@@ -2,8 +2,8 @@
 import Expense from "../models/Expense.js";
 import AuditLog from "../models/AuditLog.js";
 
-async function audit(req, description, meta = {}) {
-  try { await AuditLog.create({ storeId: req.storeId, userId: req.user._id, username: req.user.username, action: "sale_created", description, meta }); } catch {}
+async function audit(req, action, description, meta = {}) {
+  try { await AuditLog.create({ storeId: req.storeId, userId: req.user._id, username: req.user.username, action, description, meta }); } catch {}
 }
 
 export const getExpenses = async (req, res) => {
@@ -49,7 +49,7 @@ export const createExpense = async (req, res) => {
       title, amount, category, paymentMethod, notes,
       date: date ? new Date(date) : new Date(),
     });
-    await audit(req, `Expense added: ${title} — $${amount}`, { expenseId: expense._id });
+    await audit(req, "expense_created", `Expense added: ${title} — $${amount}`, { expenseId: expense._id });
     res.status(201).json(expense);
   } catch (err) { res.status(500).json({ message: err.message }); }
 };

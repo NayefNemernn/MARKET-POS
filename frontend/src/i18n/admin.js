@@ -37,6 +37,12 @@ export const adminTranslations = {
     deviceKicked:       "kicked",
     maxDevicesUpdated:  "Max devices updated to",
     deleteConfirm:      "Delete user",
+    justNow:            "Just now",
+    mAgo:               "m ago",
+    hAgo:               "h ago",
+    failed:             "Failed",
+    toastDisabled:      "disabled",
+    toastEnabled:       "enabled",
   },
   ar: {
     title:              "لوحة الإدارة",
@@ -76,5 +82,11 @@ export const adminTranslations = {
     deviceKicked:       "تم الطرد",
     maxDevicesUpdated:  "تم تحديث أقصى عدد أجهزة إلى",
     deleteConfirm:      "حذف المستخدم",
+    justNow:            "الآن",
+    mAgo:               "د مضت",
+    hAgo:               "س مضت",
+    failed:             "فشل",
+    toastDisabled:      "تم تعطيله",
+    toastEnabled:       "تم تفعيله",
   }
 };

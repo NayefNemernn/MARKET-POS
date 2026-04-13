@@ -199,14 +199,14 @@ export default function CheckoutModal({ cart, total, close }) {
     if (method === "split") {
       const cash      = parseFloat(splitCash) || 0;
       const payLater  = parseFloat(splitPayLater) || 0;
-      if (cash <= 0) { toast.error("Enter cash amount for split payment"); return; }
+      if (cash <= 0) { toast.error(t.splitEnterCash); return; }
       const splitTotal = +(cash + payLater).toFixed(2);
       if (Math.abs(splitTotal - finalTotal) > 0.01) {
-        toast.error(`Split amounts ($${splitTotal.toFixed(2)}) must equal total ($${finalTotal.toFixed(2)})`);
+        toast.error(`${t.splitMismatch} ($${splitTotal.toFixed(2)} ≠ $${finalTotal.toFixed(2)})`);
         return;
       }
       if (payLater > 0 && !selectedCustomer && !customerSearch.trim()) {
-        toast.error("Customer name required for pay-later portion");
+        toast.error(t.splitCustomerRequired);
         return;
       }
     }
@@ -217,7 +217,7 @@ export default function CheckoutModal({ cart, total, close }) {
 
     /* if paylater only — use holdSale flow */
     if (method === "paylater") {
-      if (!navigator.onLine) { toast.error("Pay Later requires internet"); return; }
+      if (!navigator.onLine) { toast.error(t.payLaterOffline); return; }
       setLoading(true);
       try {
         await createHoldSale({
@@ -226,7 +226,7 @@ export default function CheckoutModal({ cart, total, close }) {
           items: cart.map(i => ({ productId: i.productId, name: i.name, price: i.price, quantity: i.quantity })),
           total: finalTotal,
         });
-        toast.success("Saved as pay-later");
+        toast.success(t.payLaterSaved);
         clearCart(); close();
       } catch (err) {
         toast.error(err.response?.data?.message || "Failed");
