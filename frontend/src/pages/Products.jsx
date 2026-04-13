@@ -567,7 +567,7 @@ export default function Products() {
             </div>
             <div className="p-5 space-y-5">
               {/* AI fill panel */}
-              <AIProductFill onFill={handleAIFill}/>
+              <AIProductFill onFill={handleAIFill} categories={categories}/>
               <ProductForm
                 form={form}
                 setForm={setForm}

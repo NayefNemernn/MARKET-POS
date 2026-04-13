@@ -43,7 +43,7 @@ function formatFieldValue(key, value, currency, t) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function AIProductFill({ onFill }) {
+export default function AIProductFill({ onFill, categories = [] }) {
   const t = useProductsTranslation();
 
   const [open,    setOpen]    = useState(false);
@@ -77,7 +77,8 @@ export default function AIProductFill({ onFill }) {
     setResult(null);
     setError(null);
     try {
-      const data = await parseProductPrompt(trimmed);
+      const categoryNames = categories.map(c => c.name);
+      const data = await parseProductPrompt(trimmed, categoryNames);
       setResult(data);
     } catch (err) {
       setError(err.response?.data?.message || t.failedAnalyze);
@@ -203,6 +204,7 @@ export default function AIProductFill({ onFill }) {
                   <VoiceButton
                     onResult={text => { setPrompt(text); setError(null); setResult(null); }}
                     lang="ar-LB"
+                    continuous
                   />
                 </div>
                 {prompt.trim() && !parsing && !result && (

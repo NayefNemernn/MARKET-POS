@@ -11,6 +11,7 @@ import Avatar from "../components/Avatar";
 import EditCustomerModal from "../components/EditCustomerModal";
 import CustomerPaymentsDrawer from "../components/CustomerPaymentsDrawer";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   CreditCard, Search, DollarSign, Users, TrendingDown,
   Pencil, History, AlertCircle, ShoppingBag, Package, X, Printer
@@ -179,7 +180,8 @@ export default function PayLater() {
   const [editingLimit,    setEditingLimit]    = useState(null);
   const [newLimit,        setNewLimit]        = useState("");
   const [monthlyPayCount, setMonthlyPayCount] = useState(0);
-  const [viewingItems,    setViewingItems]    = useState(null);   // ← new
+  const [viewingItems,    setViewingItems]    = useState(null);
+  const [recentKey,       setRecentKey]       = useState(0);
 
   useEffect(() => { load(); }, [tick]);
 
@@ -191,7 +193,8 @@ export default function PayLater() {
       ]);
       setSales(salesRes.data);
       setMonthlyPayCount(monthRes.data.length);
-    } catch {}
+      setRecentKey(k => k + 1); // trigger RecentPayments to re-fetch
+    } catch { toast.error("Failed to load pay-later accounts"); }
   };
 
   const filtered = sales.filter(s =>
@@ -414,7 +417,7 @@ export default function PayLater() {
           {/* RIGHT: Recent Payments */}
           <div className="col-span-12 lg:col-span-4">
             <div className="sticky top-5">
-              <RecentPayments/>
+              <RecentPayments refreshKey={recentKey}/>
             </div>
           </div>
         </div>

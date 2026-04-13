@@ -38,7 +38,8 @@ export const importProductsExcel = async (file) => {
 };
 
 // AI — parse free-text / voice description into product fields
-export const parseProductPrompt = async (prompt) => {
-  const res = await api.post("/products/parse-prompt", { prompt });
+// categories: string[] of store category names for exact matching
+export const parseProductPrompt = async (prompt, categories = []) => {
+  const res = await api.post("/products/parse-prompt", { prompt, categories });
   return res.data;
 };

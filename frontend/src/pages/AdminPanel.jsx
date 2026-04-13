@@ -46,35 +46,45 @@ export default function AdminPanel() {
   };
 
   const toggleStatus = async (user) => {
-    await api.patch(`/users/${user._id}`, { active: !user.active });
-    toast.success(`${user.username} ${user.active ? t.toastDisabled : t.toastEnabled}`);
-    load();
+    try {
+      await api.patch(`/users/${user._id}`, { active: !user.active });
+      toast.success(`${user.username} ${user.active ? t.toastDisabled : t.toastEnabled}`);
+      load();
+    } catch { toast.error(t.failed); }
   };
 
   const forceLogout = async (user) => {
-    await api.post(`/users/${user._id}/force-logout`);
-    toast.success(`${user.username} ${t.loggedOut}`);
-    load();
+    try {
+      await api.post(`/users/${user._id}/force-logout`);
+      toast.success(`${user.username} ${t.loggedOut}`);
+      load();
+    } catch { toast.error(t.failed); }
   };
 
   const forceLogoutDevice = async (userId, deviceId, deviceName) => {
-    await api.post(`/users/${userId}/force-logout-device`, { deviceId });
-    toast.success(`"${deviceName}" ${t.deviceKicked}`);
-    load();
+    try {
+      await api.post(`/users/${userId}/force-logout-device`, { deviceId });
+      toast.success(`"${deviceName}" ${t.deviceKicked}`);
+      load();
+    } catch { toast.error(t.failed); }
   };
 
   const updateMaxDevices = async (user, newMax) => {
     if (newMax < 1 || newMax > 10) return;
-    await api.patch(`/users/${user._id}`, { maxDevices: newMax });
-    toast.success(`${t.maxDevicesUpdated} ${newMax}`);
-    load();
+    try {
+      await api.patch(`/users/${user._id}`, { maxDevices: newMax });
+      toast.success(`${t.maxDevicesUpdated} ${newMax}`);
+      load();
+    } catch { toast.error(t.failed); }
   };
 
   const deleteUser = async (user) => {
     if (!confirm(`${t.deleteConfirm} "${user.username}"?`)) return;
-    await api.delete(`/users/${user._id}`);
-    toast.success(t.userDeleted);
-    load();
+    try {
+      await api.delete(`/users/${user._id}`);
+      toast.success(t.userDeleted);
+      load();
+    } catch (err) { toast.error(err.response?.data?.message || t.failed); }
   };
 
   const changePassword = async () => {

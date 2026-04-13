@@ -10,8 +10,8 @@ import { useVoiceInput } from "../../hooks/useVoiceInput";
  *   lang            — BCP-47 language code (default "ar-LB")
  *   className       — extra classes for the button
  */
-export default function VoiceButton({ onResult, lang = "ar-LB", className = "" }) {
-  const { listening, toggle, supported } = useVoiceInput(onResult);
+export default function VoiceButton({ onResult, lang = "ar-LB", className = "", continuous = false }) {
+  const { listening, toggle, supported } = useVoiceInput(onResult, lang, continuous);
 
   if (!supported) return null;
 

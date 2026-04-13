@@ -7,9 +7,11 @@ import { motion } from "framer-motion";
 import {
   LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer
 } from "recharts";
-import { TrendingUp, Package, AlertTriangle, DollarSign } from "lucide-react";
+import { TrendingUp, Package, AlertTriangle, DollarSign, CreditCard } from "lucide-react";
 
 const CARD = "p-6 rounded-2xl bg-white dark:bg-[#141414] shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff] dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]";
+
+const PERIODS = ["today", "week", "month", "year"];
 
 export default function Dashboard() {
   const t                     = useDashboardTranslation();
@@ -28,7 +30,7 @@ export default function Dashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await getDashboardStats();
+        const data = await getDashboardStats(salesMode);
         setStats(data);
       } catch (err) {
         console.error(err);
@@ -37,9 +39,21 @@ export default function Dashboard() {
       }
     };
     load();
-  }, [tick]);
+  }, [tick, salesMode]);
 
-  const salesValue = salesMode === "today" ? stats?.todaySales : stats?.weekSales;
+  const salesValue = salesMode === "today" ? stats?.todaySales
+    : salesMode === "week"  ? stats?.weekSales
+    : salesMode === "month" ? stats?.monthSales
+    : stats?.yearSales;
+
+  const salesLabel = salesMode === "today" ? t.todaySales
+    : salesMode === "week"  ? t.weekSales
+    : salesMode === "month" ? t.monthSales
+    : t.yearSales;
+
+  const chartAxisLabel = salesMode === "today" ? t.byHour
+    : salesMode === "year" ? t.byMonth
+    : t.byDay;
 
   if (loading) return (
     <div className="p-6 animate-pulse text-gray-500 dark:text-gray-400">{t.loading}</div>
@@ -61,6 +75,13 @@ export default function Dashboard() {
     </motion.div>
   );
 
+  const periodLabel = {
+    today: t.today,
+    week:  t.week,
+    month: t.month,
+    year:  t.year,
+  };
+
   return (
     <div dir={isAr ? "rtl" : "ltr"} className="h-full overflow-y-auto">
       <div className="p-6 space-y-6">
@@ -73,21 +94,21 @@ export default function Dashboard() {
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">{t.subtitle}</p>
           </div>
-          <div className="flex gap-2">
-            {[["today", t.today], ["week", t.week]].map(([val, label]) => (
-              <button key={val} onClick={() => setSalesMode(val)}
+          <div className="flex gap-2 flex-wrap">
+            {PERIODS.map(p => (
+              <button key={p} onClick={() => setSalesMode(p)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition
-                  ${salesMode === val ? "bg-blue-600 text-white" : "bg-white dark:bg-[#141414] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10"}`}>
-                {label}
+                  ${salesMode === p ? "bg-blue-600 text-white" : "bg-white dark:bg-[#141414] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10"}`}>
+                {periodLabel[p]}
               </button>
             ))}
           </div>
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <KpiCard
-            title={salesMode === "today" ? t.todaySales : t.weekSales}
+            title={salesLabel}
             value={<motion.span key={salesValue} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
               ${Number(salesValue || 0).toFixed(2)}
             </motion.span>}
@@ -98,6 +119,15 @@ export default function Dashboard() {
           <KpiCard title={t.products}  value={stats?.totalProducts ?? 0} icon={<Package size={18}/>}       color="text-blue-600 dark:text-blue-400"     bg="bg-blue-50 dark:bg-blue-900/20"   />
           <KpiCard title={t.lowStock}  value={stats?.lowStock      ?? 0} icon={<AlertTriangle size={18}/>} color="text-red-600 dark:text-red-400"       bg="bg-red-50 dark:bg-red-900/20"     />
           <KpiCard title={t.customers} value={stats?.customers     ?? 0} icon={<TrendingUp size={18}/>}    color="text-purple-600 dark:text-purple-400" bg="bg-purple-50 dark:bg-purple-900/20"/>
+          <KpiCard
+            title={t.payLaterOutstanding}
+            value={<motion.span key={stats?.payLaterOutstanding} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              ${Number(stats?.payLaterOutstanding || 0).toFixed(2)}
+            </motion.span>}
+            icon={<CreditCard size={18}/>}
+            color="text-amber-600 dark:text-amber-400"
+            bg="bg-amber-50 dark:bg-amber-900/20"
+          />
         </div>
 
         {/* Toggles */}
@@ -111,13 +141,16 @@ export default function Dashboard() {
         {/* Sales chart */}
         {showSales && (
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className={CARD}>
-            <h3 className="font-semibold mb-4 text-sm">{t.salesChart}</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-sm">{t.salesChart}</h3>
+              <span className="text-xs text-gray-400">{chartAxisLabel}</span>
+            </div>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={stats?.salesChart || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
                 <XAxis dataKey="day" tick={{ fontSize: 11 }}/>
                 <YAxis tick={{ fontSize: 11 }}/>
-                <Tooltip formatter={v => [`$${Number(v).toFixed(2)}`, t.todaySales]}/>
+                <Tooltip formatter={v => [`$${Number(v).toFixed(2)}`, t.periodSales]}/>
                 <Line type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 4 }}/>
               </LineChart>
             </ResponsiveContainer>

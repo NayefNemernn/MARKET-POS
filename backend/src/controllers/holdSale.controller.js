@@ -54,11 +54,13 @@ export const getHoldSaleNames = async (req, res) => {
 export const payHoldSale = async (req, res) => {
   try {
     const { amount, method, notes } = req.body;
+    if (!amount || amount <= 0) return res.status(400).json({ message: "Amount must be positive" });
     const sale = await HoldSale.findOne({ _id: req.params.id, ...storeQ(req) });
     if (!sale) return res.status(404).json({ message: "Receipt not found" });
+    if (amount > sale.balance) return res.status(400).json({ message: `Amount exceeds outstanding balance ($${sale.balance.toFixed(2)})` });
 
     sale.paid    += amount;
-    sale.balance  = sale.total - sale.paid;
+    sale.balance  = +(sale.total - sale.paid).toFixed(2);
 
     await Payment.create({
       storeId: req.storeId, userId: req.user._id,

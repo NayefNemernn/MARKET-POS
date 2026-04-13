@@ -19,10 +19,11 @@ export default function CustomerPaymentsDrawer({ customer, close }) {
   const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
-    api.get(`/hold-sales/payments/customer/${customer.customerName}`)
+    api.get(`/hold-sales/payments/customer/${encodeURIComponent(customer.customerName)}`)
       .then(res => setPayments(res.data))
+      .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [customer.customerName]);
 
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
 

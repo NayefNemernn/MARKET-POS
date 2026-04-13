@@ -20,6 +20,13 @@ import {
 
 const CARD = "rounded-2xl bg-white dark:bg-[#141414] shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff] dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]";
 const PIE_COLORS = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6"];
+// Fixed per-method colors so pie and legend always match
+const PM_COLORS = {
+  cash:     { hex: "#10b981", text: "text-emerald-600 dark:text-emerald-400" },
+  card:     { hex: "#3b82f6", text: "text-blue-600    dark:text-blue-400"    },
+  paylater: { hex: "#ef4444", text: "text-red-600     dark:text-red-400"     },
+  split:    { hex: "#f59e0b", text: "text-amber-600   dark:text-amber-400"   },
+};
 const METHOD_COLOR = {
   cash:     "bg-green-100  dark:bg-green-900/30  text-green-700  dark:text-green-300",
   card:     "bg-blue-100   dark:bg-blue-900/30   text-blue-700   dark:text-blue-300",
@@ -65,15 +72,18 @@ export default function Reports() {
 
   const loadPL = useCallback(async () => {
     try {
-      const from = period === "day"
-        ? new Date().toISOString().split("T")[0]
-        : new Date(Date.now() - 7*86400000).toISOString().split("T")[0];
-      setPlData(await getProfitLoss(from, new Date().toISOString().split("T")[0]));
+      const now = new Date();
+      let from;
+      if (period === "day") from = now.toISOString().split("T")[0];
+      else if (period === "week") from = new Date(Date.now() - 7*86400000).toISOString().split("T")[0];
+      else if (period === "month") from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      else from = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
+      setPlData(await getProfitLoss(from, now.toISOString().split("T")[0]));
     } catch { setPlData(null); }
   }, [period]);
 
   const loadAudit = useCallback(async () => {
-    try { setAuditLogs((await api.get("/audit?limit=200")).data); } catch {}
+    try { setAuditLogs((await api.get("/audit", { params: { limit: 200 } })).data); } catch {}
   }, []);
 
   useEffect(() => {
@@ -83,9 +93,12 @@ export default function Reports() {
 
   /* ── filter ── */
   const filteredSales = useMemo(() => {
-    const cutoff = new Date();
-    if (period === "day") cutoff.setHours(0,0,0,0);
-    else cutoff.setDate(cutoff.getDate() - 7);
+    const now = new Date();
+    let cutoff = new Date();
+    if (period === "day") { cutoff.setHours(0,0,0,0); }
+    else if (period === "week") { cutoff.setDate(cutoff.getDate() - 7); }
+    else if (period === "month") { cutoff = new Date(now.getFullYear(), now.getMonth(), 1); }
+    else { cutoff = new Date(now.getFullYear(), 0, 1); } // year
     return sales.filter(s => new Date(s.createdAt) >= cutoff);
   }, [sales, period]);
 
@@ -94,6 +107,7 @@ export default function Reports() {
   const cashRevenue   = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="cash").reduce((s,x)=>s+x.total,0), [filteredSales]);
   const cardRevenue   = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="card").reduce((s,x)=>s+x.total,0), [filteredSales]);
   const payLaterTotal = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="paylater").reduce((s,x)=>s+x.total,0), [filteredSales]);
+  const splitTotal    = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="split").reduce((s,x)=>s+x.total,0), [filteredSales]);
   const avgSale       = filteredSales.length ? totalRevenue/filteredSales.length : 0;
   const outstandingCredit = useMemo(() => holdSales.reduce((s,h)=>s+(h.balance||0),0), [holdSales]);
   const totalCreditGiven  = useMemo(() => holdSales.reduce((s,h)=>s+(h.total||0),0),   [holdSales]);
@@ -104,8 +118,10 @@ export default function Reports() {
     const map = {};
     filteredSales.forEach(s => {
       const d = new Date(s.createdAt);
-      const key = period === "day" ? `${d.getHours()}:00`
-        : d.toLocaleDateString(isAr?"ar-SA":"en-US",{weekday:"short",month:"short",day:"numeric"});
+      let key;
+      if (period === "day") key = `${d.getHours()}:00`;
+      else if (period === "year") key = d.toLocaleDateString(isAr?"ar-SA":"en-US",{month:"short",year:"2-digit"});
+      else key = d.toLocaleDateString(isAr?"ar-SA":"en-US",{weekday:"short",month:"short",day:"numeric"});
       if (!map[key]) map[key] = { label:key, revenue:0, count:0 };
       map[key].revenue += s.total; map[key].count += 1;
     });
@@ -115,12 +131,13 @@ export default function Reports() {
   const paymentBreakdown = useMemo(() => {
     const map = {cash:0,card:0,paylater:0,split:0};
     filteredSales.forEach(s => { map[s.paymentMethod]=(map[s.paymentMethod]||0)+s.total; });
+    // Always keep all 4 entries with stable order; filter zeros only for pie chart rendering
     return [
-      {name:t.cash||"Cash",    value:+map.cash.toFixed(2)    },
-      {name:t.card||"Card",    value:+map.card.toFixed(2)    },
-      {name:t.credit||"Credit",value:+map.paylater.toFixed(2)},
-      {name:"Split",           value:+map.split.toFixed(2)   },
-    ].filter(x=>x.value>0);
+      {key:"cash",     name:t.cash||"Cash",           value:+map.cash.toFixed(2)    },
+      {key:"card",     name:t.card||"Card",           value:+map.card.toFixed(2)    },
+      {key:"paylater", name:t.credit||"Pay Later",    value:+map.paylater.toFixed(2)},
+      {key:"split",    name:t.split||"Split",         value:+map.split.toFixed(2)   },
+    ];
   }, [filteredSales, t]);
 
   const topProducts = useMemo(() => {
@@ -218,7 +235,7 @@ export default function Reports() {
             <p className="text-sm text-gray-500 dark:text-gray-400">{t.subtitle}</p>
           </div>
           <div className="flex gap-2 items-center flex-wrap">
-            {[["day",t.today||"Today"],["week",t.week||"Week"]].map(([val,label])=>(
+            {[["day",t.today||"Today"],["week",t.week||"Week"],["month",t.month||"Month"],["year",t.year||"Year"]].map(([val,label])=>(
               <button key={val} onClick={()=>setPeriod(val)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition ${period===val?"bg-purple-600 text-white":"bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300"}`}>
                 {label}
@@ -262,7 +279,7 @@ export default function Reports() {
             <div className={`${CARD} p-5`}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-sm">{t.revenueTrend}</h3>
-                <span className="text-xs text-gray-400">{period==="day"?t.byHour:t.byDay}</span>
+                <span className="text-xs text-gray-400">{period==="day"?t.byHour:period==="year"?t.byMonth:t.byDay}</span>
               </div>
               {revenueChart.length===0?<Empty msg={t.noSales}/>:(
                 <ResponsiveContainer width="100%" height={220}>
@@ -293,22 +310,44 @@ export default function Reports() {
               </div>
               <div className={`${CARD} p-5`}>
                 <h3 className="font-semibold text-sm mb-4">{t.paymentMethods}</h3>
-                {paymentBreakdown.length===0?<Empty/>:(
+                {paymentBreakdown.every(x=>x.value===0) ? (
+                  /* show empty legend even when no sales */
+                  <div className="grid grid-cols-2 gap-2">
+                    {paymentBreakdown.map(m=>(
+                      <div key={m.key} className="text-center bg-gray-50 dark:bg-[#1c1c1c] rounded-xl p-2">
+                        <div className="flex items-center justify-center gap-1 mb-0.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{background:PM_COLORS[m.key].hex}}/>
+                          <p className="text-xs text-gray-400">{m.name}</p>
+                        </div>
+                        <p className={`text-sm font-bold ${PM_COLORS[m.key].text}`}>$0.00</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
                   <>
                     <ResponsiveContainer width="100%" height={160}>
                       <PieChart>
-                        <Pie data={paymentBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}
-                          label={({name,percent})=>`${name} ${(percent*100).toFixed(0)}%`}>
-                          {paymentBreakdown.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}
+                        <Pie
+                          data={paymentBreakdown.filter(x=>x.value>0)}
+                          dataKey="value" nameKey="name"
+                          cx="50%" cy="50%" outerRadius={65}
+                          label={({name,percent})=>`${name} ${(percent*100).toFixed(0)}%`}
+                        >
+                          {paymentBreakdown.filter(x=>x.value>0).map(m=>(
+                            <Cell key={m.key} fill={PM_COLORS[m.key].hex}/>
+                          ))}
                         </Pie>
                         <Tooltip formatter={v=>`$${Number(v).toFixed(2)}`}/>
                       </PieChart>
                     </ResponsiveContainer>
-                    <div className="grid grid-cols-3 gap-2 mt-3">
-                      {[{label:t.cash,value:cashRevenue,color:"text-green-600"},{label:t.card,value:cardRevenue,color:"text-blue-600"},{label:t.credit,value:payLaterTotal,color:"text-red-600"}].map(({label,value,color})=>(
-                        <div key={label} className="text-center bg-gray-50 dark:bg-[#1c1c1c] rounded-xl p-2">
-                          <p className="text-xs text-gray-400">{label}</p>
-                          <p className={`text-sm font-bold ${color}`}>${value.toFixed(2)}</p>
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      {paymentBreakdown.map(m=>(
+                        <div key={m.key} className="text-center bg-gray-50 dark:bg-[#1c1c1c] rounded-xl p-2">
+                          <div className="flex items-center justify-center gap-1 mb-0.5">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{background:PM_COLORS[m.key].hex}}/>
+                            <p className="text-xs text-gray-400">{m.name}</p>
+                          </div>
+                          <p className={`text-sm font-bold ${PM_COLORS[m.key].text}`}>${m.value.toFixed(2)}</p>
                         </div>
                       ))}
                     </div>
@@ -502,7 +541,7 @@ export default function Reports() {
               ))}
             </div>
             <div className={`${CARD} p-5`}>
-              <h3 className="font-semibold text-sm mb-1">{t.payLaterSales} — {period==="day"?t.today:t.thisWeek}</h3>
+              <h3 className="font-semibold text-sm mb-1">{t.payLaterSales} — {period==="day"?t.today:period==="week"?t.thisWeek:period==="month"?t.thisMonth:t.thisYear}</h3>
               <p className="text-xs text-gray-400 mb-4">{t.payLaterPeriodDesc}</p>
               {filteredSales.filter(s=>s.paymentMethod==="paylater").length===0?<Empty msg={t.noPayLaterSales}/>:(
                 <table className="w-full text-sm">

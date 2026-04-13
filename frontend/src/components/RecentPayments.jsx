@@ -11,7 +11,7 @@ const METHOD_STYLE = {
   default: "bg-gray-100  dark:bg-gray-800     text-gray-600  dark:text-gray-400",
 };
 
-export default function RecentPayments() {
+export default function RecentPayments({ refreshKey = 0 }) {
   const { tick }  = useRefresh();
   const { lang }  = useLang();
   const t         = usePayLaterTranslation();
@@ -20,7 +20,7 @@ export default function RecentPayments() {
   const [payments, setPayments] = useState([]);
   const [filter,   setFilter]   = useState("");
 
-  useEffect(() => { load(); }, [tick]);
+  useEffect(() => { load(); }, [tick, refreshKey]);
 
   const load = async () => {
     try {

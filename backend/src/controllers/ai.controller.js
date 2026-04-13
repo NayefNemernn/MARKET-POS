@@ -42,7 +42,7 @@ Important: Return ONLY the JSON object — nothing else, no markdown fences.`;
 // ── Controller ────────────────────────────────────────────────────────────────
 export const parseProductPrompt = async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, categories } = req.body;
 
     if (!prompt?.trim()) {
       return res.status(400).json({ message: "Prompt is required" });
@@ -93,6 +93,13 @@ export const parseProductPrompt = async (req, res) => {
     fields.cost  = Math.max(0, parseFloat(fields.cost)  || 0);
     fields.stock = Math.max(0, parseInt(fields.stock)    || 0);
     if (!["USD", "LBP"].includes(fields.priceCurrency)) fields.priceCurrency = "USD";
+
+    // Category matching — if store categories were provided, match AI suggestion
+    if (Array.isArray(categories) && categories.length > 0 && fields.category) {
+      const suggested = fields.category.toLowerCase().trim();
+      const match = categories.find(c => c.toLowerCase().trim() === suggested);
+      fields.category = match || null; // exact match → use store name; no match → null
+    }
 
     res.json(fields);
   } catch (err) {

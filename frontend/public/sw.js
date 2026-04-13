@@ -7,7 +7,7 @@
    Background Sync → replay queued POST requests when online
 ================================================================ */
 
-const CACHE_VERSION  = "v4";
+const CACHE_VERSION  = "v5";
 const SHELL_CACHE    = `pos-shell-${CACHE_VERSION}`;
 const API_CACHE      = `pos-api-${CACHE_VERSION}`;
 const SYNC_TAG       = "pos-sync-sales";
@@ -114,35 +114,56 @@ self.addEventListener("sync", (e) => {
 });
 
 async function syncPendingSales() {
-  /* Open IndexedDB and drain the queue */
-  const db  = await openDB();
-  const all = await getAllRecords(db, "pending_sales");
+  const db    = await openDB();
+  const token = await getTokenFromDB(db);
+  const headers = {
+    "Content-Type":  "application/json",
+    "Authorization": token ? `Bearer ${token}` : "",
+  };
 
-  for (const sale of all) {
+  let synced = 0;
+
+  /* ── drain pending sales ── */
+  const sales = await getAllRecords(db, "pending_sales");
+  for (const sale of sales) {
     try {
       const { id, savedAt, ...saleData } = sale;
-      const token = await getTokenFromDB(db);
-
       const response = await fetch("/api/sales", {
-        method:  "POST",
-        headers: {
-          "Content-Type":  "application/json",
-          "Authorization": token ? `Bearer ${token}` : "",
-        },
-        body: JSON.stringify(saleData),
+        method: "POST", headers, body: JSON.stringify(saleData),
       });
-
       if (response.ok) {
         await deleteRecord(db, "pending_sales", id);
-        /* notify all open clients */
+        synced++;
         const clients = await self.clients.matchAll();
-        clients.forEach((c) =>
-          c.postMessage({ type: "SYNC_SALE_SUCCESS", sale: saleData })
-        );
+        clients.forEach((c) => c.postMessage({ type: "SYNC_SALE_SUCCESS", sale: saleData }));
       }
     } catch (err) {
-      console.error("[SW] Sync failed for sale:", err);
+      console.error("[SW] Sale sync failed:", err);
     }
+  }
+
+  /* ── drain pending returns ── */
+  if (db.objectStoreNames.contains("pending_returns")) {
+    const returns = await getAllRecords(db, "pending_returns");
+    for (const ret of returns) {
+      try {
+        const { id, savedAt, saleId, ...returnData } = ret;
+        const response = await fetch(`/api/sales/${saleId}/return`, {
+          method: "POST", headers, body: JSON.stringify(returnData),
+        });
+        if (response.ok) {
+          await deleteRecord(db, "pending_returns", id);
+          synced++;
+        }
+      } catch (err) {
+        console.error("[SW] Return sync failed:", err);
+      }
+    }
+  }
+
+  if (synced > 0) {
+    const clients = await self.clients.matchAll();
+    clients.forEach((c) => c.postMessage({ type: "SYNC_COMPLETE", synced }));
   }
 }
 

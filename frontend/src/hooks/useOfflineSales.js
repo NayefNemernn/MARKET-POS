@@ -22,10 +22,11 @@ export default function useOfflineSales() {
 
     const handler = (e) => {
       if (e.data?.type === "SYNC_SALE_SUCCESS") {
-        toast.success("✅ Offline sale synced!");
         window.dispatchEvent(new Event("offlineSynced"));
       }
       if (e.data?.type === "SYNC_COMPLETE") {
+        const synced = e.data?.synced || 0;
+        if (synced > 0) toast.success(`✅ ${synced} offline record(s) synced!`);
         window.dispatchEvent(new Event("offlineSynced"));
       }
     };

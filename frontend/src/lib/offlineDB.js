@@ -1,16 +1,18 @@
 /* ================================================================
    offlineDB.js  —  Central IndexedDB manager for Market POS
-   
+
    Stores:
      pending_sales     → queued sales waiting to sync
      pending_returns   → queued returns waiting to sync
      products_cache    → cached product list for offline POS
      categories_cache  → cached categories
+     customers_cache   → cached customers (for paylater suggestions offline)
+     settings_cache    → cached store settings
      auth              → JWT token for SW background sync
 ================================================================ */
 
 const DB_NAME    = "pos_offline_db";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 /* ── open / migrate ─────────────────────────────────────────── */
 function openDB() {
@@ -31,6 +33,12 @@ function openDB() {
       }
       if (!db.objectStoreNames.contains("categories_cache")) {
         db.createObjectStore("categories_cache",{ keyPath: "key" });
+      }
+      if (!db.objectStoreNames.contains("customers_cache")) {
+        db.createObjectStore("customers_cache", { keyPath: "key" });
+      }
+      if (!db.objectStoreNames.contains("settings_cache")) {
+        db.createObjectStore("settings_cache",  { keyPath: "key" });
       }
       if (!db.objectStoreNames.contains("auth")) {
         db.createObjectStore("auth",            { keyPath: "key" });
@@ -151,4 +159,30 @@ export async function getPendingReturns() {
 
 export async function deletePendingReturn(id) {
   return remove("pending_returns", id);
+}
+
+/* ── Customers cache ────────────────────────────────────────── */
+export async function cacheCustomers(customers) {
+  await put("customers_cache", { key: "list", data: customers, cachedAt: Date.now() });
+}
+
+export async function getCachedCustomers() {
+  const rec = await getOne("customers_cache", "list");
+  return rec?.data ?? null;
+}
+
+/* ── Settings cache ─────────────────────────────────────────── */
+export async function cacheSettings(settings) {
+  await put("settings_cache", { key: "store", data: settings, cachedAt: Date.now() });
+}
+
+export async function getCachedSettings() {
+  const rec = await getOne("settings_cache", "store");
+  return rec?.data ?? null;
+}
+
+/* ── Cache age (ms since last sync) ─────────────────────────── */
+export async function getProductsCacheAge() {
+  const rec = await getOne("products_cache", "list");
+  return rec ? Date.now() - rec.cachedAt : null;
 }

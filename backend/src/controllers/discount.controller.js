@@ -62,6 +62,9 @@ export const validateCoupon = async (req, res) => {
       ? +(Math.min((discount.value / 100) * orderTotal, orderTotal)).toFixed(2)
       : +Math.min(discount.value, orderTotal).toFixed(2);
 
+    // Increment usage counter
+    await Discount.findByIdAndUpdate(discount._id, { $inc: { usedCount: 1 } });
+
     res.json({ discount, discountAmount });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };

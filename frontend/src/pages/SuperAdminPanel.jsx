@@ -45,7 +45,7 @@ export default function SuperAdminPanel() {
   const { lang } = useLang();
   const TABS = [t.tabStores, t.tabActivity, t.tabAuditLog, t.tabProfile];
   const timeAgo = (date) => { if (!date) return t.never; const s = Math.floor((Date.now() - new Date(date)) / 1000); if (s < 60) return t.justNow; if (s < 3600) return `${Math.floor(s/60)} ${t.mAgo}`; if (s < 86400) return `${Math.floor(s/3600)} ${t.hAgo}`; return new Date(date).toLocaleDateString(); };
-  const [tab,      setTab]      = useState("Stores");
+  const [tab,      setTab]      = useState(t.tabStores);
   const [stats,    setStats]    = useState(null);
   const [stores,   setStores]   = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -97,6 +97,8 @@ export default function SuperAdminPanel() {
   const [expandedUser,     setExpandedUser]      = useState({});
 
   useEffect(() => { loadData(); }, []);
+  // Reset to first tab when language switches so tab comparison stays valid
+  useEffect(() => { setTab(t.tabStores); }, [lang]);
 
   const loadData = async () => {
     try { const [s, st] = await Promise.all([getPlatformStats(), getAllStores()]); setStats(s); setStores(st); }

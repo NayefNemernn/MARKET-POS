@@ -26,7 +26,7 @@ export default function Users() {
     try {
       const res = await api.get("/users");
       setUsers(res.data);
-    } catch { } finally { setLoading(false); }
+    } catch { toast.error(t.failCreate); } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchUsers(); }, []);
@@ -45,8 +45,11 @@ export default function Users() {
   };
 
   const toggleStatus = async (user) => {
-    await api.patch(`/users/${user._id}`, { active: !user.active });
-    fetchUsers();
+    try {
+      await api.patch(`/users/${user._id}`, { active: !user.active });
+      toast.success(user.active ? t.userDisabled : t.userEnabled);
+      fetchUsers();
+    } catch { toast.error(t.failCreate); }
   };
 
   const deleteUser = async (id) => {

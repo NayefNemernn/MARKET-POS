@@ -4,6 +4,7 @@ import Customer from "../models/Customer.js";
 import AuditLog from "../models/AuditLog.js";
 import StockLog from "../models/StockLog.js";
 import HoldSale from "../models/HoldSale.js";
+import Payment  from "../models/Payment.js";
 
 async function audit(req, action, description, meta = {}) {
   try { await AuditLog.create({ storeId: req.storeId, userId: req.user._id, username: req.user.username, action, description, meta }); } catch {}
@@ -76,25 +77,37 @@ export const createSale = async (req, res) => {
     await audit(req, "sale_created", `Sale $${total} — ${paymentMethod}${customerName ? " — " + customerName : ""}`,
       { saleId: sale._id, total, paymentMethod, discount });
 
-    // If split payment includes paylater, create/update HoldSale so it appears in Pay Later page
+    // If split payment includes paylater, create/update HoldSale + record the upfront cash payment
     if (paymentMethod === "split") {
       const payLaterEntry = (splitPayments || []).find(p => p.method === "paylater");
       if (payLaterEntry && payLaterEntry.amount > 0 && customerName) {
-        const cashPaid = +(total - payLaterEntry.amount).toFixed(2);
+        const cashPaid  = +(total - payLaterEntry.amount).toFixed(2);
         const holdItems = saleItems.map(i => ({ productId: i.productId, name: i.name, price: i.price, quantity: i.quantity }));
-        const existing = await HoldSale.findOne({ customerName, storeId });
+        const existing  = await HoldSale.findOne({ customerName, storeId });
+        let holdSaleId;
         if (existing) {
           existing.items.push(...holdItems);
           existing.total   = +(existing.total + total).toFixed(2);
           existing.paid    = +(existing.paid + cashPaid).toFixed(2);
           existing.balance = +(existing.total - existing.paid).toFixed(2);
           await existing.save();
+          holdSaleId = existing._id;
         } else {
-          await HoldSale.create({
+          const created = await HoldSale.create({
             storeId, userId: req.user._id,
             customerName, phone: phone || "",
             items: holdItems,
             total, paid: cashPaid, balance: payLaterEntry.amount,
+          });
+          holdSaleId = created._id;
+        }
+        // Record the cash portion as a Payment so it appears in Recent Payments
+        if (cashPaid > 0) {
+          await Payment.create({
+            storeId, userId: req.user._id,
+            customerName, phone: phone || "",
+            holdSaleId, amount: cashPaid, method: "cash",
+            notes: `Paid at checkout (split sale #${sale._id})`,
           });
         }
       }

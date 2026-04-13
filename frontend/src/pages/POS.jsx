@@ -14,7 +14,9 @@ import VoiceButton       from "../components/common/VoiceButton";
 import {
   cacheProducts, getCachedProducts,
   cacheCategories, getCachedCategories,
+  cacheCustomers,
 } from "../lib/offlineDB";
+import api from "../api/axios";
 import toast             from "react-hot-toast";
 import { ShoppingBag, Search, RotateCcw } from "lucide-react";
 import QuickReturn from "../components/QuickReturn";
@@ -44,11 +46,16 @@ export default function POS({ setPage }) {
     if (cachedC) setCategories(cachedC);
 
     try {
-      const [p, c] = await Promise.all([getAllProducts(), getCategories()]);
+      const [p, c, cusRes] = await Promise.all([
+        getAllProducts(),
+        getCategories(),
+        api.get("/customers").catch(() => ({ data: [] })),
+      ]);
       setProducts(p);
       setCategories(c);
       await cacheProducts(p);
       await cacheCategories(c);
+      await cacheCustomers(cusRes.data);
     } catch {
       if (!cachedP) toast("📦 Showing cached products", { icon: "💾" });
     } finally {
