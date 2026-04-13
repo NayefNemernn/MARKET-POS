@@ -24,6 +24,7 @@ import ProductEditPanel  from "../components/products/ProductEditPanel";
 import ProductForm       from "../components/products/ProductForm";
 import ImageDropzone     from "../components/products/ImageDropzone";
 import AIProductFill     from "../components/products/AIProductFill";
+import InventoryScanner  from "../components/products/InventoryScanner";
 import ExchangeRateBar   from "../components/ExchangeRateBar";
 import VoiceButton       from "../components/common/VoiceButton";
 import { useProductsTranslation } from "../hooks/useProductsTranslation";
@@ -338,31 +339,7 @@ export default function Products() {
     toast.success(`${t.export}: ${products.length} ${t.productsLabel}`);
   };
 
-  // ── Inventory scan ────────────────────────────────────────────────────────
-  useEffect(() => {
-    let buffer = "", lastKeyTime = 0;
-    const handleScanner = async (e) => {
-      if (!inventoryMode) return;
-      if (e.target.tagName === "INPUT") return;
-      const now = Date.now();
-      if (now - lastKeyTime > 150) buffer = "";
-      lastKeyTime = now;
-      if (e.key === "Enter") {
-        const code = buffer.trim(); buffer = "";
-        const product = products.find(p => p.barcode === code);
-        if (!product) { toast.error(`${t.barcodeNotFound}: ${code}`); return; }
-        try {
-          const updated = await updateProduct(product._id, { stock: product.stock + 1 });
-          setProducts(prev => prev.map(p => p._id === updated._id ? updated : p));
-          toast.success(`✅ ${product.name} → +1 (${product.stock + 1})`);
-        } catch { toast.error(t.failedUpdateStock); }
-        return;
-      }
-      if (/^[0-9a-zA-Z\-]$/.test(e.key)) buffer += e.key;
-    };
-    window.addEventListener("keydown", handleScanner);
-    return () => window.removeEventListener("keydown", handleScanner);
-  }, [inventoryMode, products]);
+  // Inventory scan is handled by <InventoryScanner> component
 
   // ── AI fill ──────────────────────────────────────────────────────────────
   const { exchangeRate } = useCurrency();
@@ -524,23 +501,16 @@ export default function Products() {
             )}
           </div>
 
-          {/* ── INVENTORY SCAN BANNER ────────────────────────────────────── */}
-          {inventoryMode && (
-            <div className="flex items-center justify-between
-              px-4 py-3 rounded-2xl
-              bg-blue-50 dark:bg-blue-900/20
-              border border-blue-200 dark:border-blue-500/30">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"/>
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                  {t.inventoryScanActive}
-                </span>
-              </div>
-              <button onClick={() => setInventoryMode(false)} className="text-blue-400 hover:text-blue-600 transition">
-                <X size={16}/>
-              </button>
-            </div>
-          )}
+          {/* ── INVENTORY SCANNER PANEL ──────────────────────────────────── */}
+          <InventoryScanner
+            inventoryMode={inventoryMode}
+            setInventoryMode={setInventoryMode}
+            products={products}
+            setProducts={setProducts}
+            updateProduct={updateProduct}
+            createProduct={createProduct}
+            categories={categories}
+          />
 
           {/* ── STATS ────────────────────────────────────────────────────── */}
           <div className="grid grid-cols-3 gap-4">
