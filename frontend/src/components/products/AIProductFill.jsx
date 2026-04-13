@@ -203,7 +203,7 @@ export default function AIProductFill({ onFill, categories = [] }) {
                 <div className="absolute bottom-2.5 right-2.5">
                   <VoiceButton
                     onResult={text => { setPrompt(text); setError(null); setResult(null); }}
-                    lang="ar-LB"
+                    lang="auto"
                     continuous
                   />
                 </div>
