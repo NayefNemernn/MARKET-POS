@@ -58,10 +58,17 @@ export default function DashboardLayout({ children, page, setPage, user }) {
   const isSuperAdmin = user?.role === "superadmin";
   const isPOS        = page === "pos";
 
-  const [open,    setOpen]    = useState(false);
-  const [hovered, setHovered] = useState(null);
-  const hideTimer             = useRef(null);
-  const navRef                = useRef(null);
+  const [open,       setOpen]       = useState(false);
+  const [isOnline,   setIsOnline]   = useState(navigator.onLine);
+  const navRef                      = useRef(null);
+
+  useEffect(() => {
+    const up   = () => setIsOnline(true);
+    const down = () => setIsOnline(false);
+    window.addEventListener("online",  up);
+    window.addEventListener("offline", down);
+    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
+  }, []);
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput,   setNameInput]   = useState("");
@@ -91,13 +98,18 @@ export default function DashboardLayout({ children, page, setPage, user }) {
         { key: "reports",       icon: BarChart3,       adminOnly: false },
         { key: "paylater",      icon: Clock,           adminOnly: false },
         { key: "shift",         icon: ClipboardList,   adminOnly: false },
-        { key: "stock",         icon: Package,         adminOnly: true  },
+        { key: "stock",         icon: TrendingDown,    adminOnly: true  },
         { key: "expenses",      icon: TrendingDown,    adminOnly: true  },
         { key: "discounts",     icon: Tag,             adminOnly: true  },
         { key: "suppliers",     icon: Truck,           adminOnly: true  },
         { key: "adminpanel",    icon: Shield,          adminOnly: true  },
         { key: "storesettings", icon: Store,           adminOnly: true  },
       ].filter(item => !item.adminOnly || isAdmin);
+
+  // Split menu into two columns if long
+  const half   = Math.ceil(menu.length / 2);
+  const col1   = menu.slice(0, half);
+  const col2   = menu.slice(half);
 
   const toggle  = useCallback(() => setOpen(v => !v), []);
   const close   = useCallback(() => { setOpen(false); setEditingName(false); }, []);
@@ -120,121 +132,212 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [open, close]);
 
-  useEffect(() => () => clearTimeout(hideTimer.current), []);
-
   const activeColor = NAV_COLORS[page] || NAV_COLORS.pos;
+  const welcomeMsg  = store?.welcomeMessage;
 
-  // Welcome message display
-  const welcomeMsg = store?.welcomeMessage;
+  const NavItem = ({ item, index }) => {
+    const Icon   = item.icon;
+    const active = page === item.key;
+    const color  = NAV_COLORS[item.key];
+
+    return (
+      <motion.button
+        key={item.key}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 8 }}
+        transition={{ delay: index * 0.03, type: "spring", stiffness: 400, damping: 28 }}
+        onClick={() => { setPage(item.key); close(); }}
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.97 }}
+        className={`
+          w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left
+          transition-all duration-150 relative overflow-hidden
+          ${active
+            ? "text-white shadow-lg"
+            : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5"
+          }
+        `}
+        style={active ? {
+          background: color.bg,
+          boxShadow: `0 4px 14px ${color.glow}`,
+        } : {}}
+      >
+        {/* Icon bubble */}
+        <div
+          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          style={{
+            background: active ? "rgba(255,255,255,0.2)" : color.bg + "22",
+          }}
+        >
+          <Icon size={14} style={{ color: active ? "white" : color.bg }} />
+        </div>
+
+        {/* Label */}
+        <span className="text-xs font-semibold truncate flex-1">
+          {NAV_LABELS[item.key]}
+        </span>
+
+        {/* Keyboard shortcut */}
+        <span className={`text-[10px] font-mono shrink-0 ${active ? "text-white/60" : "text-gray-300 dark:text-gray-600"}`}>
+          {index + 1}
+        </span>
+
+        {/* Active pulse */}
+        {active && (
+          <motion.div
+            className="absolute inset-0 rounded-xl pointer-events-none"
+            style={{ background: color.bg }}
+            animate={{ opacity: [0.15, 0, 0.15] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
+        )}
+      </motion.button>
+    );
+  };
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-neutral-950 text-gray-900 dark:text-white overflow-hidden">
 
-      {/* Welcome message banner */}
       {welcomeMsg && (
         <div className="fixed top-0 left-0 right-0 z-[200] bg-blue-600 text-white text-center text-xs py-1.5 px-4">
           💬 {welcomeMsg}
         </div>
       )}
 
-      {/* FLOATING NAV */}
+      {/* ── FLOATING NAV ── */}
       <div ref={navRef} className="fixed bottom-5 left-5 z-50">
 
         <AnimatePresence>
           {open && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              initial={{ opacity: 0, scale: 0.92, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="absolute bottom-16 left-0 flex flex-col-reverse items-start gap-0"
+              exit={{ opacity: 0, scale: 0.92, y: 16 }}
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              className="absolute bottom-16 left-0 w-[420px]
+                bg-white/95 dark:bg-[#1a1a1a]/95
+                backdrop-blur-xl
+                rounded-2xl shadow-2xl
+                border border-gray-100 dark:border-white/8
+                overflow-hidden"
+              style={{ boxShadow: "0 24px 64px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)" }}
             >
-              {/* Connector line */}
-              <div className="absolute left-[19px] bottom-0 w-[2px] rounded-full"
-                style={{ height: `${menu.length * 52}px`, background: "linear-gradient(to top, rgba(99,102,241,0.15), rgba(99,102,241,0.4))" }}
-              />
+              {/* Header: user + store */}
+              <div className="flex items-center justify-between gap-3 px-4 py-3
+                border-b border-gray-100 dark:border-white/8
+                bg-gray-50/80 dark:bg-white/3">
 
-              {menu.map((item, i) => {
-                const Icon   = item.icon;
-                const active = page === item.key;
-                const color  = NAV_COLORS[item.key];
-                const isHov  = hovered === item.key;
+                {/* User */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                    style={{ background: activeColor.bg }}>
+                    {user?.username?.[0]?.toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-gray-800 dark:text-white truncate">{user?.username}</p>
+                    <p className="text-[10px] capitalize text-blue-500">{user?.role}</p>
+                  </div>
+                </div>
 
-                return (
-                  <motion.div key={item.key}
-                    initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
-                    transition={{ delay: i * 0.04, type: "spring", stiffness: 400, damping: 28 }}
-                    className="relative flex items-center mb-1.5"
-                    onMouseEnter={() => setHovered(item.key)}
-                    onMouseLeave={() => setHovered(null)}
-                  >
-                    <AnimatePresence>
-                      {(isHov || active) && (
-                        <motion.div
-                          initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute left-12 whitespace-nowrap flex items-center gap-2"
-                        >
-                          <div className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-lg"
-                            style={{ background: color.bg, boxShadow: `0 4px 16px ${color.glow}` }}>
-                            {NAV_LABELS[item.key]}
-                            <span className="ml-2 opacity-60 text-[10px]">{i + 1}</span>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <motion.button
-                      onClick={() => { setPage(item.key); close(); }}
-                      whileHover={{ scale: 1.25 }} whileTap={{ scale: 0.9 }}
-                      className="relative w-10 h-10 rounded-full flex items-center justify-center transition-all z-10"
-                      style={{
-                        background: active ? color.bg : "var(--ball-bg, #e5e7eb)",
-                        boxShadow: active
-                          ? `0 0 0 3px white, 0 0 16px ${color.glow}, 0 0 32px ${color.glow}`
-                          : isHov
-                          ? `0 0 0 2px ${color.bg}, 0 8px 20px ${color.glow}`
-                          : "0 2px 8px rgba(0,0,0,0.12)",
-                      }}
-                    >
-                      <Icon size={16} color={active || isHov ? "white" : theme === "dark" ? "#9ca3af" : "#6b7280"} />
-                      {active && (
-                        <motion.div className="absolute inset-0 rounded-full" style={{ background: color.bg }}
-                          animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0, 0.4] }}
-                          transition={{ duration: 2, repeat: Infinity }}
+                {/* Store name (editable) */}
+                {!isSuperAdmin && (
+                  <div className="flex-1 flex justify-end min-w-0">
+                    {editingName ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          ref={nameInputRef}
+                          value={nameInput}
+                          onChange={e => setNameInput(e.target.value)}
+                          onKeyDown={e => { e.stopPropagation(); if (e.key === "Enter") saveEditName(); if (e.key === "Escape") cancelEditName(); }}
+                          className="text-[11px] font-semibold bg-transparent border-b border-blue-500 outline-none text-gray-800 dark:text-white w-28"
+                          placeholder="Store name…"
                         />
-                      )}
-                    </motion.button>
-                  </motion.div>
-                );
-              })}
+                        <button onClick={saveEditName} disabled={savingName} className="p-0.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition"><Check size={11}/></button>
+                        <button onClick={cancelEditName} className="p-0.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"><X size={11}/></button>
+                      </div>
+                    ) : (
+                      <button onClick={startEditName} className="group flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition truncate max-w-[140px]">
+                        🧾 {storeName}
+                        <Pencil size={9} className="shrink-0 opacity-0 group-hover:opacity-100 transition text-blue-400"/>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {isSuperAdmin && (
+                  <span className="text-[11px] font-semibold text-purple-500">🌐 Platform</span>
+                )}
+              </div>
+
+              {/* Nav grid — two columns */}
+              <div className="p-3 grid grid-cols-2 gap-1.5">
+                {menu.map((item, i) => (
+                  <NavItem key={item.key} item={item} index={i} />
+                ))}
+              </div>
 
               {/* Utility row */}
-              <motion.div
-                initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
-                transition={{ delay: menu.length * 0.04, type: "spring", stiffness: 400, damping: 28 }}
-                className="flex items-center gap-2 mb-3 pl-1"
-              >
-                <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }} onClick={toggleTheme}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-neutral-700 shadow" title="Toggle theme">
-                  {theme === "dark" ? <Sun size={13} className="text-amber-400"/> : <Moon size={13} className="text-gray-600"/>}
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5
+                border-t border-gray-100 dark:border-white/8
+                bg-gray-50/80 dark:bg-white/3">
+
+                <div className="flex items-center gap-1.5">
+                  {/* Theme */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                    onClick={toggleTheme}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center
+                      bg-white dark:bg-white/8 border border-gray-100 dark:border-white/10
+                      text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
+                    title="Toggle theme"
+                  >
+                    {theme === "dark" ? <Sun size={13} className="text-amber-400"/> : <Moon size={13}/>}
+                  </motion.button>
+
+                  {/* Language */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                    onClick={toggleLang}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center
+                      bg-white dark:bg-white/8 border border-gray-100 dark:border-white/10
+                      text-[10px] font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
+                    title="Switch language"
+                  >
+                    {lang === "en" ? "AR" : "EN"}
+                  </motion.button>
+
+                  {/* Notifications */}
+                  {!isSuperAdmin && <NotificationsBell />}
+                </div>
+
+                {/* Logout */}
+                <motion.button
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => logout()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                    text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20
+                    hover:bg-red-100 dark:hover:bg-red-900/30 transition"
+                >
+                  <LogOut size={12}/> Logout
                 </motion.button>
-                <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }} onClick={toggleLang}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-neutral-700 shadow text-[10px] font-bold text-gray-700 dark:text-gray-300" title="Switch language">
-                  {lang === "en" ? "AR" : "EN"}
-                </motion.button>
-                {!isSuperAdmin && <NotificationsBell />}
-                <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }} onClick={() => logout()}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/40 shadow" title="Logout">
-                  <LogOut size={13} className="text-red-500"/>
-                </motion.button>
-              </motion.div>
+              </div>
+
+              {/* Keyboard hint */}
+              <div className="px-4 py-2 border-t border-gray-50 dark:border-white/5">
+                <p className="text-[10px] text-gray-300 dark:text-gray-600 text-center">
+                  Press <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">`</kbd> or <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">F1</kbd> to toggle · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">1–{menu.length}</kbd> to jump · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">Esc</kbd> to close
+                </p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* TRIGGER BUTTON */}
-        <motion.button onClick={toggle} whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.88 }}
+        {/* ── TRIGGER BUTTON ── */}
+        <motion.button
+          onClick={toggle}
+          whileHover={{ scale: 1.12 }}
+          whileTap={{ scale: 0.88 }}
           className="relative w-12 h-12 rounded-full flex items-center justify-center shadow-xl focus:outline-none"
           style={{
             background: open ? "#1e1e2e" : activeColor.bg,
@@ -246,72 +349,36 @@ export default function DashboardLayout({ children, page, setPage, user }) {
         >
           <motion.div animate={{ rotate: open ? 45 : 0, scale: open ? 0.8 : 1 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}>
             {open ? (
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M2 2L16 16M16 2L2 16" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-              </svg>
+              <X size={18} color="white"/>
             ) : (
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <circle cx="4" cy="4" r="2" fill="white"/>
-                <circle cx="9" cy="4" r="2" fill="white" fillOpacity="0.7"/>
-                <circle cx="14" cy="4" r="2" fill="white" fillOpacity="0.4"/>
-                <circle cx="4" cy="9" r="2" fill="white" fillOpacity="0.7"/>
-                <circle cx="9" cy="9" r="2" fill="white"/>
-                <circle cx="14" cy="9" r="2" fill="white" fillOpacity="0.7"/>
-                <circle cx="4" cy="14" r="2" fill="white" fillOpacity="0.4"/>
-                <circle cx="9" cy="14" r="2" fill="white" fillOpacity="0.7"/>
+                <circle cx="4"  cy="4"  r="2" fill="white"/>
+                <circle cx="9"  cy="4"  r="2" fill="white" fillOpacity="0.7"/>
+                <circle cx="14" cy="4"  r="2" fill="white" fillOpacity="0.4"/>
+                <circle cx="4"  cy="9"  r="2" fill="white" fillOpacity="0.7"/>
+                <circle cx="9"  cy="9"  r="2" fill="white"/>
+                <circle cx="14" cy="9"  r="2" fill="white" fillOpacity="0.7"/>
+                <circle cx="4"  cy="14" r="2" fill="white" fillOpacity="0.4"/>
+                <circle cx="9"  cy="14" r="2" fill="white" fillOpacity="0.7"/>
                 <circle cx="14" cy="14" r="2" fill="white"/>
               </svg>
             )}
           </motion.div>
+
+          {/* Pulse ring */}
           {!open && (
-            <motion.div className="absolute inset-0 rounded-full" style={{ background: activeColor.bg }}
+            <motion.div
+              className="absolute inset-0 rounded-full pointer-events-none"
+              style={{ background: activeColor.bg }}
               animate={{ scale: [1, 1.6], opacity: [0.3, 0] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
             />
           )}
         </motion.button>
-
-        {/* User + store badge */}
-        <AnimatePresence>
-          {open && (
-            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-              className="absolute bottom-0 left-14 whitespace-nowrap">
-              <div className="px-2.5 py-1.5 rounded-xl text-[10px] font-medium bg-white dark:bg-neutral-800 shadow border border-gray-100 dark:border-neutral-700 mb-1.5">
-                <span className="font-bold text-gray-800 dark:text-white">{user?.username}</span>
-                <span className="ml-1.5 capitalize text-blue-500">({user?.role})</span>
-              </div>
-
-              {isSuperAdmin ? (
-                <div className="px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-900/20 shadow border border-purple-100 dark:border-purple-800">
-                  <span className="text-[11px] font-semibold text-purple-700 dark:text-purple-300">🌐 Market POS Platform</span>
-                </div>
-              ) : (
-                <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 shadow border border-gray-100 dark:border-neutral-700 min-w-[140px]">
-                  {editingName ? (
-                    <div className="flex items-center gap-1">
-                      <input ref={nameInputRef} value={nameInput} onChange={e => setNameInput(e.target.value)}
-                        onKeyDown={e => { e.stopPropagation(); if (e.key === "Enter") saveEditName(); if (e.key === "Escape") cancelEditName(); }}
-                        className="flex-1 min-w-0 text-[11px] font-semibold bg-transparent border-b border-blue-500 outline-none text-gray-800 dark:text-white w-28"
-                        placeholder="Store name…"
-                      />
-                      <button onClick={saveEditName} disabled={savingName} className="p-0.5 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition"><Check size={12}/></button>
-                      <button onClick={cancelEditName} className="p-0.5 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"><X size={12}/></button>
-                    </div>
-                  ) : (
-                    <button onClick={startEditName} title="Click to rename your store" className="group flex items-center gap-1.5 w-full text-left">
-                      <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[120px]">🧾 {storeName}</span>
-                      <Pencil size={10} className="shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 transition"/>
-                    </button>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
-      {/* MAIN CONTENT */}
-      <main className={`flex-1 overflow-hidden ${!isPOS ? "overflow-y-auto p-6 pb-10" : ""} ${welcomeMsg ? "pt-8" : ""}`}>
+      {/* ── MAIN CONTENT ── */}
+      <main className={`flex-1 overflow-hidden ${!isPOS ? "overflow-y-auto p-6 pb-10" : ""} ${(welcomeMsg || !isOnline) ? "pt-9" : ""}`}>
         {children}
       </main>
     </div>

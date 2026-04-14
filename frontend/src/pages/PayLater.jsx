@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
+import { cachePayLater, getCachedPayLater } from "../lib/offlineDB";
 import { useRefresh } from "../context/RefreshContext";
 import { useLang } from "../context/LanguageContext";
 import { usePayLaterTranslation } from "../hooks/usePayLaterTranslation";
@@ -186,6 +187,10 @@ export default function PayLater() {
   useEffect(() => { load(); }, [tick]);
 
   const load = async () => {
+    // Load cached data immediately so the page works offline
+    const cached = await getCachedPayLater();
+    if (cached) setSales(cached);
+
     try {
       const [salesRes, monthRes] = await Promise.all([
         api.get("/hold-sales"),
@@ -193,8 +198,12 @@ export default function PayLater() {
       ]);
       setSales(salesRes.data);
       setMonthlyPayCount(monthRes.data.length);
-      setRecentKey(k => k + 1); // trigger RecentPayments to re-fetch
-    } catch { toast.error("Failed to load pay-later accounts"); }
+      setRecentKey(k => k + 1);
+      await cachePayLater(salesRes.data); // update cache after fresh fetch
+    } catch {
+      if (!cached) toast.error("Failed to load pay-later accounts");
+      else toast("📋 Showing cached accounts", { icon: "💾" });
+    }
   };
 
   const filtered = sales.filter(s =>

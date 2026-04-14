@@ -15,6 +15,10 @@ import {
 } from "../api/product.api";
 
 import { getCategories, createCategory } from "../api/category.api";
+import {
+  cacheProducts, getCachedProducts,
+  cacheCategories, getCachedCategories,
+} from "../lib/offlineDB";
 
 import toast from "react-hot-toast";
 import JsBarcode from "jsbarcode";
@@ -104,14 +108,23 @@ export default function Products() {
     setCurrentPage(1);
   }, [debouncedSearch, categoryFilter, stockFilter, sortKey]);
 
-  // ── Load data ─────────────────────────────────────────────────────────────
+  // ── Load data (with offline cache fallback) ───────────────────────────────
   const load = async () => {
+    // Load from cache immediately so the page isn't empty offline
+    const cachedP = await getCachedProducts();
+    const cachedC = await getCachedCategories();
+    if (cachedP) setProducts(cachedP);
+    if (cachedC) setCategories(cachedC);
+
     try {
       const [p, c] = await Promise.all([getAllProducts(), getCategories()]);
       setProducts(p);
       setCategories(c);
+      await cacheProducts(p);
+      await cacheCategories(c);
     } catch {
-      toast.error(t.failedToLoad);
+      if (!cachedP) toast.error(t.failedToLoad);
+      else toast("📦 Showing cached products", { icon: "💾" });
     }
   };
   useEffect(() => { load(); }, [tick]);

@@ -181,6 +181,16 @@ export async function getCachedSettings() {
   return rec?.data ?? null;
 }
 
+/* ── PayLater (hold-sales) cache ────────────────────────────── */
+export async function cachePayLater(sales) {
+  await put("settings_cache", { key: "paylater_list", data: sales, cachedAt: Date.now() });
+}
+
+export async function getCachedPayLater() {
+  const rec = await getOne("settings_cache", "paylater_list");
+  return rec?.data ?? null;
+}
+
 /* ── Cache age (ms since last sync) ─────────────────────────── */
 export async function getProductsCacheAge() {
   const rec = await getOne("products_cache", "list");

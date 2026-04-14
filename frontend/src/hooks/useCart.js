@@ -33,10 +33,11 @@ export const useCart = () => {
         ...prev,
         {
           productId: product._id,
-          name: product.name,
-          price: product.price,
-          stock: product.stock, // 🔑 needed for validation
-          quantity: 1
+          name:      product.name,
+          price:     product.price,
+          stock:     product.stock,
+          image:     product.image || "",
+          quantity:  1,
         }
       ];
     });

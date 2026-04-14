@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Minus, Printer, Tag, Package, TrendingUp, Save, RefreshCw, DollarSign, ShoppingCart, Calendar, Layers, Trash2, Loader2 } from "lucide-react";
+import { X, Plus, Minus, Printer, Tag, Package, TrendingUp, Save, RefreshCw, DollarSign, ShoppingCart, Calendar, Layers, Trash2, Loader2, Camera } from "lucide-react";
 import VoiceButton from "../common/VoiceButton";
 import { toast } from "sonner";
 import JsBarcode from "jsbarcode";
@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 import { getProductStats } from "../../api/product.api";
 import ImageCropModal from "./ImageCropModal";
+import CameraCapture from "./CameraCapture";
 
 const BARCODE_FORMATS = ["CODE128", "CODE39", "EAN13", "UPCA"];
 const COMPRESSION_OPTIONS = { maxSizeMB: 0.5, maxWidthOrHeight: 800, useWebWorker: true };
@@ -31,6 +32,7 @@ export default function ProductEditPanel({
   const [barcodeFormat, setBarcodeFormat] = useState("CODE128");
   const [cropSrc,       setCropSrc]       = useState(null);
   const [compressing,   setCompressing]   = useState(false);
+  const [showCamera,    setShowCamera]    = useState(false);
 
   /* Load stats when product changes */
   useEffect(() => {
@@ -116,6 +118,19 @@ export default function ProductEditPanel({
       setCompressing(false);
     }
   };
+
+  // Camera capture → bg already removed → use PNG directly (preserve transparency)
+  const handleCameraCapture = useCallback(async (blob) => {
+    setShowCamera(false);
+    setCompressing(true);
+    try {
+      const file = new File([blob], "product.png", { type: "image/png" });
+      setEditImage(file);
+      setEditPreview(URL.createObjectURL(file));
+    } finally {
+      setCompressing(false);
+    }
+  }, [setEditImage, setEditPreview]);
 
   /* Variant helpers */
   const addVariant = () => {
@@ -253,9 +268,10 @@ export default function ProductEditPanel({
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
-              {/* ── Image dropzone with crop+compress ── */}
+              {/* ── Image dropzone with crop+compress + camera capture ── */}
+              <div className="flex gap-2">
               <div
-                className="relative rounded-xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-white/10 cursor-pointer group"
+                className="relative flex-1 rounded-xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-white/10 cursor-pointer group"
                 style={{ height: 120 }}
                 onDragOver={e => e.preventDefault()}
                 onDrop={e => {
@@ -296,6 +312,23 @@ export default function ProductEditPanel({
                   </div>
                 )}
               </div>
+
+              {/* Camera button */}
+              <button
+                type="button"
+                onClick={() => setShowCamera(true)}
+                title="Capture from camera (background auto-removed)"
+                className="w-16 rounded-xl flex flex-col items-center justify-center gap-1 shrink-0
+                  border-2 border-dashed border-gray-200 dark:border-white/10
+                  text-gray-400 hover:text-blue-500 dark:hover:text-blue-400
+                  hover:border-blue-300 dark:hover:border-blue-500/50
+                  transition"
+                style={{ height: 120 }}
+              >
+                <Camera size={20}/>
+                <span className="text-[10px] font-medium leading-tight text-center px-1">Camera</span>
+              </button>
+              </div>{/* end flex gap-2 */}
 
               {/* ── Name ── */}
               <div>
@@ -560,6 +593,14 @@ export default function ProductEditPanel({
               src={cropSrc}
               onDone={handleCropDone}
               onCancel={() => setCropSrc(null)}
+            />
+          )}
+
+          {/* Camera capture modal */}
+          {showCamera && (
+            <CameraCapture
+              onCapture={handleCameraCapture}
+              onCancel={() => setShowCamera(false)}
             />
           )}
         </>

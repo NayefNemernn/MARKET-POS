@@ -58,7 +58,12 @@ export const AuthProvider = ({ children }) => {
     const interceptor = api.interceptors.response.use(
       (res) => res,
       (error) => {
-        if (error.response?.status === 401 && localStorage.getItem("token")) {
+        // Only auto-logout when online — if offline, the 401 may be a stale
+        // cached response from the SW or a transient failure; don't boot the user.
+        const is401    = error.response?.status === 401;
+        const hasToken = !!localStorage.getItem("token");
+        const online   = navigator.onLine;
+        if (is401 && hasToken && online) {
           localStorage.removeItem("token");
           localStorage.removeItem("user");
           localStorage.removeItem("store");
