@@ -14,11 +14,12 @@ const STATUS_LABEL = {
 };
 
 export default function OnlineOrdersPanel({ storeId, userRole, onLoadToCart }) {
-  const [open,    setOpen]    = useState(false);
-  const [orders,  setOrders]  = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [badge,   setBadge]   = useState(0);
+  const [open,     setOpen]    = useState(false);
+  const [orders,   setOrders]  = useState([]);
+  const [loading,  setLoading] = useState(false);
+  const [badge,    setBadge]   = useState(0);
   const [expanded, setExpanded] = useState(null);
+  const [actioned, setActioned] = useState({});
 
   const activeStatuses = ["pending", "accepted", "out_for_delivery", "pending_payment"];
 
@@ -104,6 +105,7 @@ export default function OnlineOrdersPanel({ storeId, userRole, onLoadToCart }) {
 
   const handleLoadToCart = (order) => {
     onLoadToCart(order);
+    setActioned(prev => ({ ...prev, [order._id]: { ...prev[order._id], cartLoaded: true } }));
     toast.success(`${order.orderNumber} items added to cart`);
   };
 
@@ -111,6 +113,7 @@ export default function OnlineOrdersPanel({ storeId, userRole, onLoadToCart }) {
     try {
       const res = await markOutForDelivery(order._id);
       setOrders(prev => prev.map(o => o._id === order._id ? { ...o, status: "out_for_delivery" } : o));
+      setActioned(prev => ({ ...prev, [order._id]: { ...prev[order._id], driverSent: true } }));
       if (res.telegramSent) {
         toast.success(`✈️ Telegram sent to driver — ${order.orderNumber}`);
       } else {
@@ -303,18 +306,41 @@ export default function OnlineOrdersPanel({ storeId, userRole, onLoadToCart }) {
                             </div>
                           )}
 
-                          {/* Accepted — load to cart */}
-                          {order.status === "accepted" && (
-                            <button
-                              onClick={() => handleLoadToCart(order)}
-                              className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold
-                                transition flex items-center justify-center gap-1.5">
-                              <Truck size={14} /> Load Items to Cart
-                            </button>
-                          )}
+                          {/* Accepted — both buttons always visible until each is pressed */}
+                          {order.status === "accepted" && (() => {
+                            const done = actioned[order._id] || {};
+                            return (
+                              <div className="space-y-2">
+                                {done.cartLoaded ? (
+                                  <div className="w-full py-2.5 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold flex items-center justify-center gap-1.5">
+                                    <CheckCircle2 size={14} /> Items Loaded to Cart
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => handleLoadToCart(order)}
+                                    className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold
+                                      transition flex items-center justify-center gap-1.5">
+                                    <Truck size={14} /> Load Items to Cart
+                                  </button>
+                                )}
+                                {done.driverSent ? (
+                                  <div className="w-full py-2 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-semibold flex items-center justify-center gap-1.5">
+                                    <CheckCircle2 size={13} /> Sent to Driver
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => handleMarkOutForDelivery(order)}
+                                    className="w-full py-2 rounded-xl border border-purple-400 text-purple-600 dark:text-purple-400 text-xs font-semibold
+                                      hover:bg-purple-50 dark:hover:bg-purple-900/20 transition flex items-center justify-center gap-1.5">
+                                    🚀 Send Order to Driver (Telegram)
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
 
-                          {/* Accepted or out_for_delivery — dispatch if no driver assigned yet */}
-                          {(order.status === "accepted" || order.status === "out_for_delivery") && !order.assignedDriver?.chatId && (
+                          {/* out_for_delivery — dispatch button if no driver yet */}
+                          {order.status === "out_for_delivery" && !order.assignedDriver?.chatId && (
                             <button
                               onClick={() => handleMarkOutForDelivery(order)}
                               className="w-full py-2 rounded-xl border border-purple-400 text-purple-600 dark:text-purple-400 text-xs font-semibold
