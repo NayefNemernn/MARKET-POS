@@ -11,6 +11,9 @@ import { useTranslation } from "../hooks/useTranslation";
 import { useCurrency }   from "../context/CurrencyContext";
 import ExchangeRateBar   from "../components/ExchangeRateBar";
 import VoiceButton       from "../components/common/VoiceButton";
+import { connectSocket } from "../lib/socket";
+import { Truck, X as XIcon } from "lucide-react";
+import OnlineOrdersPanel from "../components/pos/OnlineOrdersPanel";
 import {
   cacheProducts, getCachedProducts,
   cacheCategories, getCachedCategories,
@@ -114,10 +117,14 @@ export default function POS({ setPage }) {
   const [loading,          setLoading]          = useState(true);
   const [flashId,          setFlashId]          = useState(null); // add-to-cart animation
 
-  const { cart, addToCart, increase, decrease, clearCart, total } = useCart();
-  const { user }   = useAuth();
+  const { cart, addToCart, increase, decrease, clearCart, loadDeliveryOrder, total } = useCart();
+  const { user, store: ctxStore }   = useAuth();
   const { t }      = useTranslation();
   const { toLBP, formatLBP, formatUSD, displayCurrency } = useCurrency();
+
+  const [incomingOrder,  setIncomingOrder]  = useState(null); // socket order_accepted popup
+  const [isDeliveryMode, setIsDeliveryMode] = useState(false);
+  const [deliveryOrder,  setDeliveryOrder]  = useState(null); // for checkout modal
 
   /* ── load products ── */
   const load = async () => {
@@ -179,6 +186,45 @@ export default function POS({ setPage }) {
     window.addEventListener("keydown", onEsc);
     return () => window.removeEventListener("keydown", onEsc);
   }, []);
+
+  // Socket: show toast when a new order arrives
+  useEffect(() => {
+    const storeId = ctxStore?._id;
+    if (!storeId) return;
+    const role = user?.role === "admin" ? "admin" : "cashier";
+    const s = connectSocket(storeId, role);
+
+    const onNewOrder = (order) => {
+      toast(`🚚 New order: ${order.orderNumber}`, { icon: "🔔" });
+    };
+    const onOrderAccepted = (order) => {
+      setIncomingOrder(order);
+      toast.success(`Order ${order.orderNumber} accepted — ready for pickup`);
+    };
+
+    s.on("new_order", onNewOrder);
+    s.on("order_accepted", onOrderAccepted);
+    return () => {
+      s.off("new_order", onNewOrder);
+      s.off("order_accepted", onOrderAccepted);
+    };
+  }, [ctxStore?._id]);
+
+  const loadOrderToCart = (order) => {
+    clearCart();
+    loadDeliveryOrder(order.items);
+    setDeliveryOrder(order);
+    setIsDeliveryMode(true);
+    setIncomingOrder(null);
+    setOpenCheckout(false);
+    toast.success(`🚚 Order ${order.orderNumber} loaded to cart`);
+  };
+
+  const clearDeliveryMode = () => {
+    setIsDeliveryMode(false);
+    setDeliveryOrder(null);
+    clearCart();
+  };
 
   const filteredProducts = products.filter(p => {
     const matchCat    = selectedCategory === "all" || p.category?._id === selectedCategory;
@@ -425,8 +471,61 @@ export default function POS({ setPage }) {
         />
       </div>
 
+      {/* Delivery mode banner */}
+      {isDeliveryMode && deliveryOrder && (
+        <div className="fixed top-0 left-0 right-0 z-40 bg-orange-500 text-white px-4 py-2 flex items-center justify-between text-sm font-semibold">
+          <div className="flex items-center gap-2">
+            <Truck size={16} />
+            <span>Delivery Order: {deliveryOrder.orderNumber} — {deliveryOrder.customer?.name} — {deliveryOrder.customer?.phone}</span>
+          </div>
+          <button onClick={clearDeliveryMode} className="p-1 hover:bg-orange-600 rounded transition">
+            <XIcon size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Incoming order popup */}
+      {incomingOrder && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                <Truck size={24} className="text-orange-500" />
+              </div>
+              <div>
+                <h2 className="font-bold text-gray-800 dark:text-white">New Delivery Order!</h2>
+                <p className="text-sm text-gray-500">{incomingOrder.orderNumber}</p>
+              </div>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 mb-4 space-y-1">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{incomingOrder.customer?.name}</p>
+              {incomingOrder.customer?.address && (
+                <p className="text-xs text-gray-500">{incomingOrder.customer.address}</p>
+              )}
+              <p className="text-sm font-bold text-blue-600 mt-2">${incomingOrder.total?.toFixed(2)}</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setIncomingOrder(null)}
+                className="flex-1 py-2.5 border rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition text-sm font-medium">
+                Dismiss
+              </button>
+              <button onClick={() => loadOrderToCart(incomingOrder)}
+                className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition text-sm flex items-center justify-center gap-1.5">
+                <Truck size={14} /> Load to Cart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {openCheckout && (
-        <CheckoutModal cart={cart} total={total} close={() => setOpenCheckout(false)} />
+        <CheckoutModal
+          cart={cart}
+          total={total}
+          close={() => setOpenCheckout(false)}
+          deliveryOrder={isDeliveryMode ? deliveryOrder : null}
+          onDeliveryCheckoutDone={() => { setIsDeliveryMode(false); setDeliveryOrder(null); }}
+        />
       )}
       {openReturn && (
         <QuickReturn
@@ -434,6 +533,13 @@ export default function POS({ setPage }) {
           storeName={user?.storeName || "Market POS"}
         />
       )}
+
+      {/* ── Online Orders side panel ── */}
+      <OnlineOrdersPanel
+        storeId={ctxStore?._id}
+        userRole={user?.role}
+        onLoadToCart={loadOrderToCart}
+      />
     </div>
   );
 }

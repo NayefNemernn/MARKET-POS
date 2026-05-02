@@ -82,7 +82,10 @@ function ZReport({ shift, onClose }) {
 <hr/>
 <div class="row"><span>${t.cashSales}</span><span>$${shift.cashSales?.toFixed(2)}</span></div>
 <div class="row"><span>${t.cardSales}</span><span>$${shift.cardSales?.toFixed(2)}</span></div>
+${shift.bankTransferSales > 0 ? `<div class="row"><span>Bank Transfer</span><span>$${shift.bankTransferSales?.toFixed(2)}</span></div>` : ""}
+${shift.cashOnDeliverySales > 0 ? `<div class="row"><span>Cash on Delivery</span><span>$${shift.cashOnDeliverySales?.toFixed(2)}</span></div>` : ""}
 <div class="row"><span>${t.payLater}</span><span>$${shift.payLaterSales?.toFixed(2)}</span></div>
+${(shift.deliverySales > 0 || shift.inStoreSales > 0) ? `<hr/><div class="row"><span>In-Store</span><span>$${(shift.inStoreSales||0).toFixed(2)}</span></div><div class="row"><span>🚚 Delivery</span><span>$${(shift.deliverySales||0).toFixed(2)}</span></div>` : ""}
 <hr/>
 <div class="row"><span>${t.statOpeningFloat}</span><span>$${shift.openingFloat?.toFixed(2)}</span></div>
 ${shift.paidIn > 0 ? `<div class="row ok"><span>${t.paidIn}</span><span>+$${shift.paidIn?.toFixed(2)}</span></div>` : ""}
@@ -124,15 +127,31 @@ ${shift.notes ? `<hr/><p style="font-size:11px;color:#666">${t.notesPrefix} ${sh
           <div className={`${CARD} p-4 space-y-2`}>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">{t.paymentBreakdown}</p>
             {[
-              { label: t.cash,      value: shift.cashSales || 0,     color: "text-green-600" },
-              { label: t.card,      value: shift.cardSales || 0,     color: "text-blue-600"  },
-              { label: t.payLater,  value: shift.payLaterSales || 0, color: "text-red-600"   },
+              { label: t.cash,              value: shift.cashSales || 0,             color: "text-green-600" },
+              { label: t.card,              value: shift.cardSales || 0,             color: "text-blue-600"  },
+              { label: "Bank Transfer",     value: shift.bankTransferSales || 0,     color: "text-indigo-600" },
+              { label: "Cash on Delivery",  value: shift.cashOnDeliverySales || 0,   color: "text-orange-600" },
+              { label: t.payLater,          value: shift.payLaterSales || 0,         color: "text-red-600"   },
             ].map(r => (
               <div key={r.label} className="flex justify-between items-center">
                 <span className="text-sm text-gray-600 dark:text-gray-300">{r.label}</span>
                 <span className={`font-bold ${r.color}`}>{formatUSD(r.value)}</span>
               </div>
             ))}
+            {(shift.deliverySales > 0 || shift.inStoreSales > 0) && (
+              <>
+                <div className="border-t dark:border-white/10 pt-2 mt-1"/>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Sale Type</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">In-Store</span>
+                  <span className="font-bold text-gray-700 dark:text-gray-300">{formatUSD(shift.inStoreSales || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">🚚 Delivery</span>
+                  <span className="font-bold text-purple-600">{formatUSD(shift.deliverySales || 0)}</span>
+                </div>
+              </>
+            )}
           </div>
 
           <div className={`${CARD} p-4 space-y-2`}>

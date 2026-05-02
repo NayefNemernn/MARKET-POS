@@ -77,6 +77,21 @@ export const useCart = () => {
   };
 
   /* ======================
+     LOAD DELIVERY ORDER
+  ====================== */
+  const loadDeliveryOrder = (orderItems) => {
+    // orderItems: [{ productId, name, price, quantity, subtotal }]
+    setCart(orderItems.map(item => ({
+      productId: item.productId,
+      name:      item.name,
+      price:     item.price,
+      stock:     item.quantity + 99, // treat stock as sufficient (already validated)
+      image:     "",
+      quantity:  item.quantity,
+    })));
+  };
+
+  /* ======================
      CLEAR CART
   ====================== */
   const clearCart = () => setCart([]);
@@ -95,6 +110,7 @@ export const useCart = () => {
     increase,
     decrease,
     clearCart,
+    loadDeliveryOrder,
     total
   };
 };

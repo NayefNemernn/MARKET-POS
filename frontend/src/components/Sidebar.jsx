@@ -2,7 +2,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, Tags,
   Users, BarChart3, ChevronLeft, ChevronRight,
   CreditCard, LogOut, Moon, Sun, Pencil, Check, X,
-  Shield, Store, UserCircle2,
+  Shield, Store, UserCircle2, Globe, Truck,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
@@ -102,6 +102,12 @@ export default function Sidebar({ user, page, setPage }) {
             <Item id="users"         label="Users"          icon={Users} />
             <Item id="adminpanel"    label="Admin Panel"    icon={Shield} />
             <Item id="storesettings" label="Store Settings" icon={Store} />
+          </>
+        )}
+        {isAdmin && (
+          <>
+            <Item id="onlineorders"    label="Online Orders"    icon={Globe}  />
+            <Item id="pendingpayments" label="Pending Payments" icon={Truck}  />
           </>
         )}
         <Item id="pos"        label="Point of Sale" icon={ShoppingCart} />

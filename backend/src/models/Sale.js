@@ -23,11 +23,16 @@ const saleSchema = new mongoose.Schema(
     taxAmount:      { type: Number, default: 0 },
     discountAmount: { type: Number, default: 0 }, // cart-level discount
 
+    // ── Delivery / Online Order ───────────────────────────────
+    saleType:        { type: String, enum: ["in_store", "delivery"], default: "in_store" },
+    orderId:         { type: mongoose.Schema.Types.ObjectId, ref: "OnlineOrder", default: null },
+    deliveryAddress: { type: String, default: "" },
+
     // ── Payment ──────────────────────────────────────────────
     // Primary method kept for backward compat
     paymentMethod: {
       type:    String,
-      enum:    ["cash", "card", "paylater", "split"],
+      enum:    ["cash", "card", "paylater", "split", "bank_transfer", "cash_on_delivery"],
       default: "cash",
     },
     paid: { type: Boolean, default: true },
@@ -49,7 +54,7 @@ const saleSchema = new mongoose.Schema(
     // ── Return tracking ──────────────────────────────────────
     status: {
       type:    String,
-      enum:    ["completed", "partially_returned", "fully_returned"],
+      enum:    ["completed", "partially_returned", "fully_returned", "pending_payment"],
       default: "completed",
     },
     returnedItems: [

@@ -71,6 +71,10 @@ export const closeShift = async (req, res) => {
       if (x.paymentMethod === "split") return s + (x.splitPayments?.find(p => p.method === "paylater")?.amount || 0);
       return s;
     }, 0);
+    const bankTransferSales   = sales.filter(s => s.paymentMethod === "bank_transfer").reduce((s, x) => s + x.total, 0);
+    const cashOnDeliverySales = sales.filter(s => s.paymentMethod === "cash_on_delivery").reduce((s, x) => s + x.total, 0);
+    const inStoreSales  = sales.filter(s => !s.saleType || s.saleType === "in_store").reduce((s, x) => s + x.total, 0);
+    const deliverySales = sales.filter(s => s.saleType === "delivery").reduce((s, x) => s + x.total, 0);
     const totalRefunds  = sales.reduce((s, x) => s + (x.totalRefunded || 0), 0);
     const netRevenue    = totalSales - totalRefunds;
     const expectedCash  = shift.openingFloat + cashSales + shift.paidIn - shift.paidOut - totalRefunds;
@@ -82,7 +86,12 @@ export const closeShift = async (req, res) => {
       expectedCash: +expectedCash.toFixed(2), variance,
       totalSales: +totalSales.toFixed(2), totalOrders,
       cashSales: +cashSales.toFixed(2), cardSales: +cardSales.toFixed(2),
-      payLaterSales: +payLaterSales.toFixed(2), totalRefunds: +totalRefunds.toFixed(2),
+      payLaterSales: +payLaterSales.toFixed(2),
+      bankTransferSales: +bankTransferSales.toFixed(2),
+      cashOnDeliverySales: +cashOnDeliverySales.toFixed(2),
+      inStoreSales: +inStoreSales.toFixed(2),
+      deliverySales: +deliverySales.toFixed(2),
+      totalRefunds: +totalRefunds.toFixed(2),
       totalDiscount: +totalDiscount.toFixed(2), netRevenue: +netRevenue.toFixed(2),
       notes, status: "closed",
     });

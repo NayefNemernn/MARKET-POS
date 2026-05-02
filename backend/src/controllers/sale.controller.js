@@ -23,7 +23,11 @@ async function logStock(req, product, change, type, reason = "", reference = "")
 /* ── CREATE SALE ─────────────────────────────────────────────── */
 export const createSale = async (req, res) => {
   try {
-    const { items, paymentMethod, splitPayments, customerName, customerId, phone, notes, discountAmount = 0 } = req.body;
+    const {
+      items, paymentMethod, splitPayments,
+      customerName, customerId, phone, notes, discountAmount = 0,
+      saleType = "in_store", orderId = null, deliveryAddress = "",
+    } = req.body;
     const storeId = req.storeId;
     const taxRate = req.store?.taxRate || 0;
 
@@ -52,18 +56,36 @@ export const createSale = async (req, res) => {
     const discount  = +Math.min(discountAmount, subtotal).toFixed(2);
     const total     = +(subtotal + taxAmount - discount).toFixed(2);
 
-    let isPaid = paymentMethod !== "paylater";
+    let isPaid = paymentMethod !== "paylater" && paymentMethod !== "cash_on_delivery";
     if (paymentMethod === "split") {
       isPaid = !(splitPayments || []).some(p => p.method === "paylater");
     }
+
+    const isDelivery = saleType === "delivery" || paymentMethod === "cash_on_delivery";
+    const saleStatus = isDelivery ? "pending_payment" : "completed";
 
     const sale = await Sale.create({
       storeId, userId: req.user._id, items: saleItems, subtotal, total, taxAmount,
       discountAmount: discount, paymentMethod,
       splitPayments: paymentMethod === "split" ? splitPayments : [],
       paid: isPaid, customerName: customerName || "", customerId: customerId || null,
-      phone: phone || "", notes: notes || "", status: "completed",
+      phone: phone || "", notes: notes || "", status: saleStatus,
+      saleType, orderId: orderId || null, deliveryAddress: deliveryAddress || "",
     });
+
+    // Link sale back to online order and mark out for delivery
+    if (orderId) {
+      const { default: OnlineOrder } = await import("../models/OnlineOrder.js");
+      await OnlineOrder.findByIdAndUpdate(orderId, { status: "out_for_delivery", saleId: sale._id });
+      // Emit socket event
+      const { getIO } = await import("../socket/index.js");
+      const io = getIO();
+      if (io) {
+        io.to(`store_${storeId}_admin`).emit("order_status_changed", {
+          orderId, status: "out_for_delivery",
+        });
+      }
+    }
 
     if (customerId) {
       const payLaterAmount = paymentMethod === "split"

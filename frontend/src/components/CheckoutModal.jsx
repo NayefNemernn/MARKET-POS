@@ -13,6 +13,7 @@ import {
   X, Banknote, CreditCard, Clock, User, Phone,
   Printer, CheckCircle2, ShoppingBag, ArrowLeftRight,
   Tag, Users, Plus, Scissors, ChevronDown, ChevronUp,
+  Truck, MapPin,
 } from "lucide-react";
 
 /* ── thermal receipt printer ─────────────────────────────── */
@@ -113,15 +114,18 @@ function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change,
 /* ════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ════════════════════════════════════════════════════════════ */
-export default function CheckoutModal({ cart, total, close }) {
+export default function CheckoutModal({ cart, total, close, deliveryOrder = null, onDeliveryCheckoutDone }) {
   const { clearCart }   = useCart();
   const { t }           = useTranslation();
   const { saveOffline } = useOfflineSales();
   const { toLBP, formatLBP, formatUSD, exchangeRate } = useCurrency();
   const { storeName }   = useAuth();
 
+  // Delivery mode: pre-fill
+  const isDelivery = !!deliveryOrder;
+
   /* ── payment method ── */
-  const [method, setMethod]               = useState("cash");   // cash | card | paylater | split
+  const [method, setMethod]               = useState(isDelivery ? "cash_on_delivery" : "cash");   // cash | card | paylater | split | bank_transfer | cash_on_delivery
   const [amountCurrency, setAmountCurrency] = useState("usd");
 
   /* ── cash amount & change ── */
@@ -241,9 +245,14 @@ export default function CheckoutModal({ cart, total, close }) {
         items: cart.map(i => ({ productId: i.productId, quantity: i.quantity })),
         paymentMethod: method,
         discountAmount,
-        customerName:  selectedCustomer?.name || customerSearch.trim() || "",
+        customerName:  isDelivery ? (deliveryOrder.customer?.name || "") : (selectedCustomer?.name || customerSearch.trim() || ""),
         customerId:    selectedCustomer?._id  || null,
-        phone:         selectedCustomer?.phone || newPhone || "",
+        phone:         isDelivery ? (deliveryOrder.customer?.phone || "") : (selectedCustomer?.phone || newPhone || ""),
+        notes:         isDelivery ? (deliveryOrder.customer?.notes || "") : "",
+        // Delivery fields
+        saleType:        isDelivery ? "delivery"              : "in_store",
+        orderId:         isDelivery ? deliveryOrder._id       : null,
+        deliveryAddress: isDelivery ? (deliveryOrder.customer?.address || "") : "",
       };
 
       if (method === "split") {
@@ -260,6 +269,7 @@ export default function CheckoutModal({ cart, total, close }) {
         const res = await createSale(payload);
         saleResult = res.sale;
         clearCart();
+        if (isDelivery && onDeliveryCheckoutDone) onDeliveryCheckoutDone();
       } else {
         await saveOffline(payload);
         toast.success("📴 Sale saved — will sync when connected");
@@ -364,17 +374,25 @@ export default function CheckoutModal({ cart, total, close }) {
   }
 
   /* ════════════ CHECKOUT FORM ════════════ */
-  const METHODS = [
-    { id: "cash",    label: "Cash",      Icon: Banknote,  color: "green"  },
-    { id: "card",    label: "Card",      Icon: CreditCard,color: "blue"   },
-    { id: "split",   label: "Split",     Icon: Scissors,  color: "amber"  },
-    { id: "paylater",label: "Pay Later", Icon: Clock,     color: "purple" },
+  const ALL_METHODS = [
+    { id: "cash",             label: "Cash",         Icon: Banknote,   color: "green",  deliveryOnly: false },
+    { id: "card",             label: "Card",         Icon: CreditCard, color: "blue",   deliveryOnly: false },
+    { id: "bank_transfer",    label: "Bank",         Icon: ArrowLeftRight, color: "teal", deliveryOnly: false },
+    { id: "split",            label: "Split",        Icon: Scissors,   color: "amber",  deliveryOnly: false },
+    { id: "paylater",         label: "Pay Later",    Icon: Clock,      color: "purple", deliveryOnly: false },
+    { id: "cash_on_delivery", label: "COD",          Icon: Truck,      color: "orange", deliveryOnly: true  },
   ];
+  const METHODS = isDelivery
+    ? ALL_METHODS.filter(m => m.id === "cash_on_delivery")
+    : ALL_METHODS.filter(m => !m.deliveryOnly);
+
   const activeStyle = {
     green:  "bg-green-600  text-white border-green-600",
     blue:   "bg-blue-600   text-white border-blue-600",
+    teal:   "bg-teal-600   text-white border-teal-600",
     amber:  "bg-amber-500  text-white border-amber-500",
     purple: "bg-purple-600 text-white border-purple-600",
+    orange: "bg-orange-500 text-white border-orange-500",
   };
 
   const isPayLaterNeeded = method === "paylater" ||
@@ -458,10 +476,20 @@ export default function CheckoutModal({ cart, total, close }) {
             )}
           </div>
 
+          {/* Delivery info banner */}
+          {isDelivery && deliveryOrder && (
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-500/30 rounded-2xl p-3 space-y-1">
+              <p className="text-xs font-semibold text-orange-600 flex items-center gap-1"><Truck size={13}/> Delivery Order — {deliveryOrder.orderNumber}</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white">{deliveryOrder.customer?.name}</p>
+              {deliveryOrder.customer?.phone && <p className="text-xs text-gray-500 flex items-center gap-1"><Phone size={11}/> {deliveryOrder.customer.phone}</p>}
+              {deliveryOrder.customer?.address && <p className="text-xs text-gray-500 flex items-start gap-1"><MapPin size={11} className="mt-0.5 flex-shrink-0"/>{deliveryOrder.customer.address}</p>}
+            </div>
+          )}
+
           {/* ── Payment method ── */}
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Payment Method</p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className={`grid gap-2 ${METHODS.length <= 4 ? "grid-cols-4" : "grid-cols-3"}`}>
               {METHODS.map(({ id, label, Icon, color }) => {
                 const isActive  = method === id;
                 const disabled  = id === "paylater" && !navigator.onLine;

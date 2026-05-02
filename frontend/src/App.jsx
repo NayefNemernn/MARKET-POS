@@ -22,8 +22,10 @@ import ExpensesPage               from "./pages/ExpensesPage";
 import DiscountsPage              from "./pages/DiscountsPage";
 import SuppliersPage              from "./pages/SuppliersPage";
 import OfflineIndicator           from "./components/OfflineIndicator";
+import OnlineOrders              from "./pages/OnlineOrders";
+import PendingPayments           from "./pages/PendingPayments";
 
-const ADMIN_PAGES = ["dashboard", "users", "adminpanel", "storesettings", "stock", "expenses", "discounts", "suppliers"];
+const ADMIN_PAGES = ["dashboard", "users", "adminpanel", "storesettings", "stock", "expenses", "discounts", "suppliers", "onlineorders"];
 
 function AppInner() {
   const { user, store, planExpired, daysUntilExpiry } = useAuth();
@@ -59,7 +61,9 @@ function AppInner() {
       case "suppliers":     return user.role === "admin" ? <SuppliersPage />  : <POS setPage={setPage} user={user} />;
       case "users":         return user.role === "admin" ? <Users />          : <POS setPage={setPage} user={user} />;
       case "adminpanel":    return user.role === "admin" ? <AdminPanel />     : <POS setPage={setPage} user={user} />;
-      case "storesettings": return user.role === "admin" ? <StoreSettings />  : <POS setPage={setPage} user={user} />;
+      case "storesettings":    return user.role === "admin" ? <StoreSettings />     : <POS setPage={setPage} user={user} />;
+      case "onlineorders":     return user.role === "admin" ? <OnlineOrders />     : <POS setPage={setPage} user={user} />;
+      case "pendingpayments":  return <PendingPayments />;
       default:              return <POS setPage={setPage} user={user} />;
     }
   };

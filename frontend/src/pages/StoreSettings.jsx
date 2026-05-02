@@ -1,14 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { getMyStore, updateStore, addCashier, updateCashier, removeCashier } from "../api/store.api";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useStoreSettingsTranslation } from "../hooks/useStoreSettingsTranslation";
 import { useLang } from "../context/LanguageContext";
+import { updateOnlineStore } from "../api/orders.api";
 import toast from "react-hot-toast";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Store, Users, Settings, CreditCard, UserPlus, Trash2,
   LogOut, KeyRound, X, Save, CheckCircle, XCircle,
-  AlertTriangle, Clock, ChevronDown, ChevronUp
+  AlertTriangle, Clock, ChevronDown, ChevronUp,
+  Globe, Copy, Share2, Printer, ToggleLeft, ToggleRight,
 } from "lucide-react";
 
 const PLAN_COLORS = {
@@ -40,6 +43,14 @@ export default function StoreSettings() {
   });
 
   const [cashierForm, setCashierForm] = useState({ username: "", password: "", maxDevices: 1 });
+  const [onlineForm,  setOnlineForm]  = useState({ isOnlineStoreActive: false, deliveryFee: 0, minimumOrder: 0, telegramBotToken: "", deliveryDrivers: [] });
+  const [savingOnline, setSavingOnline] = useState(false);
+  const [fetchingChatId, setFetchingChatId] = useState(false);
+  const [testingTelegram, setTestingTelegram] = useState(false);
+  const [newDriver, setNewDriver] = useState({ name: "", chatId: "" });
+  const [backendUrl, setBackendUrl] = useState(import.meta.env.VITE_API_URL?.replace("/api","") || "http://localhost:5000");
+  const [settingWebhook, setSettingWebhook] = useState(false);
+  const qrRef = useRef(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -63,6 +74,13 @@ export default function StoreSettings() {
         taxRate:        storeData.taxRate        || 0,
         language:       storeData.language       || "en",
         receiptFooter:  storeData.receiptFooter  || "",
+      });
+      setOnlineForm({
+        isOnlineStoreActive: storeData.isOnlineStoreActive || false,
+        deliveryFee:         storeData.deliveryFee         || 0,
+        minimumOrder:        storeData.minimumOrder        || 0,
+        telegramBotToken:    storeData.telegramBotToken    || "",
+        deliveryDrivers:     storeData.deliveryDrivers     || [],
       });
     } catch {
       toast.error(t.failedToLoad);
@@ -152,6 +170,97 @@ export default function StoreSettings() {
     }
   };
 
+  const STORE_FRONTEND_URL = import.meta.env.VITE_STORE_URL || "http://localhost:5174";
+  const storePublicUrl = store?.slug ? `${STORE_FRONTEND_URL}/store/${store.slug}` : "";
+
+  const handleSaveOnline = async () => {
+    setSavingOnline(true);
+    try {
+      const res = await updateOnlineStore(onlineForm);
+      setStore(s => ({ ...s, ...onlineForm }));
+      toast.success("Online store settings saved");
+    } catch {
+      toast.error("Failed to save online store settings");
+    } finally { setSavingOnline(false); }
+  };
+
+  const testTelegram = async () => {
+    setTestingTelegram(true);
+    try {
+      const res = await api.post("/store/telegram-test");
+      toast.success(res.data.message);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Test failed");
+    } finally { setTestingTelegram(false); }
+  };
+
+  const fetchDeliveryManChatId = async () => {
+    setFetchingChatId(true);
+    try {
+      const res = await api.get("/store/telegram-last-chat");
+      setNewDriver(d => ({ ...d, chatId: String(res.data.id), name: d.name || res.data.name }));
+      toast.success(`Got Chat ID: ${res.data.id} (${res.data.name})`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "No message received yet");
+    } finally { setFetchingChatId(false); }
+  };
+
+  const addDriver = () => {
+    if (!newDriver.name.trim() || !newDriver.chatId.trim()) {
+      toast.error("Enter both driver name and chat ID"); return;
+    }
+    setOnlineForm(f => ({ ...f, deliveryDrivers: [...f.deliveryDrivers, { name: newDriver.name.trim(), chatId: newDriver.chatId.trim() }] }));
+    setNewDriver({ name: "", chatId: "" });
+  };
+
+  const removeDriver = (idx) => {
+    setOnlineForm(f => ({ ...f, deliveryDrivers: f.deliveryDrivers.filter((_, i) => i !== idx) }));
+  };
+
+  const setupWebhook = async () => {
+    setSettingWebhook(true);
+    try {
+      const res = await api.post("/store/telegram-set-webhook", { backendUrl });
+      toast.success(res.data.message);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to set webhook");
+    } finally { setSettingWebhook(false); }
+  };
+
+  const copyStoreLink = () => {
+    navigator.clipboard.writeText(storePublicUrl);
+    toast.success("Store link copied!");
+  };
+
+  const shareWhatsApp = () => {
+    const msg = `🛒 Shop online at *${store?.name}*!\n\n${storePublicUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
+  const printQR = () => {
+    const svg  = qrRef.current?.querySelector("svg");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const win = window.open("", "_blank", "width=400,height=600");
+    win.document.write(`<!DOCTYPE html><html><head><title>QR Code</title>
+    <style>
+      body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;padding:20px;text-align:center}
+      .store-name{font-size:24px;font-weight:900;margin-bottom:10px}
+      .scan-text{font-size:18px;font-weight:700;color:#555;margin-bottom:20px}
+      svg{width:220px;height:220px}
+      .url{font-size:11px;color:#888;margin-top:16px;word-break:break-all;max-width:260px}
+      @media print{@page{size:A5;margin:1cm}}
+    </style></head><body>
+    <div class="store-name">🧾 ${store?.name}</div>
+    <div class="scan-text">📱 Scan here to order online</div>
+    ${svgData}
+    <div class="url">${storePublicUrl}</div>
+    </body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 500);
+  };
+
   const expiry    = store?.planExpiresAt ? new Date(store.planExpiresAt) : null;
   const expired   = expiry && expiry < new Date();
   const daysLeft  = expiry ? Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24)) : null;
@@ -201,10 +310,11 @@ export default function StoreSettings() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-white dark:bg-[#141414] rounded-xl border border-gray-200 dark:border-white/10 w-fit">
+        <div className="flex gap-1 p-1 bg-white dark:bg-[#141414] rounded-xl border border-gray-200 dark:border-white/10 w-fit flex-wrap">
           {[
-            { id: "settings", label: t.storeInfo,  icon: Settings },
-            { id: "cashiers", label: t.team,        icon: Users },
+            { id: "settings",     label: t.storeInfo,     icon: Settings },
+            { id: "cashiers",     label: t.team,          icon: Users    },
+            { id: "onlinestore",  label: "Online Store",  icon: Globe    },
           ].map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition
@@ -421,6 +531,183 @@ export default function StoreSettings() {
           </div>
         )}
       </div>
+
+        {/* ── ONLINE STORE TAB ── */}
+        {tab === "onlinestore" && (
+          <div className="space-y-5">
+
+            {/* Toggle + basic settings */}
+            <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-100 dark:border-white/5 p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-gray-800 dark:text-white">Online Store</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">Allow customers to browse and order online</p>
+                </div>
+                <button onClick={() => setOnlineForm(f => ({ ...f, isOnlineStoreActive: !f.isOnlineStoreActive }))}
+                  className="flex items-center gap-2 transition">
+                  {onlineForm.isOnlineStoreActive
+                    ? <ToggleRight size={36} className="text-green-500" />
+                    : <ToggleLeft  size={36} className="text-gray-400"  />}
+                </button>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Delivery Fee ({store?.currencySymbol})</label>
+                  <input type="number" min="0" step="0.01"
+                    value={onlineForm.deliveryFee}
+                    onChange={e => setOnlineForm(f => ({ ...f, deliveryFee: +e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Minimum Order ({store?.currencySymbol})</label>
+                  <input type="number" min="0" step="0.01"
+                    value={onlineForm.minimumOrder}
+                    onChange={e => setOnlineForm(f => ({ ...f, minimumOrder: +e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+
+              <button onClick={handleSaveOnline} disabled={savingOnline}
+                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-semibold text-sm transition">
+                <Save size={15} />
+                {savingOnline ? "Saving..." : "Save Online Settings"}
+              </button>
+            </div>
+
+            {/* Telegram delivery notifications */}
+            <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-100 dark:border-white/5 p-6 space-y-5">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">✈️</span>
+                <div>
+                  <h2 className="font-semibold text-gray-800 dark:text-white">Telegram — Delivery Drivers</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">All drivers get notified. First to accept claims the order.</p>
+                </div>
+              </div>
+
+              {/* Bot token */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Bot Token (from @BotFather)</label>
+                <input type="text" placeholder="1234567890:AAFxxxxx"
+                  value={onlineForm.telegramBotToken}
+                  onChange={e => setOnlineForm(f => ({ ...f, telegramBotToken: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+              </div>
+
+              {/* Drivers list */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                  Drivers ({onlineForm.deliveryDrivers.length})
+                </label>
+                {onlineForm.deliveryDrivers.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {onlineForm.deliveryDrivers.map((d, i) => (
+                      <div key={i} className="flex items-center gap-3 bg-gray-50 dark:bg-white/5 rounded-xl px-3 py-2.5">
+                        <span className="text-lg">🚗</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 dark:text-white">{d.name}</p>
+                          <p className="text-xs text-gray-400 font-mono">{d.chatId}</p>
+                        </div>
+                        <button onClick={() => removeDriver(i)}
+                          className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add new driver */}
+                <div className="border border-dashed border-gray-200 dark:border-white/10 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Add Driver</p>
+                  <input type="text" placeholder="Driver name (e.g. Ahmad)"
+                    value={newDriver.name}
+                    onChange={e => setNewDriver(d => ({ ...d, name: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                  <div className="flex gap-2">
+                    <input type="text" placeholder="Chat ID (e.g. 123456789)"
+                      value={newDriver.chatId}
+                      onChange={e => setNewDriver(d => ({ ...d, chatId: e.target.value }))}
+                      className="flex-1 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                    <button onClick={fetchDeliveryManChatId} disabled={fetchingChatId || !onlineForm.telegramBotToken}
+                      className="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 text-xs font-semibold rounded-xl transition disabled:opacity-50 whitespace-nowrap">
+                      {fetchingChatId ? "..." : "Get ID"}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-400">Driver must send any message to the bot first, then click "Get ID"</p>
+                  <button onClick={addDriver}
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition">
+                    + Add Driver
+                  </button>
+                </div>
+              </div>
+
+              {/* Webhook setup */}
+              <div className="border border-gray-100 dark:border-white/10 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Webhook (for "Accept" button to work)</p>
+                <input type="text" placeholder="https://your-api.railway.app"
+                  value={backendUrl}
+                  onChange={e => setBackendUrl(e.target.value)}
+                  className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 font-mono" />
+                <p className="text-[11px] text-gray-400">Your backend URL. Must be HTTPS for Telegram buttons to work.</p>
+                <button onClick={setupWebhook} disabled={settingWebhook || !onlineForm.telegramBotToken}
+                  className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition">
+                  {settingWebhook ? "Setting..." : "🔗 Set Webhook"}
+                </button>
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={handleSaveOnline} disabled={savingOnline}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-semibold text-sm transition">
+                  <Save size={15} />
+                  {savingOnline ? "Saving..." : "Save"}
+                </button>
+                <button onClick={testTelegram} disabled={testingTelegram}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white rounded-xl font-semibold text-sm transition">
+                  {testingTelegram ? "Sending..." : "✈️ Test All Drivers"}
+                </button>
+              </div>
+            </div>
+
+            {/* Store link + QR */}
+            {store?.slug && (
+              <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-100 dark:border-white/5 p-6 space-y-5">
+                <h2 className="font-semibold text-gray-800 dark:text-white">Store Link & QR Code</h2>
+
+                {/* URL display */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-2.5 text-sm text-blue-600 font-mono truncate border dark:border-gray-700">
+                    {storePublicUrl}
+                  </div>
+                  <button onClick={copyStoreLink}
+                    className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition" title="Copy link">
+                    <Copy size={16} className="text-gray-600 dark:text-gray-300" />
+                  </button>
+                  <button onClick={shareWhatsApp}
+                    className="p-2.5 rounded-xl bg-green-500 hover:bg-green-600 transition" title="Share on WhatsApp">
+                    <Share2 size={16} className="text-white" />
+                  </button>
+                </div>
+
+                {/* QR Code */}
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <div ref={qrRef} className="bg-white p-4 rounded-2xl border shadow-sm">
+                    <QRCodeSVG value={storePublicUrl} size={160} level="H" includeMargin />
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Print this QR code and place it at your counter so customers can scan to order online.
+                    </p>
+                    <button onClick={printQR}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gray-800 dark:bg-white dark:text-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-700 dark:hover:bg-gray-100 transition">
+                      <Printer size={16} /> Print QR Code
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
       {/* Change Password Modal */}
       {pwModal && (

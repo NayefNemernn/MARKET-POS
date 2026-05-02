@@ -27,6 +27,9 @@ const productSchema = new mongoose.Schema(
     hasVariants: { type: Boolean, default: false },
     variants:    { type: [variantSchema], default: [] },
 
+    // ── Online Store ──────────────────────────────────────────
+    isAvailableOnline: { type: Boolean, default: true },
+
     // ── Multi-tenancy ─────────────────────────────────────────
     storeId: {
       type:     mongoose.Schema.Types.ObjectId,

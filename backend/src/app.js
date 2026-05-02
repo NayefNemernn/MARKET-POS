@@ -4,6 +4,9 @@ import dotenv  from "dotenv";
 
 import { errorHandler } from "./middleware/error.middleware.js";
 import authRoutes       from "./routes/auth.routes.js";
+import publicRoutes     from "./routes/public.routes.js";
+import orderRoutes      from "./routes/order.routes.js";
+import telegramRoutes   from "./routes/telegram.routes.js";
 import productRoutes    from "./routes/product.routes.js";
 import saleRoutes       from "./routes/sale.routes.js";
 import categoryRoutes   from "./routes/category.routes.js";
@@ -26,6 +29,7 @@ const app = express();
 const ALLOWED_ORIGINS = [
   process.env.CLIENT_URL,
   "http://localhost:5173",
+  "http://localhost:5174",
   "http://localhost:3000",
 ].filter(Boolean);
 
@@ -58,6 +62,9 @@ app.use("/api/shifts",      shiftRoutes);
 app.use("/api/expenses",    expenseRoutes);
 app.use("/api/discounts",   discountRoutes);
 app.use("/api/suppliers",   supplierRoutes);
+app.use("/api/public",      publicRoutes);
+app.use("/api/orders",      orderRoutes);
+app.use("/api/telegram",    telegramRoutes);
 
 app.get("/", (req, res) => res.send("Market POS API running ✅"));
 app.use(errorHandler);

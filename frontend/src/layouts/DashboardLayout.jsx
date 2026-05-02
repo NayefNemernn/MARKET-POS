@@ -28,6 +28,8 @@ const NAV_LABELS = {
   discounts:       "Discounts",
   suppliers:       "Suppliers",
   superadminpanel: "Super Admin",
+  onlineorders:    "Online Orders",
+  pendingpayments: "Pending Payments",
 };
 
 const NAV_COLORS = {
@@ -47,6 +49,8 @@ const NAV_COLORS = {
   discounts:       { bg: "#16a34a", glow: "rgba(22,163,74,0.5)"    },
   suppliers:       { bg: "#7c3aed", glow: "rgba(124,58,237,0.5)"   },
   superadminpanel: { bg: "#7c3aed", glow: "rgba(124,58,237,0.5)"   },
+  onlineorders:    { bg: "#0284c7", glow: "rgba(2,132,199,0.5)"    },
+  pendingpayments: { bg: "#ea580c", glow: "rgba(234,88,12,0.5)"    },
 };
 
 export default function DashboardLayout({ children, page, setPage, user }) {
@@ -102,8 +106,10 @@ export default function DashboardLayout({ children, page, setPage, user }) {
         { key: "expenses",      icon: TrendingDown,    adminOnly: true  },
         { key: "discounts",     icon: Tag,             adminOnly: true  },
         { key: "suppliers",     icon: Truck,           adminOnly: true  },
-        { key: "adminpanel",    icon: Shield,          adminOnly: true  },
-        { key: "storesettings", icon: Store,           adminOnly: true  },
+        { key: "onlineorders",    icon: Globe,           adminOnly: true  },
+        { key: "pendingpayments", icon: Truck,           adminOnly: false },
+        { key: "adminpanel",      icon: Shield,          adminOnly: true  },
+        { key: "storesettings",   icon: Store,           adminOnly: true  },
       ].filter(item => !item.adminOnly || isAdmin);
 
   // Split menu into two columns if long
@@ -116,7 +122,11 @@ export default function DashboardLayout({ children, page, setPage, user }) {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "`" || e.key === "F1") { e.preventDefault(); toggle(); }
+      const tag = e.target?.tagName;
+      const isTyping = tag === "INPUT" || tag === "TEXTAREA" || e.target?.isContentEditable;
+      if ((e.key === "`" || e.key === "F1" || (e.key === "s" && !isTyping && !e.ctrlKey && !e.metaKey))) {
+        e.preventDefault(); toggle();
+      }
       if (e.key === "Escape") close();
       const idx = parseInt(e.key) - 1;
       if (!isNaN(idx) && idx >= 0 && idx < menu.length && open) { setPage(menu[idx].key); close(); }
@@ -326,7 +336,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
               {/* Keyboard hint */}
               <div className="px-4 py-2 border-t border-gray-50 dark:border-white/5">
                 <p className="text-[10px] text-gray-300 dark:text-gray-600 text-center">
-                  Press <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">`</kbd> or <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">F1</kbd> to toggle · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">1–{menu.length}</kbd> to jump · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">Esc</kbd> to close
+                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">S</kbd> or <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">`</kbd> toggle · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">1–{menu.length}</kbd> jump · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">Esc</kbd> close
                 </p>
               </div>
             </motion.div>

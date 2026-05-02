@@ -38,6 +38,18 @@ const storeSchema = new mongoose.Schema(
     maxUsers:      { type: Number, default: 2 },  // cashiers allowed
     maxProducts:   { type: Number, default: 100 },
 
+    // ── Online Store ──────────────────────────────────────────
+    isOnlineStoreActive:      { type: Boolean, default: false },
+    deliveryFee:              { type: Number, default: 0 },
+    minimumOrder:             { type: Number, default: 0 },
+
+    // ── Telegram delivery notifications ───────────────────────
+    telegramBotToken: { type: String, default: "" },
+    deliveryDrivers:  {
+      type: [{ name: { type: String, default: "" }, chatId: { type: String, default: "" } }],
+      default: [],
+    },
+
     // ── Status ────────────────────────────────────────────────
     active: { type: Boolean, default: true },
 

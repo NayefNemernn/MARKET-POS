@@ -170,6 +170,9 @@ export const updateProduct = async (req, res) => {
     if (typeof updateData.hasVariants === "string") {
       updateData.hasVariants = updateData.hasVariants === "true";
     }
+    if (typeof updateData.isAvailableOnline === "string") {
+      updateData.isAvailableOnline = updateData.isAvailableOnline === "true";
+    }
     if (typeof updateData.variants === "string") {
       try { updateData.variants = JSON.parse(updateData.variants); } catch {}
     }

@@ -38,14 +38,18 @@ const shiftSchema = new mongoose.Schema(
     paidIn:   { type: Number, default: 0 },  // cash added to drawer mid-shift
     paidOut:  { type: Number, default: 0 },  // cash removed from drawer mid-shift
 
-    totalSales:    { type: Number, default: 0 },
-    totalOrders:   { type: Number, default: 0 },
-    cashSales:     { type: Number, default: 0 },
-    cardSales:     { type: Number, default: 0 },
-    payLaterSales: { type: Number, default: 0 },
-    totalRefunds:  { type: Number, default: 0 },
-    totalDiscount: { type: Number, default: 0 },
-    netRevenue:    { type: Number, default: 0 },
+    totalSales:            { type: Number, default: 0 },
+    totalOrders:           { type: Number, default: 0 },
+    cashSales:             { type: Number, default: 0 },
+    cardSales:             { type: Number, default: 0 },
+    payLaterSales:         { type: Number, default: 0 },
+    bankTransferSales:     { type: Number, default: 0 },
+    cashOnDeliverySales:   { type: Number, default: 0 },
+    inStoreSales:          { type: Number, default: 0 },
+    deliverySales:         { type: Number, default: 0 },
+    totalRefunds:          { type: Number, default: 0 },
+    totalDiscount:         { type: Number, default: 0 },
+    netRevenue:            { type: Number, default: 0 },
 
     notes:  { type: String, default: "" },
     status: { type: String, enum: ["open", "closed"], default: "open" },

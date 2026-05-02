@@ -22,16 +22,20 @@ const CARD = "rounded-2xl bg-white dark:bg-[#141414] shadow-[6px_6px_16px_#d1d5d
 const PIE_COLORS = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6"];
 // Fixed per-method colors so pie and legend always match
 const PM_COLORS = {
-  cash:     { hex: "#10b981", text: "text-emerald-600 dark:text-emerald-400" },
-  card:     { hex: "#3b82f6", text: "text-blue-600    dark:text-blue-400"    },
-  paylater: { hex: "#ef4444", text: "text-red-600     dark:text-red-400"     },
-  split:    { hex: "#f59e0b", text: "text-amber-600   dark:text-amber-400"   },
+  cash:             { hex: "#10b981", text: "text-emerald-600 dark:text-emerald-400" },
+  card:             { hex: "#3b82f6", text: "text-blue-600    dark:text-blue-400"    },
+  paylater:         { hex: "#ef4444", text: "text-red-600     dark:text-red-400"     },
+  split:            { hex: "#f59e0b", text: "text-amber-600   dark:text-amber-400"   },
+  bank_transfer:    { hex: "#6366f1", text: "text-indigo-600  dark:text-indigo-400"  },
+  cash_on_delivery: { hex: "#f97316", text: "text-orange-600  dark:text-orange-400"  },
 };
 const METHOD_COLOR = {
-  cash:     "bg-green-100  dark:bg-green-900/30  text-green-700  dark:text-green-300",
-  card:     "bg-blue-100   dark:bg-blue-900/30   text-blue-700   dark:text-blue-300",
-  paylater: "bg-red-100    dark:bg-red-900/30    text-red-700    dark:text-red-300",
-  split:    "bg-amber-100  dark:bg-amber-900/30  text-amber-700  dark:text-amber-300",
+  cash:             "bg-green-100  dark:bg-green-900/30  text-green-700  dark:text-green-300",
+  card:             "bg-blue-100   dark:bg-blue-900/30   text-blue-700   dark:text-blue-300",
+  paylater:         "bg-red-100    dark:bg-red-900/30    text-red-700    dark:text-red-300",
+  split:            "bg-amber-100  dark:bg-amber-900/30  text-amber-700  dark:text-amber-300",
+  bank_transfer:    "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300",
+  cash_on_delivery: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300",
 };
 const Empty = ({ msg = "No data" }) => (
   <div className="flex flex-col items-center justify-center py-10 text-gray-400 text-sm">{msg}</div>
@@ -52,6 +56,7 @@ export default function Reports() {
   const [loading,   setLoading]   = useState(true);
   const [period,    setPeriod]    = useState("week");
   const [tab,       setTab]       = useState("overview");
+  const [saleTypeFilter, setSaleTypeFilter] = useState("all");
   const [returnSale,  setReturnSale]  = useState(null);
   const [voidModal,   setVoidModal]   = useState(null);
   const [voidPin,     setVoidPin]     = useState("");
@@ -103,11 +108,15 @@ export default function Reports() {
   }, [sales, period]);
 
   /* ── KPIs ── */
-  const totalRevenue  = useMemo(() => filteredSales.reduce((s,x) => s+x.total, 0), [filteredSales]);
-  const cashRevenue   = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="cash").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const cardRevenue   = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="card").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const payLaterTotal = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="paylater").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const splitTotal    = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="split").reduce((s,x)=>s+x.total,0), [filteredSales]);
+  const totalRevenue       = useMemo(() => filteredSales.reduce((s,x) => s+x.total, 0), [filteredSales]);
+  const cashRevenue        = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="cash").reduce((s,x)=>s+x.total,0), [filteredSales]);
+  const cardRevenue        = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="card").reduce((s,x)=>s+x.total,0), [filteredSales]);
+  const payLaterTotal      = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="paylater").reduce((s,x)=>s+x.total,0), [filteredSales]);
+  const splitTotal         = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="split").reduce((s,x)=>s+x.total,0), [filteredSales]);
+  const bankTransferTotal  = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="bank_transfer").reduce((s,x)=>s+x.total,0), [filteredSales]);
+  const codTotal           = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="cash_on_delivery").reduce((s,x)=>s+x.total,0), [filteredSales]);
+  const inStoreTotal       = useMemo(() => filteredSales.filter(s=>!s.saleType||s.saleType==="in_store").reduce((s,x)=>s+x.total,0), [filteredSales]);
+  const deliveryTotal      = useMemo(() => filteredSales.filter(s=>s.saleType==="delivery").reduce((s,x)=>s+x.total,0), [filteredSales]);
   const avgSale       = filteredSales.length ? totalRevenue/filteredSales.length : 0;
   const outstandingCredit = useMemo(() => holdSales.reduce((s,h)=>s+(h.balance||0),0), [holdSales]);
   const totalCreditGiven  = useMemo(() => holdSales.reduce((s,h)=>s+(h.total||0),0),   [holdSales]);
@@ -129,14 +138,15 @@ export default function Reports() {
   }, [filteredSales, period, isAr]);
 
   const paymentBreakdown = useMemo(() => {
-    const map = {cash:0,card:0,paylater:0,split:0};
+    const map = {cash:0,card:0,paylater:0,split:0,bank_transfer:0,cash_on_delivery:0};
     filteredSales.forEach(s => { map[s.paymentMethod]=(map[s.paymentMethod]||0)+s.total; });
-    // Always keep all 4 entries with stable order; filter zeros only for pie chart rendering
     return [
-      {key:"cash",     name:t.cash||"Cash",           value:+map.cash.toFixed(2)    },
-      {key:"card",     name:t.card||"Card",           value:+map.card.toFixed(2)    },
-      {key:"paylater", name:t.credit||"Pay Later",    value:+map.paylater.toFixed(2)},
-      {key:"split",    name:t.split||"Split",         value:+map.split.toFixed(2)   },
+      {key:"cash",             name:t.cash||"Cash",              value:+map.cash.toFixed(2)             },
+      {key:"card",             name:t.card||"Card",              value:+map.card.toFixed(2)             },
+      {key:"bank_transfer",    name:"Bank Transfer",             value:+map.bank_transfer.toFixed(2)    },
+      {key:"cash_on_delivery", name:"Cash on Delivery",          value:+map.cash_on_delivery.toFixed(2) },
+      {key:"paylater",         name:t.credit||"Pay Later",       value:+map.paylater.toFixed(2)         },
+      {key:"split",            name:t.split||"Split",            value:+map.split.toFixed(2)            },
     ];
   }, [filteredSales, t]);
 
@@ -276,6 +286,18 @@ export default function Reports() {
                 </motion.div>
               ))}
             </div>
+            {deliveryTotal > 0 && (
+              <div className="grid grid-cols-2 gap-4">
+                <motion.div whileHover={{scale:1.03}} className={`${CARD} bg-gray-50 dark:bg-[#141414] p-4`}>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">In-Store Sales</p>
+                  <p className="text-2xl font-bold mt-1 text-gray-700 dark:text-gray-300">${inStoreTotal.toFixed(2)}</p>
+                </motion.div>
+                <motion.div whileHover={{scale:1.03}} className={`${CARD} bg-orange-50 dark:bg-orange-900/20 p-4`}>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">🚚 Delivery Sales</p>
+                  <p className="text-2xl font-bold mt-1 text-orange-600 dark:text-orange-400">${deliveryTotal.toFixed(2)}</p>
+                </motion.div>
+              </div>
+            )}
             <div className={`${CARD} p-5`}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-sm">{t.revenueTrend}</h3>
@@ -312,7 +334,7 @@ export default function Reports() {
                 <h3 className="font-semibold text-sm mb-4">{t.paymentMethods}</h3>
                 {paymentBreakdown.every(x=>x.value===0) ? (
                   /* show empty legend even when no sales */
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {paymentBreakdown.map(m=>(
                       <div key={m.key} className="text-center bg-gray-50 dark:bg-[#1c1c1c] rounded-xl p-2">
                         <div className="flex items-center justify-center gap-1 mb-0.5">
@@ -340,7 +362,7 @@ export default function Reports() {
                         <Tooltip formatter={v=>`$${Number(v).toFixed(2)}`}/>
                       </PieChart>
                     </ResponsiveContainer>
-                    <div className="grid grid-cols-2 gap-2 mt-3">
+                    <div className="grid grid-cols-3 gap-2 mt-3">
                       {paymentBreakdown.map(m=>(
                         <div key={m.key} className="text-center bg-gray-50 dark:bg-[#1c1c1c] rounded-xl p-2">
                           <div className="flex items-center justify-center gap-1 mb-0.5">
@@ -430,75 +452,98 @@ export default function Reports() {
         )}
 
         {/* ═══ TRANSACTIONS ═══ */}
-        {tab==="transactions"&&(
-          <div className="space-y-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {filteredSales.length} {t.transactionsDesc} · {t.total}: <span className="font-bold text-green-600">${totalRevenue.toFixed(2)}</span>
-            </p>
-            <div className={`${CARD} overflow-hidden`}>
-              {filteredSales.length===0?<Empty msg={t.noSales}/>:(
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-[#1c1c1c] text-xs text-gray-400"><tr>
-                      <th className="px-5 py-3 text-left">{t.date}</th>
-                      <th className="px-4 py-3 text-left">{t.items}</th>
-                      <th className="px-4 py-3 text-right">{t.total}</th>
-                      <th className="px-4 py-3 text-center">{t.payment}</th>
-                      <th className="px-4 py-3 text-center">Status</th>
-                      <th className="px-4 py-3 text-center">Actions</th>
-                    </tr></thead>
-                    <tbody className="divide-y divide-gray-50 dark:divide-white/5">
-                      {filteredSales.map(sale=>(
-                        <tr key={sale._id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                          <td className="px-5 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">{fmtDate(sale.createdAt)}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-1">
-                              {sale.items.slice(0,2).map((item,i)=>(
-                                <span key={i} className="text-xs bg-gray-100 dark:bg-[#252525] px-2 py-0.5 rounded-full">{item.name} ×{item.quantity}</span>
-                              ))}
-                              {sale.items.length>2&&<span className="text-xs text-gray-400">+{sale.items.length-2} {t.more}</span>}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold">
-                            <div className="text-green-600 dark:text-green-400">${sale.total.toFixed(2)}</div>
-                            {(sale.totalRefunded||0)>0&&<div className="text-xs text-red-500">−${sale.totalRefunded.toFixed(2)}</div>}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${METHOD_COLOR[sale.paymentMethod]||"bg-gray-100 text-gray-600"}`}>
-                              {sale.paymentMethod==="paylater"?t.credit:sale.paymentMethod}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusBadge(sale.status)}`}>{sale.status?.replace("_"," ")}</span>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              {sale.status!=="fully_returned"&&(
-                                <button onClick={()=>setReturnSale(sale)} title="Return"
-                                  className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition"><RotateCcw size={12}/></button>
-                              )}
-                              {sale.status==="completed"&&(
-                                <button onClick={()=>setVoidModal(sale)} title="Void"
-                                  className="p-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 transition"><AlertCircle size={12}/></button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-gray-50 dark:bg-[#1c1c1c]">
-                      <tr>
-                        <td className="px-5 py-3 font-semibold text-xs text-gray-500" colSpan={2}>{filteredSales.length} {t.transactionsDesc}</td>
-                        <td className="px-4 py-3 text-right font-bold text-green-600">${totalRevenue.toFixed(2)}</td>
-                        <td colSpan={3}/>
-                      </tr>
-                    </tfoot>
-                  </table>
+        {tab==="transactions"&&(()=>{
+          const txSales = saleTypeFilter==="all" ? filteredSales
+            : saleTypeFilter==="delivery"  ? filteredSales.filter(s=>s.saleType==="delivery")
+            : filteredSales.filter(s=>!s.saleType||s.saleType==="in_store");
+          const txTotal = txSales.reduce((s,x)=>s+x.total,0);
+          return (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {txSales.length} {t.transactionsDesc} · {t.total}: <span className="font-bold text-green-600">${txTotal.toFixed(2)}</span>
+                </p>
+                <div className="flex gap-2">
+                  {[["all","All"],["in_store","In-Store"],["delivery","🚚 Delivery"]].map(([val,label])=>(
+                    <button key={val} onClick={()=>setSaleTypeFilter(val)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saleTypeFilter===val?"bg-purple-600 text-white":"bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400"}`}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
+              <div className={`${CARD} overflow-hidden`}>
+                {txSales.length===0?<Empty msg={t.noSales}/>:(
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 dark:bg-[#1c1c1c] text-xs text-gray-400"><tr>
+                        <th className="px-5 py-3 text-left">{t.date}</th>
+                        <th className="px-4 py-3 text-left">{t.items}</th>
+                        <th className="px-4 py-3 text-right">{t.total}</th>
+                        <th className="px-4 py-3 text-center">{t.payment}</th>
+                        <th className="px-4 py-3 text-center">Type</th>
+                        <th className="px-4 py-3 text-center">Status</th>
+                        <th className="px-4 py-3 text-center">Actions</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                        {txSales.map(sale=>(
+                          <tr key={sale._id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                            <td className="px-5 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">{fmtDate(sale.createdAt)}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {sale.items.slice(0,2).map((item,i)=>(
+                                  <span key={i} className="text-xs bg-gray-100 dark:bg-[#252525] px-2 py-0.5 rounded-full">{item.name} ×{item.quantity}</span>
+                                ))}
+                                {sale.items.length>2&&<span className="text-xs text-gray-400">+{sale.items.length-2} {t.more}</span>}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold">
+                              <div className="text-green-600 dark:text-green-400">${sale.total.toFixed(2)}</div>
+                              {(sale.totalRefunded||0)>0&&<div className="text-xs text-red-500">−${sale.totalRefunded.toFixed(2)}</div>}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${METHOD_COLOR[sale.paymentMethod]||"bg-gray-100 text-gray-600"}`}>
+                                {sale.paymentMethod==="paylater"?t.credit:sale.paymentMethod?.replace("_"," ")}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {sale.saleType==="delivery"
+                                ? <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 font-medium">🚚 Delivery</span>
+                                : <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 font-medium">In-Store</span>
+                              }
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusBadge(sale.status)}`}>{sale.status?.replace("_"," ")}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {sale.status!=="fully_returned"&&(
+                                  <button onClick={()=>setReturnSale(sale)} title="Return"
+                                    className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition"><RotateCcw size={12}/></button>
+                                )}
+                                {sale.status==="completed"&&(
+                                  <button onClick={()=>setVoidModal(sale)} title="Void"
+                                    className="p-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 transition"><AlertCircle size={12}/></button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-50 dark:bg-[#1c1c1c]">
+                        <tr>
+                          <td className="px-5 py-3 font-semibold text-xs text-gray-500" colSpan={2}>{txSales.length} {t.transactionsDesc}</td>
+                          <td className="px-4 py-3 text-right font-bold text-green-600">${txTotal.toFixed(2)}</td>
+                          <td colSpan={4}/>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ═══ CASHIERS ═══ */}
         {tab==="cashiers"&&(

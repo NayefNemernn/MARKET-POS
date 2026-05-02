@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Minus, Printer, Tag, Package, TrendingUp, Save, RefreshCw, DollarSign, ShoppingCart, Calendar, Layers, Trash2, Loader2, Camera } from "lucide-react";
+import { X, Plus, Minus, Printer, Tag, Package, TrendingUp, Save, RefreshCw, DollarSign, ShoppingCart, Calendar, Layers, Trash2, Loader2, Camera, Globe } from "lucide-react";
 import VoiceButton from "../common/VoiceButton";
 import { toast } from "sonner";
 import JsBarcode from "jsbarcode";
@@ -170,7 +170,8 @@ export default function ProductEditPanel({
       data.append("cost",    String(editingProduct.cost || 0));
       data.append("stock",   String(editingProduct.stock));
       data.append("barcode", editingProduct.barcode);
-      data.append("hasVariants", String(!!editingProduct.hasVariants));
+      data.append("hasVariants",        String(!!editingProduct.hasVariants));
+      data.append("isAvailableOnline",  String(!!editingProduct.isAvailableOnline));
       if (editingProduct.variants?.length) {
         data.append("variants", JSON.stringify(
           editingProduct.variants.map(v => ({
@@ -568,6 +569,26 @@ export default function ProductEditPanel({
                 )}
               </div>
 
+            </div>
+
+            {/* Online Store toggle */}
+            <div className="px-5 pb-4">
+              <button
+                onClick={() => setEditingProduct({ ...editingProduct, isAvailableOnline: !editingProduct.isAvailableOnline })}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition
+                  ${editingProduct.isAvailableOnline
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400"
+                    : "border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:border-blue-300"
+                  }`}
+              >
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Globe size={15}/>
+                  Show in Online Store
+                </div>
+                <div className={`w-10 h-5 rounded-full transition-all relative ${editingProduct.isAvailableOnline ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${editingProduct.isAvailableOnline ? "left-5" : "left-0.5"}`}/>
+                </div>
+              </button>
             </div>
 
             {/* Footer */}
