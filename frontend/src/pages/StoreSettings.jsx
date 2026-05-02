@@ -48,7 +48,7 @@ export default function StoreSettings() {
   const [fetchingChatId, setFetchingChatId] = useState(false);
   const [testingTelegram, setTestingTelegram] = useState(false);
   const [newDriver, setNewDriver] = useState({ name: "", chatId: "" });
-  const [backendUrl, setBackendUrl] = useState(import.meta.env.VITE_API_URL?.replace("/api","") || "http://localhost:5000");
+  const [backendUrl, setBackendUrl] = useState(import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:5000");
   const [settingWebhook, setSettingWebhook] = useState(false);
   const qrRef = useRef(null);
 
