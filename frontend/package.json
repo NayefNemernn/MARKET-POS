@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "serve": "^14.2.0",
     "@imgly/background-removal": "^1.7.0",
     "axios": "^1.6.8",
     "browser-image-compression": "^2.0.2",
