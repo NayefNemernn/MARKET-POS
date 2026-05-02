@@ -7,4 +7,8 @@ export default defineConfig({
     // @imgly/background-removal uses WebWorkers + WASM — exclude from pre-bundling
     exclude: ["@imgly/background-removal"],
   },
+  preview: {
+    host: "0.0.0.0",
+    allowedHosts: "all",
+  },
 });
