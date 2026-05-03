@@ -1,10 +1,13 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback } from "react";
 import { createSale } from "../api/sale.api";
 import { returnSale  } from "../api/sale.api";
+import api from "../api/axios";
 import {
   queueSale, getPendingSales, deletePendingSale, getPendingSaleCount,
   queueReturn, getPendingReturns, deletePendingReturn,
-  saveToken,
+  queueExpense, getPendingExpenses, deletePendingExpense,
+  saveToken, decrementLocalStock,
+  queueMutation, getPendingMutations, deletePendingMutation,
 } from "../lib/offlineDB";
 import toast from "react-hot-toast";
 
@@ -38,6 +41,8 @@ export default function useOfflineSales() {
   /* ── saveOffline: queue a sale to IndexedDB ─────────────────── */
   const saveOffline = useCallback(async (saleData) => {
     await queueSale(saleData);
+    /* decrement local stock cache so subsequent offline sales see updated quantities */
+    await decrementLocalStock(saleData.items).catch(() => {});
 
     /* Try to register a background sync (Chrome/Android) */
     if ("serviceWorker" in navigator && "SyncManager" in window) {
@@ -53,11 +58,18 @@ export default function useOfflineSales() {
     await queueReturn({ saleId, ...returnData });
   }, []);
 
+  /* ── saveExpenseOffline: queue an expense ───────────────────── */
+  const saveExpenseOffline = useCallback(async (expenseData) => {
+    await queueExpense(expenseData);
+  }, []);
+
   /* ── getPendingCount ────────────────────────────────────────── */
   const getPendingCount = useCallback(async () => {
-    const sales   = await getPendingSaleCount();
-    const returns = (await getPendingReturns()).length;
-    return sales + returns;
+    const sales    = await getPendingSaleCount();
+    const returns  = (await getPendingReturns()).length;
+    const expenses = (await getPendingExpenses()).length;
+    const mutations = (await getPendingMutations()).length;
+    return sales + returns + expenses + mutations;
   }, []);
 
   /* ── sync: manual drain of both queues ─────────────────────── */
@@ -95,8 +107,55 @@ export default function useOfflineSales() {
       }
     }
 
+    /* sync pending expenses */
+    const pendingExpenses = await getPendingExpenses();
+    for (const exp of pendingExpenses) {
+      try {
+        const { id, savedAt, ...expData } = exp;
+        await api.post("/expenses", expData);
+        await deletePendingExpense(id);
+        synced++;
+      } catch (err) {
+        console.error("[Sync] Expense failed:", err.response?.data || err.message);
+        failed++;
+      }
+    }
+
+    /* sync pending mutations — delete FIRST to prevent double-execution */
+    const pendingMutations = await getPendingMutations();
+    for (const mut of pendingMutations) {
+      const { id, type, endpoint, method, body } = mut;
+      await deletePendingMutation(id).catch(() => {});
+
+      /* drop mutations whose URL contains an offline ID — the item only ever
+         existed locally so there is nothing to do on the server */
+      if (endpoint.includes("/offline-")) {
+        synced++;
+        continue;
+      }
+
+      try {
+        const url = endpoint.startsWith("/api") ? endpoint.slice(4) : endpoint;
+
+        /* resolve offline supplierId → real ID by looking up supplier name */
+        let resolvedBody = body;
+        if (type === "create_purchase_order" && body?.supplierId?.toString().startsWith("offline-")) {
+          const suppRes = await api.get("/suppliers").catch(() => null);
+          const real = suppRes?.data?.find(s => s.name === body.supplierName);
+          resolvedBody = { ...body, supplierId: real?._id || null };
+        }
+
+        await api.request({ url, method: method || "POST", data: resolvedBody || undefined });
+        synced++;
+      } catch (err) {
+        console.error("[Sync] Mutation failed:", type, err.response?.data || err.message);
+        await queueMutation(type, endpoint, method, body).catch(() => {});
+        failed++;
+      }
+    }
+
     return { synced, failed };
   }, []);
 
-  return { saveOffline, saveReturnOffline, sync, getPendingCount };
+  return { saveOffline, saveReturnOffline, saveExpenseOffline, sync, getPendingCount };
 }

@@ -4,45 +4,34 @@
    Stores:
      pending_sales     → queued sales waiting to sync
      pending_returns   → queued returns waiting to sync
+     pending_expenses  → queued expenses waiting to sync
      products_cache    → cached product list for offline POS
      categories_cache  → cached categories
-     customers_cache   → cached customers (for paylater suggestions offline)
-     settings_cache    → cached store settings
+     customers_cache   → cached customers
+     settings_cache    → cached store settings + misc
      auth              → JWT token for SW background sync
 ================================================================ */
 
 const DB_NAME    = "pos_offline_db";
-const DB_VERSION = 3;
+const DB_VERSION = 5;
 
-/* ── open / migrate ─────────────────────────────────────────── */
+const PENDING_STORES = ["pending_sales", "pending_returns", "pending_expenses", "pending_mutations"];
+const CACHE_STORES   = ["products_cache", "categories_cache", "customers_cache", "settings_cache", "auth"];
+
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
-
-      if (!db.objectStoreNames.contains("pending_sales")) {
-        db.createObjectStore("pending_sales",   { keyPath: "id", autoIncrement: true });
-      }
-      if (!db.objectStoreNames.contains("pending_returns")) {
-        db.createObjectStore("pending_returns", { keyPath: "id", autoIncrement: true });
-      }
-      if (!db.objectStoreNames.contains("products_cache")) {
-        db.createObjectStore("products_cache",  { keyPath: "key" });
-      }
-      if (!db.objectStoreNames.contains("categories_cache")) {
-        db.createObjectStore("categories_cache",{ keyPath: "key" });
-      }
-      if (!db.objectStoreNames.contains("customers_cache")) {
-        db.createObjectStore("customers_cache", { keyPath: "key" });
-      }
-      if (!db.objectStoreNames.contains("settings_cache")) {
-        db.createObjectStore("settings_cache",  { keyPath: "key" });
-      }
-      if (!db.objectStoreNames.contains("auth")) {
-        db.createObjectStore("auth",            { keyPath: "key" });
-      }
+      PENDING_STORES.forEach((name) => {
+        if (!db.objectStoreNames.contains(name))
+          db.createObjectStore(name, { keyPath: "id", autoIncrement: true });
+      });
+      CACHE_STORES.forEach((name) => {
+        if (!db.objectStoreNames.contains(name))
+          db.createObjectStore(name, { keyPath: "key" });
+      });
     };
 
     req.onsuccess = () => resolve(req.result);
@@ -50,149 +39,118 @@ function openDB() {
   });
 }
 
-/* ── generic helpers ────────────────────────────────────────── */
-async function put(storeName, record) {
+/* ── Generic helpers ────────────────────────────────────────── */
+async function put(store, record) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    const req = tx.objectStore(storeName).put(record);
-    req.onsuccess = () => resolve(req.result);
-    tx.onerror    = () => reject(tx.error);
+    const tx = db.transaction(store, "readwrite");
+    const r  = tx.objectStore(store).put(record);
+    r.onsuccess  = () => resolve(r.result);
+    tx.onerror   = () => reject(tx.error);
   });
 }
 
-async function add(storeName, record) {
+async function add(store, record) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    const req = tx.objectStore(storeName).add(record);
-    req.onsuccess = () => resolve(req.result);
-    tx.onerror    = () => reject(tx.error);
+    const tx = db.transaction(store, "readwrite");
+    const r  = tx.objectStore(store).add(record);
+    r.onsuccess  = () => resolve(r.result);
+    tx.onerror   = () => reject(tx.error);
   });
 }
 
-async function getAll(storeName) {
+async function getAll(store) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx  = db.transaction(storeName, "readonly");
-    const req = tx.objectStore(storeName).getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror   = () => reject(req.error);
+    const tx = db.transaction(store, "readonly");
+    const r  = tx.objectStore(store).getAll();
+    r.onsuccess = () => resolve(r.result);
+    r.onerror   = () => reject(r.error);
   });
 }
 
-async function getOne(storeName, key) {
+async function getOne(store, key) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx  = db.transaction(storeName, "readonly");
-    const req = tx.objectStore(storeName).get(key);
-    req.onsuccess = () => resolve(req.result ?? null);
-    req.onerror   = () => reject(req.error);
+    const tx = db.transaction(store, "readonly");
+    const r  = tx.objectStore(store).get(key);
+    r.onsuccess = () => resolve(r.result ?? null);
+    r.onerror   = () => reject(r.error);
   });
 }
 
-async function remove(storeName, key) {
+async function remove(store, key) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    tx.objectStore(storeName).delete(key);
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).delete(key);
     tx.oncomplete = resolve;
     tx.onerror    = () => reject(tx.error);
   });
 }
 
-/* ── Auth token (kept in IDB so SW can read it) ─────────────── */
-export async function saveToken(token) {
-  await put("auth", { key: "token", value: token });
-}
-
-export async function clearToken() {
-  await remove("auth", "token");
-}
+/* ── Auth token ─────────────────────────────────────────────── */
+export const saveToken  = (token) => put("auth", { key: "token", value: token });
+export const clearToken = ()      => remove("auth", "token");
 
 /* ── Products cache ─────────────────────────────────────────── */
-export async function cacheProducts(products) {
-  await put("products_cache", { key: "list", data: products, cachedAt: Date.now() });
-}
-
-export async function getCachedProducts() {
+export const cacheProducts     = (data)  => put("products_cache", { key: "list", data, cachedAt: Date.now() });
+export const getCachedProducts = async () => (await getOne("products_cache", "list"))?.data ?? null;
+export const getProductsCacheAge = async () => {
   const rec = await getOne("products_cache", "list");
-  return rec?.data ?? null;
+  return rec ? Date.now() - rec.cachedAt : null;
+};
+
+/* Decrement stock locally for offline sales */
+export async function decrementLocalStock(items) {
+  const cached = await getCachedProducts();
+  if (!cached || !items?.length) return;
+  const updated = cached.map((p) => {
+    const sold = items.find((i) => i.productId === p._id || i.productId === p._id?.toString());
+    return sold ? { ...p, stock: Math.max(0, (p.stock || 0) - sold.quantity) } : p;
+  });
+  await cacheProducts(updated);
 }
 
 /* ── Categories cache ───────────────────────────────────────── */
-export async function cacheCategories(categories) {
-  await put("categories_cache", { key: "list", data: categories, cachedAt: Date.now() });
-}
-
-export async function getCachedCategories() {
-  const rec = await getOne("categories_cache", "list");
-  return rec?.data ?? null;
-}
-
-/* ── Pending sales ──────────────────────────────────────────── */
-export async function queueSale(saleData) {
-  return add("pending_sales", { ...saleData, savedAt: new Date().toISOString() });
-}
-
-export async function getPendingSales() {
-  return getAll("pending_sales");
-}
-
-export async function deletePendingSale(id) {
-  return remove("pending_sales", id);
-}
-
-export async function getPendingSaleCount() {
-  const all = await getPendingSales();
-  return all.length;
-}
-
-/* ── Pending returns ────────────────────────────────────────── */
-export async function queueReturn(returnData) {
-  return add("pending_returns", { ...returnData, savedAt: new Date().toISOString() });
-}
-
-export async function getPendingReturns() {
-  return getAll("pending_returns");
-}
-
-export async function deletePendingReturn(id) {
-  return remove("pending_returns", id);
-}
+export const cacheCategories     = (data) => put("categories_cache", { key: "list", data, cachedAt: Date.now() });
+export const getCachedCategories = async () => (await getOne("categories_cache", "list"))?.data ?? null;
 
 /* ── Customers cache ────────────────────────────────────────── */
-export async function cacheCustomers(customers) {
-  await put("customers_cache", { key: "list", data: customers, cachedAt: Date.now() });
-}
-
-export async function getCachedCustomers() {
-  const rec = await getOne("customers_cache", "list");
-  return rec?.data ?? null;
-}
+export const cacheCustomers     = (data) => put("customers_cache", { key: "list", data, cachedAt: Date.now() });
+export const getCachedCustomers = async () => (await getOne("customers_cache", "list"))?.data ?? null;
 
 /* ── Settings cache ─────────────────────────────────────────── */
-export async function cacheSettings(settings) {
-  await put("settings_cache", { key: "store", data: settings, cachedAt: Date.now() });
-}
+export const cacheSettings     = (data) => put("settings_cache", { key: "store", data, cachedAt: Date.now() });
+export const getCachedSettings = async () => (await getOne("settings_cache", "store"))?.data ?? null;
 
-export async function getCachedSettings() {
-  const rec = await getOne("settings_cache", "store");
-  return rec?.data ?? null;
-}
+/* ── Generic key-value in settings_cache ────────────────────── */
+export const cacheByKey    = (key, data) => put("settings_cache", { key, data, cachedAt: Date.now() });
+export const getCachedByKey = async (key) => (await getOne("settings_cache", key))?.data ?? null;
 
-/* ── PayLater (hold-sales) cache ────────────────────────────── */
-export async function cachePayLater(sales) {
-  await put("settings_cache", { key: "paylater_list", data: sales, cachedAt: Date.now() });
-}
+/* ── Pending sales ──────────────────────────────────────────── */
+export const queueSale         = (data) => add("pending_sales", { ...data, savedAt: new Date().toISOString() });
+export const getPendingSales   = ()     => getAll("pending_sales");
+export const deletePendingSale = (id)   => remove("pending_sales", id);
+export const getPendingSaleCount = async () => (await getPendingSales()).length;
 
-export async function getCachedPayLater() {
-  const rec = await getOne("settings_cache", "paylater_list");
-  return rec?.data ?? null;
-}
+/* ── Pending returns ────────────────────────────────────────── */
+export const queueReturn         = (data) => add("pending_returns", { ...data, savedAt: new Date().toISOString() });
+export const getPendingReturns   = ()     => getAll("pending_returns");
+export const deletePendingReturn = (id)   => remove("pending_returns", id);
 
-/* ── Cache age (ms since last sync) ─────────────────────────── */
-export async function getProductsCacheAge() {
-  const rec = await getOne("products_cache", "list");
-  return rec ? Date.now() - rec.cachedAt : null;
-}
+/* ── Pending expenses ───────────────────────────────────────── */
+export const queueExpense         = (data) => add("pending_expenses", { ...data, savedAt: new Date().toISOString() });
+export const getPendingExpenses   = ()     => getAll("pending_expenses");
+export const deletePendingExpense = (id)   => remove("pending_expenses", id);
+
+/* ── PayLater cache ─────────────────────────────────────────── */
+export const cachePayLater     = (data) => cacheByKey("paylater_list", data);
+export const getCachedPayLater = ()     => getCachedByKey("paylater_list");
+
+/* ── Pending mutations (generic queue) ──────────────────────── */
+export const queueMutation         = (type, endpoint, method, body = null) =>
+  add("pending_mutations", { type, endpoint, method, body, savedAt: new Date().toISOString() });
+export const getPendingMutations   = () => getAll("pending_mutations");
+export const deletePendingMutation = (id) => remove("pending_mutations", id);

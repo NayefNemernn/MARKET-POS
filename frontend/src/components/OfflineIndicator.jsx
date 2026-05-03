@@ -35,18 +35,24 @@ export default function OfflineIndicator() {
   useEffect(() => {
     refreshCount();
 
-    const goOnline = async () => {
-      setIsOnline(true);
-      await refreshCount();
+    const runSync = async () => {
+      if (syncing) return;
       const count = await getPendingCount();
-      if (count > 0) {
-        const toastId = toast.loading(isAr ? `جارٍ مزامنة ${count} سجل...` : `Syncing ${count} offline record(s)...`);
+      if (count === 0) return;
+      setSyncing(true);
+      try {
         const { synced, failed } = await sync();
-        toast.dismiss(toastId);
         if (synced > 0) toast.success(isAr ? `✅ تمت مزامنة ${synced} سجل` : `✅ ${synced} record(s) synced!`);
         if (failed > 0) toast.error(isAr ? `⚠️ فشل ${failed} سجل` : `⚠️ ${failed} failed to sync`);
         await refreshCount();
-      }
+      } finally { setSyncing(false); }
+    };
+
+    const goOnline = async () => {
+      setIsOnline(true);
+      /* small delay — let the network stabilise before hitting the API */
+      await new Promise(r => setTimeout(r, 1500));
+      await runSync();
     };
 
     const goOffline = () => {
@@ -61,7 +67,12 @@ export default function OfflineIndicator() {
     window.addEventListener("online",        goOnline);
     window.addEventListener("offline",       goOffline);
     window.addEventListener("offlineSynced", onSynced);
-    const interval = setInterval(refreshCount, 30000); // refresh every 30s
+
+    /* every 30 s: auto-sync if online and there are pending items */
+    const interval = setInterval(async () => {
+      await refreshCount();
+      if (navigator.onLine) await runSync();
+    }, 30000);
 
     return () => {
       window.removeEventListener("online",        goOnline);

@@ -2,8 +2,10 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Check, Layers } from "lucide-react";
 import { useProductsTranslation } from "../../hooks/useProductsTranslation";
+import { getCategoryIcon } from "../../lib/categoryIcon";
 
 const LOW_STOCK_THRESHOLD = 5;
+const nameHue = (str) => [...(str || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 0);
 
 export default function ProductCard({ product, onDelete, onEdit, onBatches, selected, onToggleSelect }) {
   const t = useProductsTranslation();
@@ -16,7 +18,7 @@ export default function ProductCard({ product, onDelete, onEdit, onBatches, sele
       whileTap={{ scale: 0.98 }}
       onClick={() => onEdit(product)}
       className="
-        relative p-4 space-y-3 cursor-pointer
+        relative p-4 space-y-3 cursor-pointer h-full
         rounded-3xl
         bg-gray-100 dark:bg-[#141414]
         shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
@@ -37,13 +39,19 @@ export default function ProductCard({ product, onDelete, onEdit, onBatches, sele
         </div>
       </div>
 
-      {/* IMAGE */}
-      <div className="h-32 rounded-2xl bg-gray-200 dark:bg-[#0f0f0f] flex items-center justify-center overflow-hidden">
-        <img
-          src={product.image || "/placeholder.png"}
-          className="w-full h-full object-cover"
-        />
-      </div>
+      {/* IMAGE or initials banner */}
+      {product.image ? (
+        <div className="h-32 rounded-2xl overflow-hidden">
+          <img src={product.image} className="w-full h-full object-cover" />
+        </div>
+      ) : (
+        <div className="h-20 rounded-2xl flex items-center justify-center select-none"
+          style={{ background: `linear-gradient(135deg, hsl(${nameHue(product.name)},60%,58%), hsl(${(nameHue(product.name)+40)%360},65%,45%))` }}>
+          <span className="text-4xl drop-shadow">
+            {getCategoryIcon(product.category?.name)}
+          </span>
+        </div>
+      )}
 
       {/* NAME */}
       <h3 className="font-semibold text-gray-800 dark:text-gray-100">

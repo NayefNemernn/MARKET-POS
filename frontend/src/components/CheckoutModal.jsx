@@ -219,9 +219,30 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
       toast.error(t.enterCustomerName); return;
     }
 
-    /* if paylater only — use holdSale flow */
+    /* if paylater only — use holdSale flow (online) or sale queue (offline) */
     if (method === "paylater") {
-      if (!navigator.onLine) { toast.error(t.payLaterOffline); return; }
+      if (!navigator.onLine) {
+        /* queue as a regular sale with paymentMethod=paylater; backend will create HoldSale on sync */
+        const offlinePayload = {
+          items: cart.map(i => ({ productId: i.productId, quantity: i.quantity })),
+          paymentMethod: "paylater",
+          discountAmount,
+          customerName: selectedCustomer?.name || customerSearch.trim() || "",
+          customerId:   selectedCustomer?._id || null,
+          phone:        selectedCustomer?.phone || newPhone || "",
+        };
+        await saveOffline(offlinePayload);
+        toast.success("📴 Pay Later saved — will sync when connected");
+        setReceipt({
+          _id: "offline-" + Date.now(),
+          items: cart.map(i => ({ name: i.name, price: i.price, quantity: i.quantity })),
+          total: finalTotal, discountAmount, paymentMethod: "paylater",
+          customerName: offlinePayload.customerName,
+          createdAt: new Date().toISOString(), offline: true,
+        });
+        clearCart();
+        return;
+      }
       setLoading(true);
       try {
         await createHoldSale({

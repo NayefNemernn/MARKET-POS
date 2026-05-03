@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getCachedProducts, getCachedCategories, getCachedCustomers } from "../lib/offlineDB";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -18,5 +19,22 @@ api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+/* When offline and a GET request fails, return IDB-cached data for known endpoints */
+api.interceptors.response.use(
+  (res) => res,
+  async (err) => {
+    const { config } = err;
+    if (!navigator.onLine && config?.method === "get") {
+      const path = config.url?.replace(/\?.*$/, "") || "";
+      let cached = null;
+      if (path.includes("/products"))   cached = await getCachedProducts().catch(() => null);
+      if (path.includes("/categories")) cached = await getCachedCategories().catch(() => null);
+      if (path.includes("/customers"))  cached = await getCachedCustomers().catch(() => null);
+      if (cached) return { data: cached, status: 200, headers: {}, config, offline: true };
+    }
+    return Promise.reject(err);
+  }
+);
 
 export default api;

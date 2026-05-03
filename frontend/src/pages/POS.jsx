@@ -24,80 +24,9 @@ import toast             from "react-hot-toast";
 import { ShoppingBag, Search, RotateCcw } from "lucide-react";
 import QuickReturn from "../components/QuickReturn";
 
-// ── Category emoji map (English + Arabic) ────────────────────────────────────
-function getCategoryIcon(name = "") {
-  const n = name.toLowerCase();
+import { getCategoryIcon } from "../lib/categoryIcon";
 
-  // Beverages — مشروبات، عصير، ماء، مياه، سودا
-  if (/drink|bev|juice|water|soda/.test(n) ||
-      /مشروب|عصير|ماء|مياه|سودا|كولا|نكتار/.test(name))           return "🥤";
-
-  // Snacks — وجبات خفيفة، شيبس، مكسرات، بسكويت
-  if (/snack|chip|crisp|nuts|biscuit/.test(n) ||
-      /وجبة خفيفة|شيبس|مكسرات|بسكويت|كعك|محمصات/.test(name))     return "🍟";
-
-  // Dairy — ألبان، حليب، جبن، زبادي، قشطة
-  if (/dairy|milk|cheese|yogurt|cream/.test(n) ||
-      /ألبان|حليب|جبن|جبنة|زبادي|قشطة|زبدة|لبن/.test(name))      return "🧀";
-
-  // Bakery — مخبوزات، خبز، كيك، معجنات
-  if (/bak|bread|cake|pastry/.test(n) ||
-      /مخبوز|خبز|كيك|معجنات|فطير|توست|كرواسان/.test(name))        return "🍞";
-
-  // Medicine — دواء، صيدلية، صحة
-  if (/med|pharma|health/.test(n) ||
-      /دواء|أدوية|صيدل|صحة|مسكن|فيتامين/.test(name))              return "💊";
-
-  // Personal care — عناية، صابون، شامبو، جمال
-  if (/care|hygiene|soap|shampoo|beauty/.test(n) ||
-      /عناية|صابون|شامبو|نظافة|جمال|كريم|مرطب|عطر/.test(name))   return "🧴";
-
-  // Electronics — إلكترونيات، هاتف، تقنية
-  if (/electron|tech|phone|cable/.test(n) ||
-      /إلكترون|هاتف|جوال|تقنية|كابل|شاحن|سماعة/.test(name))      return "📱";
-
-  // Cleaning — تنظيف، منظفات
-  if (/clean|deterg/.test(n) ||
-      /تنظيف|منظف|غسيل|جلي|مطهر|كلور/.test(name))                return "🧹";
-
-  // Meat & Protein — لحوم، دجاج، سمك
-  if (/meat|chicken|beef|fish|poultry/.test(n) ||
-      /لحم|لحوم|دجاج|سمك|فروج|مأكولات بحرية/.test(name))         return "🥩";
-
-  // Fruits & Vegetables — فواكه، خضروات
-  if (/fruit|veg|produce/.test(n) ||
-      /فاكهة|فواكه|خضار|خضروات/.test(name))                       return "🥦";
-
-  // Frozen — مجمدات
-  if (/frozen|ice/.test(n) ||
-      /مجمد|مجمدات|ثلج/.test(name))                               return "❄️";
-
-  // Sweets & Chocolate — حلويات، شوكولا
-  if (/sweet|candy|choc|sugar/.test(n) ||
-      /حلوى|حلويات|شوكولا|سكر|كاندي|مربى/.test(name))            return "🍫";
-
-  // Coffee & Tea — قهوة، شاي
-  if (/coffee|tea/.test(n) ||
-      /قهوة|شاي|نسكافيه|كابتشينو|نعناع/.test(name))              return "☕";
-
-  // Sauces & Spices — صلصات، توابل، بهارات
-  if (/sauce|condiment|spice/.test(n) ||
-      /صلصة|توابل|بهارات|كاتشب|خل|ملح/.test(name))               return "🧂";
-
-  // Canned & Preserved — معلبات
-  if (/can|tin|preserved|conserv/.test(n) ||
-      /معلب|معلبات|مخلل|مربى|محفوظ/.test(name))                  return "🥫";
-
-  // Baby products — منتجات أطفال
-  if (/baby|infant|diaper/.test(n) ||
-      /أطفال|طفل|حفاض|حفاضات|رضاعة/.test(name))                  return "👶";
-
-  // Cigarettes / Tobacco — تبغ، سجائر
-  if (/tobac|cigaret|smoke/.test(n) ||
-      /سجائر|تبغ|دخان/.test(name))                                return "🚬";
-
-  return "📦";
-}
+const nameHue = (str) => [...(str || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 0);
 
 // ── Subtle dot-grid background ────────────────────────────────────────────────
 const dotGrid = {
@@ -368,7 +297,7 @@ export default function POS({ setPage }) {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 p-1 pb-2">
+              <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 p-1 pb-2">
                 {filteredProducts.map(p => {
                   const qty   = cart.find(i => i.productId === p._id)?.quantity || 0;
                   const out   = p.stock === 0;
@@ -378,6 +307,7 @@ export default function POS({ setPage }) {
                       key={p._id}
                       onClick={() => addProductSafe(p)}
                       className={`
+                        ${p.image ? "col-span-2" : "col-span-1"}
                         relative flex flex-col rounded-2xl overflow-visible
                         bg-white dark:bg-[#141414]
                         transition-[transform,box-shadow] duration-75 select-none
@@ -409,22 +339,36 @@ export default function POS({ setPage }) {
                         </div>
                       )}
 
-                      {/* Image */}
-                      <div className="h-32 bg-gray-100 dark:bg-[#0f0f0f] relative overflow-hidden">
-                        <img
-                          src={p.image || "/placeholder.png"}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                          onError={e => e.target.src = "/placeholder.png"}
-                        />
-                        {/* Category chip over the image */}
-                        {p.category?.name && (
-                          <span className="absolute bottom-1.5 right-1.5
-                            text-[9px] font-semibold px-1.5 py-0.5 rounded-full
-                            bg-black/55 text-white backdrop-blur-sm leading-none">
-                            {p.category.name}
+                      {/* Image or initials banner */}
+                      {p.image ? (
+                        <div className="h-32 relative overflow-hidden">
+                          <img
+                            src={p.image}
+                            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                          />
+                          {p.category?.name && (
+                            <span className="absolute bottom-1.5 right-1.5
+                              text-[9px] font-semibold px-1.5 py-0.5 rounded-full
+                              bg-black/55 text-white backdrop-blur-sm leading-none">
+                              {p.category.name}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="h-20 relative flex items-center justify-center select-none"
+                          style={{ background: `linear-gradient(135deg, hsl(${nameHue(p.name)},60%,58%), hsl(${(nameHue(p.name)+40)%360},65%,45%))` }}>
+                          <span className="text-4xl drop-shadow">
+                            {getCategoryIcon(p.category?.name)}
                           </span>
-                        )}
-                      </div>
+                          {p.category?.name && (
+                            <span className="absolute bottom-1.5 right-1.5
+                              text-[9px] font-semibold px-1.5 py-0.5 rounded-full
+                              bg-black/30 text-white backdrop-blur-sm leading-none">
+                              {p.category.name}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Info */}
                       <div className="p-2.5 flex flex-col gap-1.5">

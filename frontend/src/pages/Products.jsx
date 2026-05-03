@@ -19,6 +19,7 @@ import { getCategories, createCategory } from "../api/category.api";
 import {
   cacheProducts, getCachedProducts,
   cacheCategories, getCachedCategories,
+  queueMutation,
 } from "../lib/offlineDB";
 
 import toast from "react-hot-toast";
@@ -207,6 +208,19 @@ export default function Products() {
 
   const bulkDelete = async () => {
     if (!window.confirm(`${t.deleteProduct} (${selectedIds.size})`)) return;
+    if (!navigator.onLine) {
+      for (const id of selectedIds) {
+        if (!id.startsWith("offline-")) {
+          await queueMutation("delete_product", `/api/products/${id}`, "DELETE");
+        }
+      }
+      const updated = products.filter(p => !selectedIds.has(p._id));
+      setProducts(updated);
+      await cacheProducts(updated);
+      toast.success(`${t.deleted} (${selectedIds.size})`);
+      setSelectedIds(new Set());
+      return;
+    }
     try {
       await Promise.all([...selectedIds].map(id => deleteProduct(id)));
       toast.success(`${t.deleted} (${selectedIds.size})`);
@@ -288,6 +302,35 @@ export default function Products() {
     const dup = products.find(p => p.name.trim().toLowerCase() === form.name.trim().toLowerCase());
     if (dup && !window.confirm(`"${dup.name}" ${t.alreadyExistsConfirm}`)) return;
 
+    /* ── OFFLINE path (no image only) ── */
+    if (!navigator.onLine) {
+      if (image) {
+        toast.error("❌ Image upload requires a connection — remove the image to save offline");
+        return;
+      }
+      const catObj   = categories.find(c => c.name.toLowerCase() === (form.category || "").toLowerCase());
+      const payload  = {
+        name: form.name, barcode,
+        price: +form.price || 0, cost: +form.cost || 0, stock: +form.stock || 0,
+        category: catObj?._id || null,
+        expiryDate: form.expiryDate || null,
+      };
+      await queueMutation("create_product", "/api/products", "POST", payload);
+      const fakeProduct = {
+        _id: "offline-" + Date.now(), ...payload,
+        category: catObj ? { _id: catObj._id, name: catObj.name } : null,
+        image: "",
+      };
+      const updated = [fakeProduct, ...products];
+      setProducts(updated);
+      await cacheProducts(updated);
+      toast.success("📴 Product saved — will sync when connected");
+      setForm({ name: "", price: "", cost: "", stock: "", category: "", expiryDate: "" });
+      setBarcode(""); setPreview(""); setImage(null);
+      return;
+    }
+
+    /* ── ONLINE path ── */
     let categoryId = null;
     if (form.category) {
       const existing = categories.find(c => c.name.toLowerCase() === form.category.toLowerCase());
@@ -308,9 +351,7 @@ export default function Products() {
       await createProduct(data);
       toast.success(t.productCreated);
       setForm({ name: "", price: "", cost: "", stock: "", category: "", expiryDate: "" });
-      setBarcode("");
-      setPreview("");
-      setImage(null);
+      setBarcode(""); setPreview(""); setImage(null);
       refresh();
     } catch (err) {
       toast.error(err.response?.data?.message || t.failedToCreate);
@@ -320,6 +361,16 @@ export default function Products() {
   // ── Delete ────────────────────────────────────────────────────────────────
   const remove = async (id) => {
     if (!window.confirm(t.deleteProduct)) return;
+    if (!navigator.onLine) {
+      if (!id.startsWith("offline-")) {
+        await queueMutation("delete_product", `/api/products/${id}`, "DELETE");
+      }
+      const updated = products.filter(p => p._id !== id);
+      setProducts(updated);
+      await cacheProducts(updated);
+      toast.success(t.deleted);
+      return;
+    }
     await deleteProduct(id);
     toast.success(t.deleted);
     refresh();
@@ -680,17 +731,18 @@ export default function Products() {
                 <p className="text-sm">{t.noProductsFound}</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 xl:grid-cols-16 gap-3">
                 {paginated.map(p => (
-                  <ProductCard
-                    key={p._id}
-                    product={p}
-                    onDelete={remove}
-                    onEdit={product => setEditingProduct(product)}
-                    onBatches={openBatches}
-                    selected={selectedIds.has(p._id)}
-                    onToggleSelect={toggleSelect}
-                  />
+                  <div key={p._id} className={p.image ? "col-span-2" : "col-span-1"}>
+                    <ProductCard
+                      product={p}
+                      onDelete={remove}
+                      onEdit={product => setEditingProduct(product)}
+                      onBatches={openBatches}
+                      selected={selectedIds.has(p._id)}
+                      onToggleSelect={toggleSelect}
+                    />
+                  </div>
                 ))}
               </div>
             )}

@@ -3,6 +3,7 @@ import api from "../api/axios";
 import toast from "react-hot-toast";
 import { DollarSign, Plus, Trash2, RefreshCw, Search, TrendingDown } from "lucide-react";
 import { useExpensesTranslation } from "../hooks/useExpensesTranslation";
+import useOfflineSales from "../hooks/useOfflineSales";
 
 const CARD = "rounded-2xl bg-white dark:bg-[#141414] shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff] dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]";
 const CATEGORIES = ["rent", "utilities", "salaries", "supplies", "maintenance", "marketing", "transport", "other"];
@@ -10,6 +11,7 @@ const CAT_COLORS = { rent: "bg-blue-100 text-blue-700", utilities: "bg-yellow-10
 
 export default function ExpensesPage() {
   const t = useExpensesTranslation();
+  const { saveExpenseOffline } = useOfflineSales();
   const [expenses, setExpenses] = useState([]);
   const [summary,  setSummary]  = useState(null);
   const [loading,  setLoading]  = useState(true);
@@ -36,8 +38,16 @@ export default function ExpensesPage() {
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!form.title || !form.amount) return toast.error(t.titleAmountRequired);
+    const data = { ...form, amount: +form.amount };
+    if (!navigator.onLine) {
+      await saveExpenseOffline(data);
+      toast.success("📴 Expense saved — will sync when connected");
+      setShowForm(false);
+      setForm({ title: "", amount: "", category: "other", paymentMethod: "cash", notes: "", date: new Date().toISOString().split("T")[0] });
+      return;
+    }
     try {
-      await api.post("/expenses", { ...form, amount: +form.amount });
+      await api.post("/expenses", data);
       toast.success(t.expenseAdded);
       setShowForm(false);
       setForm({ title: "", amount: "", category: "other", paymentMethod: "cash", notes: "", date: new Date().toISOString().split("T")[0] });

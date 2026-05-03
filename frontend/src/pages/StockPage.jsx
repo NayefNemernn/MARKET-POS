@@ -3,6 +3,7 @@ import api from "../api/axios";
 import toast from "react-hot-toast";
 import { Package, TrendingUp, TrendingDown, Search, RefreshCw, Plus, Minus, AlertTriangle } from "lucide-react";
 import { useStockTranslation } from "../hooks/useStockTranslation";
+import { cacheByKey, getCachedByKey, queueMutation, cacheProducts, getCachedProducts } from "../lib/offlineDB";
 
 const CARD = "rounded-2xl bg-white dark:bg-[#141414] shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff] dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]";
 
@@ -18,25 +19,46 @@ export default function StockPage() {
 
   const load = async () => {
     setLoading(true);
+    // Show cached data immediately
+    const cachedP = await getCachedByKey("stock_products_list");
+    const cachedL = await getCachedByKey("stock_logs_list");
+    if (cachedP) setProducts(cachedP);
+    if (cachedL) setLogs(cachedL);
+
     try {
       const [p, l] = await Promise.all([api.get("/products"), api.get("/stock/logs")]);
       setProducts(p.data);
       setLogs(l.data);
-    } catch { toast.error(t.failed); }
-    finally { setLoading(false); }
+      await cacheByKey("stock_products_list", p.data);
+      await cacheByKey("stock_logs_list", l.data);
+    } catch {
+      if (!cachedP) toast.error(t.failed);
+      else toast("📦 Showing cached data", { icon: "💾" });
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
 
   const handleAdjust = async () => {
     if (!adjustForm.change || adjustForm.change === "0") return toast.error(t.enterQuantity);
+
+    if (!navigator.onLine) {
+      const payload = { productId: adjustModal._id, change: +adjustForm.change, reason: adjustForm.reason, type: adjustForm.type };
+      await queueMutation("stock_adjust", "/api/stock/adjust", "POST", payload);
+      // Update local state + caches
+      const change = +adjustForm.change;
+      const updated = products.map(p => p._id === adjustModal._id ? { ...p, stock: Math.max(0, p.stock + change) } : p);
+      setProducts(updated);
+      await cacheByKey("stock_products_list", updated);
+      await cacheProducts(updated); // also update POS products cache
+      toast.success("📴 Stock adjustment queued — will sync when connected");
+      setAdjustModal(null);
+      setAdjustForm({ change: "", reason: "", type: "manual_add" });
+      return;
+    }
+
     try {
-      await api.post("/stock/adjust", {
-        productId: adjustModal._id,
-        change: +adjustForm.change,
-        reason: adjustForm.reason,
-        type: adjustForm.type,
-      });
+      await api.post("/stock/adjust", { productId: adjustModal._id, change: +adjustForm.change, reason: adjustForm.reason, type: adjustForm.type });
       toast.success(t.stockAdjusted);
       setAdjustModal(null);
       setAdjustForm({ change: "", reason: "", type: "manual_add" });
@@ -53,7 +75,7 @@ export default function StockPage() {
   const outStock  = products.filter(p => p.stock === 0);
   const expiring  = products.filter(p => p.expiryDate && new Date(p.expiryDate) < new Date(Date.now() + 7 * 86400000));
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">{t.loading}</div>;
+  if (loading && !products.length) return <div className="flex items-center justify-center h-64 text-gray-500">{t.loading}</div>;
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950 p-5">

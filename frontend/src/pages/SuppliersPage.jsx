@@ -3,6 +3,7 @@ import api from "../api/axios";
 import toast from "react-hot-toast";
 import { Truck, Plus, Trash2, RefreshCw, ShoppingBag, Package } from "lucide-react";
 import { useSuppliersTranslation } from "../hooks/useSuppliersTranslation";
+import { cacheByKey, getCachedByKey, getCachedProducts, queueMutation } from "../lib/offlineDB";
 
 const CARD = "rounded-2xl bg-white dark:bg-[#141414] shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff] dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]";
 
@@ -21,23 +22,60 @@ export default function SuppliersPage() {
 
   const load = async () => {
     setLoading(true);
+    // Show cached data immediately
+    const [cachedS, cachedO, cachedP] = await Promise.all([
+      getCachedByKey("suppliers_list"),
+      getCachedByKey("supplier_orders_list"),
+      getCachedProducts(),
+    ]);
+    if (cachedS) setSuppliers(cachedS);
+    if (cachedO) setOrders(cachedO);
+    if (cachedP) setProducts(cachedP);
+
     try {
       const [s, o, p] = await Promise.all([api.get("/suppliers"), api.get("/suppliers/orders"), api.get("/products")]);
       setSuppliers(s.data); setOrders(o.data); setProducts(p.data);
-    } catch { toast.error(t.failedToLoad); }
-    finally { setLoading(false); }
+      await Promise.all([
+        cacheByKey("suppliers_list", s.data),
+        cacheByKey("supplier_orders_list", o.data),
+      ]);
+    } catch {
+      if (!cachedS) toast.error(t.failedToLoad);
+      else toast("📦 Showing cached data", { icon: "💾" });
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
 
   const handleCreateSupplier = async (e) => {
     e.preventDefault();
+    if (!navigator.onLine) {
+      await queueMutation("create_supplier", "/api/suppliers", "POST", supForm);
+      const fake = { _id: "offline-" + Date.now(), ...supForm };
+      const updated = [...suppliers, fake];
+      setSuppliers(updated);
+      await cacheByKey("suppliers_list", updated);
+      toast.success("📴 Supplier saved — will sync when connected");
+      setShowSupForm(false);
+      setSupForm({ name: "", phone: "", email: "", address: "", notes: "" });
+      return;
+    }
     try { await api.post("/suppliers", supForm); toast.success(t.supplierAdded); setShowSupForm(false); setSupForm({ name: "", phone: "", email: "", address: "", notes: "" }); load(); }
     catch (err) { toast.error(err.response?.data?.message || t.failed); }
   };
 
   const handleDeleteSupplier = async (id) => {
     if (!confirm(t.deleteSupplierConfirm)) return;
+    if (!navigator.onLine) {
+      if (!id.startsWith("offline-")) {
+        await queueMutation("delete_supplier", `/api/suppliers/${id}`, "DELETE");
+      }
+      const updated = suppliers.filter(s => s._id !== id);
+      setSuppliers(updated);
+      await cacheByKey("suppliers_list", updated);
+      toast.success(t.deleted);
+      return;
+    }
     try { await api.delete(`/suppliers/${id}`); toast.success(t.deleted); load(); }
     catch { toast.error(t.failed); }
   };
@@ -54,6 +92,17 @@ export default function SuppliersPage() {
   const handleCreateOrder = async (e) => {
     e.preventDefault();
     if (!orderForm.items.length) return toast.error(t.addAtLeastOneItem);
+    if (!navigator.onLine) {
+      await queueMutation("create_purchase_order", "/api/suppliers/orders", "POST", orderForm);
+      const fake = { _id: "offline-" + Date.now(), ...orderForm, totalCost: orderForm.items.reduce((s, i) => s + i.quantity * i.costPerUnit, 0), receivedAt: new Date().toISOString(), username: "offline" };
+      const updated = [fake, ...orders];
+      setOrders(updated);
+      await cacheByKey("supplier_orders_list", updated);
+      toast.success("📴 Purchase order saved — will sync when connected");
+      setShowOrderForm(false);
+      setOrderForm({ supplierId: "", supplierName: "", notes: "", items: [] });
+      return;
+    }
     try {
       await api.post("/suppliers/orders", orderForm);
       toast.success(t.purchaseOrderCreated);
@@ -65,6 +114,16 @@ export default function SuppliersPage() {
 
   const handleDeleteOrder = async (id) => {
     if (!confirm(t.deleteOrderConfirm)) return;
+    if (!navigator.onLine) {
+      if (!id.toString().startsWith("offline-")) {
+        await queueMutation("delete_purchase_order", `/api/suppliers/orders/${id}`, "DELETE");
+      }
+      const updated = orders.filter(o => o._id !== id);
+      setOrders(updated);
+      await cacheByKey("supplier_orders_list", updated);
+      toast.success(t.deleted);
+      return;
+    }
     try { await api.delete(`/suppliers/orders/${id}`); toast.success(t.deleted); load(); }
     catch { toast.error(t.failed); }
   };
