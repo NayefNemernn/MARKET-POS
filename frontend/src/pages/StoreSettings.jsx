@@ -4,7 +4,7 @@ import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useStoreSettingsTranslation } from "../hooks/useStoreSettingsTranslation";
 import { useLang } from "../context/LanguageContext";
-import { updateOnlineStore } from "../api/orders.api";
+import { updateOnlineStore, getPromos, createPromo, updatePromo, deletePromo, getPointsOffers, createPointsOffer, updatePointsOffer, deletePointsOffer } from "../api/orders.api";
 import toast from "react-hot-toast";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -12,6 +12,7 @@ import {
   LogOut, KeyRound, X, Save, CheckCircle, XCircle,
   AlertTriangle, Clock, ChevronDown, ChevronUp,
   Globe, Copy, Share2, Printer, ToggleLeft, ToggleRight,
+  Tag, Star, Plus, Pencil,
 } from "lucide-react";
 
 const PLAN_COLORS = {
@@ -43,11 +44,23 @@ export default function StoreSettings() {
   });
 
   const [cashierForm, setCashierForm] = useState({ username: "", password: "", maxDevices: 1 });
-  const [onlineForm,  setOnlineForm]  = useState({ isOnlineStoreActive: false, deliveryFee: 0, minimumOrder: 0, telegramBotToken: "", deliveryDrivers: [] });
+  const [onlineForm,  setOnlineForm]  = useState({ isOnlineStoreActive: false, deliveryFee: 0, minimumOrder: 0, deliveryTimeMin: 30, deliveryTimeMax: 60, pointsEnabled: false, pointsPerUnit: 1, telegramBotToken: "", deliveryDrivers: [] });
   const [savingOnline, setSavingOnline] = useState(false);
   const [fetchingChatId, setFetchingChatId] = useState(false);
   const [testingTelegram, setTestingTelegram] = useState(false);
   const [newDriver, setNewDriver] = useState({ name: "", chatId: "" });
+
+  // Promos state
+  const [promos,       setPromos]       = useState([]);
+  const [promoForm,    setPromoForm]    = useState({ code: "", type: "percent", value: "", minOrder: "", usageLimit: "", expiresAt: "", isActive: true });
+  const [editingPromo, setEditingPromo] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+
+  // Points offers state
+  const [ptOffers,      setPtOffers]      = useState([]);
+  const [ptForm,        setPtForm]        = useState({ name: "", description: "", pointsCost: "", offerType: "discount_fixed", offerValue: "", isActive: true, validUntil: "" });
+  const [editingOffer,  setEditingOffer]  = useState(null);
+  const [ptLoading,     setPtLoading]     = useState(false);
   const [backendUrl, setBackendUrl] = useState(import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:5000");
   const [settingWebhook, setSettingWebhook] = useState(false);
   const qrRef = useRef(null);
@@ -79,6 +92,10 @@ export default function StoreSettings() {
         isOnlineStoreActive: storeData.isOnlineStoreActive || false,
         deliveryFee:         storeData.deliveryFee         || 0,
         minimumOrder:        storeData.minimumOrder        || 0,
+        deliveryTimeMin:     storeData.deliveryTimeMin     || 30,
+        deliveryTimeMax:     storeData.deliveryTimeMax     || 60,
+        pointsEnabled:       storeData.pointsEnabled       || false,
+        pointsPerUnit:       storeData.pointsPerUnit       || 1,
         telegramBotToken:    storeData.telegramBotToken    || "",
         deliveryDrivers:     storeData.deliveryDrivers     || [],
       });
@@ -261,6 +278,90 @@ export default function StoreSettings() {
     setTimeout(() => { win.print(); }, 500);
   };
 
+  // ── Promo handlers ──────────────────────────────────────────
+  const loadPromos = async () => {
+    setPromoLoading(true);
+    try { setPromos(await getPromos()); } catch {}
+    finally { setPromoLoading(false); }
+  };
+
+  const handleSavePromo = async () => {
+    try {
+      const payload = {
+        code:       promoForm.code,
+        type:       promoForm.type,
+        value:      Number(promoForm.value),
+        minOrder:   Number(promoForm.minOrder) || 0,
+        usageLimit: Number(promoForm.usageLimit) || 0,
+        expiresAt:  promoForm.expiresAt || null,
+        isActive:   promoForm.isActive,
+      };
+      if (editingPromo) {
+        await updatePromo(editingPromo._id, payload);
+        toast.success("Promo updated");
+      } else {
+        await createPromo(payload);
+        toast.success("Promo created");
+      }
+      setEditingPromo(null);
+      setPromoForm({ code: "", type: "percent", value: "", minOrder: "", usageLimit: "", expiresAt: "", isActive: true });
+      loadPromos();
+    } catch (err) { toast.error(err.response?.data?.message || "Failed to save promo"); }
+  };
+
+  const handleDeletePromo = async (id) => {
+    if (!confirm("Delete this promo code?")) return;
+    try { await deletePromo(id); toast.success("Deleted"); loadPromos(); }
+    catch { toast.error("Failed to delete"); }
+  };
+
+  const startEditPromo = (p) => {
+    setEditingPromo(p);
+    setPromoForm({ code: p.code, type: p.type, value: p.value, minOrder: p.minOrder || "", usageLimit: p.usageLimit || "", expiresAt: p.expiresAt ? p.expiresAt.slice(0, 10) : "", isActive: p.isActive });
+  };
+
+  // ── Points offer handlers ────────────────────────────────────
+  const loadPtOffers = async () => {
+    setPtLoading(true);
+    try { setPtOffers(await getPointsOffers()); } catch {}
+    finally { setPtLoading(false); }
+  };
+
+  const handleSavePtOffer = async () => {
+    try {
+      const payload = {
+        name:        ptForm.name,
+        description: ptForm.description,
+        pointsCost:  Number(ptForm.pointsCost),
+        offerType:   ptForm.offerType,
+        offerValue:  Number(ptForm.offerValue) || 0,
+        isActive:    ptForm.isActive,
+        validUntil:  ptForm.validUntil || null,
+      };
+      if (editingOffer) {
+        await updatePointsOffer(editingOffer._id, payload);
+        toast.success("Offer updated");
+      } else {
+        await createPointsOffer(payload);
+        toast.success("Offer created");
+      }
+      setEditingOffer(null);
+      setPtForm({ name: "", description: "", pointsCost: "", offerType: "discount_fixed", offerValue: "", isActive: true, validUntil: "" });
+      loadPtOffers();
+    } catch (err) { toast.error(err.response?.data?.message || "Failed to save offer"); }
+  };
+
+  const handleDeletePtOffer = async (id) => {
+    if (!confirm("Delete this offer?")) return;
+    try { await deletePointsOffer(id); toast.success("Deleted"); loadPtOffers(); }
+    catch { toast.error("Failed to delete"); }
+  };
+
+  const startEditOffer = (o) => {
+    setEditingOffer(o);
+    setPtForm({ name: o.name, description: o.description || "", pointsCost: o.pointsCost, offerType: o.offerType, offerValue: o.offerValue || "", isActive: o.isActive, validUntil: o.validUntil ? o.validUntil.slice(0, 10) : "" });
+  };
+
   const expiry    = store?.planExpiresAt ? new Date(store.planExpiresAt) : null;
   const expired   = expiry && expiry < new Date();
   const daysLeft  = expiry ? Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24)) : null;
@@ -315,8 +416,14 @@ export default function StoreSettings() {
             { id: "settings",     label: t.storeInfo,     icon: Settings },
             { id: "cashiers",     label: t.team,          icon: Users    },
             { id: "onlinestore",  label: "Online Store",  icon: Globe    },
+            { id: "promos",       label: "Promos",        icon: Tag      },
+            { id: "points",       label: "Points",        icon: Star     },
           ].map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setTab(id)}
+            <button key={id} onClick={() => {
+              setTab(id);
+              if (id === "promos")  loadPromos();
+              if (id === "points")  loadPtOffers();
+            }}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition
                 ${tab === id ? "bg-indigo-600 text-white" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"}`}>
               <Icon size={14} /> {label}
@@ -566,6 +673,43 @@ export default function StoreSettings() {
                     onChange={e => setOnlineForm(f => ({ ...f, minimumOrder: +e.target.value }))}
                     className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Est. Delivery Min (minutes)</label>
+                  <input type="number" min="1"
+                    value={onlineForm.deliveryTimeMin}
+                    onChange={e => setOnlineForm(f => ({ ...f, deliveryTimeMin: +e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Est. Delivery Max (minutes)</label>
+                  <input type="number" min="1"
+                    value={onlineForm.deliveryTimeMax}
+                    onChange={e => setOnlineForm(f => ({ ...f, deliveryTimeMax: +e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+
+              {/* Points system */}
+              <div className="border-t dark:border-white/10 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-white flex items-center gap-1.5"><Star size={14} className="text-yellow-500" /> Loyalty Points</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Customers earn points on every completed order</p>
+                  </div>
+                  <button onClick={() => setOnlineForm(f => ({ ...f, pointsEnabled: !f.pointsEnabled }))} className="flex items-center gap-2 transition">
+                    {onlineForm.pointsEnabled ? <ToggleRight size={32} className="text-green-500" /> : <ToggleLeft size={32} className="text-gray-400" />}
+                  </button>
+                </div>
+                {onlineForm.pointsEnabled && (
+                  <div className="max-w-xs">
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Points per {store?.currencySymbol || "$"} spent</label>
+                    <input type="number" min="0.1" step="0.1"
+                      value={onlineForm.pointsPerUnit}
+                      onChange={e => setOnlineForm(f => ({ ...f, pointsPerUnit: +e.target.value }))}
+                      className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <p className="text-xs text-gray-400 mt-1">e.g. 1 = 1 point per $1 spent</p>
+                  </div>
+                )}
               </div>
 
               <button onClick={handleSaveOnline} disabled={savingOnline}
@@ -706,6 +850,214 @@ export default function StoreSettings() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Promos Tab ─────────────────────────────────────── */}
+        {tab === "promos" && (
+          <div className="space-y-5">
+            {/* Promo form */}
+            <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-100 dark:border-white/5 p-6 space-y-4">
+              <h2 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                <Tag size={16} className="text-indigo-500" />
+                {editingPromo ? "Edit Promo Code" : "New Promo Code"}
+              </h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Code</label>
+                  <input value={promoForm.code} onChange={e => setPromoForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
+                    placeholder="e.g. SAVE10"
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 uppercase" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                  <select value={promoForm.type} onChange={e => setPromoForm(f => ({ ...f, type: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-[#141414] dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="percent">Percent (%)</option>
+                    <option value="fixed">Fixed Amount</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Value ({promoForm.type === "percent" ? "%" : store?.currencySymbol})</label>
+                  <input type="number" min="0" value={promoForm.value} onChange={e => setPromoForm(f => ({ ...f, value: e.target.value }))}
+                    placeholder="0"
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Min Order ({store?.currencySymbol}) — 0 for none</label>
+                  <input type="number" min="0" value={promoForm.minOrder} onChange={e => setPromoForm(f => ({ ...f, minOrder: e.target.value }))}
+                    placeholder="0"
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Usage Limit — 0 for unlimited</label>
+                  <input type="number" min="0" value={promoForm.usageLimit} onChange={e => setPromoForm(f => ({ ...f, usageLimit: e.target.value }))}
+                    placeholder="0"
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Expires (optional)</label>
+                  <input type="date" value={promoForm.expiresAt} onChange={e => setPromoForm(f => ({ ...f, expiresAt: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={promoForm.isActive} onChange={e => setPromoForm(f => ({ ...f, isActive: e.target.checked }))} className="w-4 h-4 accent-indigo-600" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Active</span>
+                </label>
+                <button onClick={handleSavePromo}
+                  className="ml-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition flex items-center gap-2">
+                  <Save size={14} /> {editingPromo ? "Update" : "Create"} Promo
+                </button>
+                {editingPromo && (
+                  <button onClick={() => { setEditingPromo(null); setPromoForm({ code: "", type: "percent", value: "", minOrder: "", usageLimit: "", expiresAt: "", isActive: true }); }}
+                    className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Promo list */}
+            <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-100 dark:border-white/5 p-6">
+              <h3 className="font-semibold text-gray-700 dark:text-white mb-4">All Promo Codes</h3>
+              {promoLoading ? (
+                <div className="text-sm text-gray-400">Loading...</div>
+              ) : promos.length === 0 ? (
+                <div className="text-sm text-gray-400">No promo codes yet.</div>
+              ) : (
+                <div className="space-y-2">
+                  {promos.map(p => (
+                    <div key={p._id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-white/10">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-bold text-gray-800 dark:text-white">{p.code}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full border ${p.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-500 border-gray-200"}`}>
+                            {p.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {p.type === "percent" ? `${p.value}% off` : `${store?.currencySymbol}${p.value} off`}
+                          {p.minOrder > 0 ? ` · min ${store?.currencySymbol}${p.minOrder}` : ""}
+                          {p.usageLimit > 0 ? ` · ${p.usedCount}/${p.usageLimit} used` : ` · ${p.usedCount} used`}
+                          {p.expiresAt ? ` · expires ${new Date(p.expiresAt).toLocaleDateString()}` : ""}
+                        </p>
+                      </div>
+                      <button onClick={() => startEditPromo(p)} className="p-1.5 text-gray-400 hover:text-indigo-600 transition"><Pencil size={14} /></button>
+                      <button onClick={() => handleDeletePromo(p._id)} className="p-1.5 text-gray-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Points Offers Tab ──────────────────────────────── */}
+        {tab === "points" && (
+          <div className="space-y-5">
+            {/* Offer form */}
+            <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-100 dark:border-white/5 p-6 space-y-4">
+              <h2 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                <Star size={16} className="text-yellow-500" />
+                {editingOffer ? "Edit Points Offer" : "New Points Offer"}
+              </h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Offer Name</label>
+                  <input value={ptForm.name} onChange={e => setPtForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. Free Delivery"
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Description (optional)</label>
+                  <input value={ptForm.description} onChange={e => setPtForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="e.g. Redeem 100 points for free delivery"
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Points Cost</label>
+                  <input type="number" min="1" value={ptForm.pointsCost} onChange={e => setPtForm(f => ({ ...f, pointsCost: e.target.value }))}
+                    placeholder="100"
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Offer Type</label>
+                  <select value={ptForm.offerType} onChange={e => setPtForm(f => ({ ...f, offerType: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-[#141414] dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="discount_fixed">Fixed Discount</option>
+                    <option value="discount_percent">Percent Discount</option>
+                    <option value="free_delivery">Free Delivery</option>
+                  </select>
+                </div>
+                {ptForm.offerType !== "free_delivery" && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Offer Value ({ptForm.offerType === "discount_percent" ? "%" : store?.currencySymbol})
+                    </label>
+                    <input type="number" min="0" value={ptForm.offerValue} onChange={e => setPtForm(f => ({ ...f, offerValue: e.target.value }))}
+                      placeholder="0"
+                      className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Valid Until (optional)</label>
+                  <input type="date" value={ptForm.validUntil} onChange={e => setPtForm(f => ({ ...f, validUntil: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={ptForm.isActive} onChange={e => setPtForm(f => ({ ...f, isActive: e.target.checked }))} className="w-4 h-4 accent-indigo-600" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Active</span>
+                </label>
+                <button onClick={handleSavePtOffer}
+                  className="ml-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition flex items-center gap-2">
+                  <Save size={14} /> {editingOffer ? "Update" : "Create"} Offer
+                </button>
+                {editingOffer && (
+                  <button onClick={() => { setEditingOffer(null); setPtForm({ name: "", description: "", pointsCost: "", offerType: "discount_fixed", offerValue: "", isActive: true, validUntil: "" }); }}
+                    className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Offers list */}
+            <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-100 dark:border-white/5 p-6">
+              <h3 className="font-semibold text-gray-700 dark:text-white mb-4">All Points Offers</h3>
+              {ptLoading ? (
+                <div className="text-sm text-gray-400">Loading...</div>
+              ) : ptOffers.length === 0 ? (
+                <div className="text-sm text-gray-400">No points offers yet. Enable points in the Online Store tab first.</div>
+              ) : (
+                <div className="space-y-2">
+                  {ptOffers.map(o => (
+                    <div key={o._id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-white/10">
+                      <Star size={16} className="text-yellow-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-gray-800 dark:text-white">{o.name}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full border ${o.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-500 border-gray-200"}`}>
+                            {o.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {o.pointsCost} pts ·{" "}
+                          {o.offerType === "free_delivery" ? "Free Delivery" : o.offerType === "discount_percent" ? `${o.offerValue}% off` : `${store?.currencySymbol}${o.offerValue} off`}
+                          {o.usedCount > 0 ? ` · used ${o.usedCount}x` : ""}
+                          {o.validUntil ? ` · expires ${new Date(o.validUntil).toLocaleDateString()}` : ""}
+                        </p>
+                      </div>
+                      <button onClick={() => startEditOffer(o)} className="p-1.5 text-gray-400 hover:text-indigo-600 transition"><Pencil size={14} /></button>
+                      <button onClick={() => handleDeletePtOffer(o._id)} className="p-1.5 text-gray-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

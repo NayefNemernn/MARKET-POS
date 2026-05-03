@@ -26,6 +26,13 @@ const customerSchema = new mongoose.Schema(
     locationDescription: { type: String, default: "" },
     lat:                 { type: Number, default: null },
     lng:                 { type: Number, default: null },
+    savedAddresses: [{
+      label:               { type: String, default: "" },
+      address:             { type: String, default: "" },
+      locationDescription: { type: String, default: "" },
+      lat:                 { type: Number, default: null },
+      lng:                 { type: Number, default: null },
+    }],
 
     // ── Status ────────────────────────────────────────────────
     active: { type: Boolean, default: true },

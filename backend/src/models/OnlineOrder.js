@@ -10,7 +10,8 @@ const orderItemSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema(
   {
-    storeId: { type: mongoose.Schema.Types.ObjectId, ref: "Store", required: true },
+    storeId:    { type: mongoose.Schema.Types.ObjectId, ref: "Store",     required: true },
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: "Customer",  default: null },
 
     orderNumber: { type: String }, // auto-generated: ORD-0001
 
@@ -38,7 +39,31 @@ const orderSchema = new mongoose.Schema(
     items:       { type: [orderItemSchema], required: true },
     subtotal:    { type: Number, required: true },
     deliveryFee: { type: Number, default: 0 },
+    discount:    { type: Number, default: 0 },
+    tipAmount:   { type: Number, default: 0 },
     total:       { type: Number, required: true },
+
+    // Promo code applied
+    promoCode: {
+      code:           { type: String, default: "" },
+      discountType:   { type: String, default: "" }, // percent | fixed
+      discountValue:  { type: Number, default: 0 },
+      discountAmount: { type: Number, default: 0 },
+    },
+
+    // Points offer redeemed
+    redeemedOffer: {
+      offerId:        { type: mongoose.Schema.Types.ObjectId, ref: "PointsOffer", default: null },
+      offerName:      { type: String, default: "" },
+      pointsCost:     { type: Number, default: 0 },
+      discountAmount: { type: Number, default: 0 },
+    },
+
+    pointsEarned:   { type: Number, default: 0 },
+    pointsRedeemed: { type: Number, default: 0 },
+
+    // null = ASAP
+    scheduledFor: { type: Date, default: null },
 
     status: {
       type:    String,

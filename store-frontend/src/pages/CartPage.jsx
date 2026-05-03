@@ -1,6 +1,7 @@
-import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag } from "lucide-react";
+import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Clock, Star } from "lucide-react";
 import { Link, useParams, useOutletContext, useNavigate } from "react-router-dom";
 import { useCartStore, selectTotal } from "../store/cartStore";
+import { useAuthStore } from "../store/authStore";
 
 export default function CartPage() {
   const { slug }       = useParams();
@@ -15,6 +16,8 @@ export default function CartPage() {
   const sym            = store?.currencySymbol || "$";
   const minOrder       = store?.minimumOrder   || 0;
   const belowMin       = minOrder > 0 && subtotal < minOrder;
+  const { customer }   = useAuthStore();
+  const pointsToEarn   = (store?.pointsEnabled && customer) ? Math.floor(subtotal * (store.pointsPerUnit || 1)) : 0;
 
   if (items.length === 0) return (
     <div className="max-w-xl mx-auto px-4 py-16 text-center">
@@ -84,6 +87,16 @@ export default function CartPage() {
           <span>Total</span>
           <span>{sym}{total.toFixed(2)}</span>
         </div>
+        {store?.deliveryTimeMin > 0 && (
+          <p className="text-xs text-gray-400 flex items-center gap-1 pt-1">
+            <Clock size={11} /> Est. delivery: {store.deliveryTimeMin}–{store.deliveryTimeMax} min
+          </p>
+        )}
+        {pointsToEarn > 0 && (
+          <p className="text-xs text-yellow-600 font-medium flex items-center gap-1">
+            <Star size={11} /> Earn {pointsToEarn} pts on this order
+          </p>
+        )}
       </div>
 
       {belowMin && (

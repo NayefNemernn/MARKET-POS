@@ -121,3 +121,49 @@ export const updateProfile = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+/* ── GET /api/public/:slug/auth/addresses ── */
+export const getAddresses = async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.customerId).select("savedAddresses");
+    if (!customer) return res.status(404).json({ message: "Not found" });
+    res.json({ addresses: customer.savedAddresses || [] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ── POST /api/public/:slug/auth/addresses ── */
+export const addAddress = async (req, res) => {
+  try {
+    const { label, address, locationDescription, lat, lng } = req.body;
+    if (!address?.trim()) return res.status(400).json({ message: "Address is required" });
+
+    const customer = await Customer.findById(req.customerId);
+    if (!customer) return res.status(404).json({ message: "Not found" });
+
+    customer.savedAddresses.push({ label: label || "", address: address.trim(), locationDescription: locationDescription || "", lat: lat || null, lng: lng || null });
+    await customer.save();
+
+    res.status(201).json({ addresses: customer.savedAddresses });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ── DELETE /api/public/:slug/auth/addresses/:addrId ── */
+export const deleteAddress = async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.customerId);
+    if (!customer) return res.status(404).json({ message: "Not found" });
+
+    customer.savedAddresses = customer.savedAddresses.filter(
+      a => a._id.toString() !== req.params.addrId
+    );
+    await customer.save();
+
+    res.json({ addresses: customer.savedAddresses });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

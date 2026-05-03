@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import {
   ShoppingBag, CheckCircle2, XCircle, Clock, Truck,
   Package, Eye, RefreshCw, ChevronDown, ChevronUp,
-  Phone, MapPin, MessageSquare, Search, X,
+  Phone, MapPin, MessageSquare, Search, X, Tag, Star, Calendar,
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -250,6 +250,14 @@ export default function OnlineOrders() {
                       )}
                     </div>
 
+                    {/* Scheduled delivery */}
+                    {order.scheduledFor && (
+                      <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl px-3 py-2 text-sm text-blue-700 dark:text-blue-300">
+                        <Calendar size={14} className="shrink-0" />
+                        <span>Scheduled: {new Date(order.scheduledFor).toLocaleString()}</span>
+                      </div>
+                    )}
+
                     {/* Items */}
                     <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 space-y-1.5">
                       {order.items?.map((item, i) => (
@@ -264,10 +272,35 @@ export default function OnlineOrders() {
                           <span>${order.deliveryFee.toFixed(2)}</span>
                         </div>
                       )}
+                      {order.discount > 0 && (
+                        <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                          <span className="flex items-center gap-1">
+                            <Tag size={12} />
+                            {order.promoCode?.code ? `Promo (${order.promoCode.code})` : order.redeemedOffer?.offerName ? `Points: ${order.redeemedOffer.offerName}` : "Discount"}
+                          </span>
+                          <span>−${order.discount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {order.tipAmount > 0 && (
+                        <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                          <span>Tip</span>
+                          <span>+${order.tipAmount.toFixed(2)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between font-bold text-gray-800 dark:text-white border-t dark:border-gray-700 pt-1 mt-1">
                         <span>Total</span>
                         <span>${order.total?.toFixed(2)}</span>
                       </div>
+                      {order.pointsEarned > 0 && (
+                        <div className="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-400 pt-1">
+                          <Star size={11} /> Customer earned {order.pointsEarned} pts
+                        </div>
+                      )}
+                      {order.pointsRedeemed > 0 && (
+                        <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
+                          <Star size={11} /> {order.pointsRedeemed} pts redeemed
+                        </div>
+                      )}
                     </div>
 
                     {/* Actions */}

@@ -42,6 +42,10 @@ const storeSchema = new mongoose.Schema(
     isOnlineStoreActive:      { type: Boolean, default: false },
     deliveryFee:              { type: Number, default: 0 },
     minimumOrder:             { type: Number, default: 0 },
+    deliveryTimeMin:          { type: Number, default: 30 },  // minutes
+    deliveryTimeMax:          { type: Number, default: 60 },  // minutes
+    pointsEnabled:            { type: Boolean, default: false },
+    pointsPerUnit:            { type: Number, default: 1 },   // points earned per currency unit
 
     // ── Telegram delivery notifications ───────────────────────
     telegramBotToken: { type: String, default: "" },

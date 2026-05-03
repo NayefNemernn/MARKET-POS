@@ -10,15 +10,19 @@ export const getStoreInfo = async (req, res) => {
     if (!store.isOnlineStoreActive) return res.status(403).json({ message: "Online store is not active" });
 
     res.json({
-      name:           store.name,
-      logo:           store.logo,
-      address:        store.address,
-      phone:          store.phone,
-      currency:       store.currency,
-      currencySymbol: store.currencySymbol,
-      deliveryFee:    store.deliveryFee,
-      minimumOrder:   store.minimumOrder,
-      slug:           store.slug,
+      name:            store.name,
+      logo:            store.logo,
+      address:         store.address,
+      phone:           store.phone,
+      currency:        store.currency,
+      currencySymbol:  store.currencySymbol,
+      deliveryFee:     store.deliveryFee,
+      minimumOrder:    store.minimumOrder,
+      deliveryTimeMin: store.deliveryTimeMin || 30,
+      deliveryTimeMax: store.deliveryTimeMax || 60,
+      pointsEnabled:   store.pointsEnabled || false,
+      pointsPerUnit:   store.pointsPerUnit  || 1,
+      slug:            store.slug,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

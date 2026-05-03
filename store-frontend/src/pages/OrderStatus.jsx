@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
 import { trackOrder } from "../api/index";
-import { CheckCircle2, Clock, Truck, XCircle, Package, Loader2 } from "lucide-react";
+import { CheckCircle2, Clock, Truck, XCircle, Package, Loader2, Calendar, Tag, Star } from "lucide-react";
 
 const STATUS_STEPS = [
   { key: "pending",          label: "Order Received",      icon: Clock,         color: "text-yellow-500" },
@@ -20,9 +20,11 @@ const STATUS_IDX = {
 
 export default function OrderStatus() {
   const { slug, orderId } = useParams();
+  const location = useLocation();
   const [order,   setOrder]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
+  const pointsEarnedFromNav = location.state?.pointsEarned || 0;
 
   const fetchOrder = () => {
     trackOrder(orderId)
@@ -120,17 +122,53 @@ export default function OrderStatus() {
         </div>
       )}
 
+      {/* Scheduled delivery notice */}
+      {order.scheduledFor && (
+        <div className="bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-4 flex items-center gap-3">
+          <Calendar size={20} className="text-blue-500 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-blue-700">Scheduled Delivery</p>
+            <p className="text-xs text-blue-600">{new Date(order.scheduledFor).toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+
       {/* Customer info */}
       <div className="bg-white rounded-2xl border p-4 mb-5">
         <p className="text-sm font-medium text-gray-500 mb-1">Delivering to</p>
         <p className="font-semibold text-gray-800">{order.customer?.name}</p>
       </div>
 
-      {/* Total */}
-      <div className="bg-blue-50 rounded-2xl p-4 flex justify-between items-center mb-6">
-        <span className="font-medium text-gray-700">💵 Cash on delivery</span>
-        <span className="text-xl font-bold text-blue-700">${order.total?.toFixed(2)}</span>
+      {/* Total with breakdown */}
+      <div className="bg-blue-50 rounded-2xl p-4 mb-5 space-y-2">
+        {order.discount > 0 && (
+          <div className="flex justify-between text-sm text-green-600">
+            <span className="flex items-center gap-1"><Tag size={12} /> Discount</span>
+            <span>−${order.discount.toFixed(2)}</span>
+          </div>
+        )}
+        {order.tipAmount > 0 && (
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>Tip</span>
+            <span>+${order.tipAmount.toFixed(2)}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-center pt-1 border-t border-blue-200">
+          <span className="font-medium text-gray-700">💵 Cash on delivery</span>
+          <span className="text-xl font-bold text-blue-700">${order.total?.toFixed(2)}</span>
+        </div>
       </div>
+
+      {/* Points earned (completed order) */}
+      {order.status === "completed" && (order.pointsEarned > 0 || pointsEarnedFromNav > 0) && (
+        <div className="bg-yellow-50 rounded-2xl border border-yellow-200 p-4 mb-5 flex items-center gap-3">
+          <Star size={20} className="text-yellow-500 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-yellow-700">Points Earned!</p>
+            <p className="text-xs text-yellow-600">+{order.pointsEarned || pointsEarnedFromNav} loyalty points added to your account</p>
+          </div>
+        </div>
+      )}
 
       <Link to={`/store/${slug}`}
         className="block text-center py-3 rounded-2xl border border-blue-600 text-blue-600 font-semibold hover:bg-blue-50 transition">

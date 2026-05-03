@@ -22,6 +22,8 @@ import shiftRoutes      from "./routes/shift.routes.js";
 import expenseRoutes    from "./routes/expense.routes.js";
 import discountRoutes   from "./routes/discount.routes.js";
 import supplierRoutes   from "./routes/supplier.routes.js";
+import promoRoutes      from "./routes/promo.routes.js";
+import pointsOfferRoutes from "./routes/pointsOffer.routes.js";
 
 dotenv.config();
 const app = express();
@@ -63,9 +65,11 @@ app.use("/api/shifts",      shiftRoutes);
 app.use("/api/expenses",    expenseRoutes);
 app.use("/api/discounts",   discountRoutes);
 app.use("/api/suppliers",   supplierRoutes);
-app.use("/api/public",      publicRoutes);
-app.use("/api/orders",      orderRoutes);
-app.use("/api/telegram",    telegramRoutes);
+app.use("/api/public",        publicRoutes);
+app.use("/api/orders",        orderRoutes);
+app.use("/api/telegram",      telegramRoutes);
+app.use("/api/promos",        promoRoutes);
+app.use("/api/points-offers", pointsOfferRoutes);
 
 app.get("/", (req, res) => res.send("Market POS API running ✅"));
 app.use(errorHandler);
