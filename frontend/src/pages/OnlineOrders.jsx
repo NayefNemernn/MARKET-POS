@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { getOrders, acceptOrder, rejectOrder } from "../api/orders.api";
+import { getOrders, acceptOrder, rejectOrder, cancelOrder } from "../api/orders.api";
 import { connectSocket, getSocket } from "../lib/socket";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
@@ -29,6 +29,8 @@ export default function OnlineOrders() {
   const [selected,    setSelected]    = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectText,  setRejectText]  = useState("");
+  const [cancelModal, setCancelModal] = useState(null);
+  const [cancelText,  setCancelText]  = useState("");
   const [processing,  setProcessing]  = useState(false);
   const [newCount,    setNewCount]    = useState(0);
   const [search,      setSearch]      = useState("");
@@ -97,6 +99,21 @@ export default function OnlineOrders() {
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to reject");
+    } finally { setProcessing(false); }
+  };
+
+  const handleCancel = async () => {
+    if (!cancelModal) return;
+    setProcessing(true);
+    try {
+      await cancelOrder(cancelModal, cancelText);
+      toast.success("Order cancelled");
+      setCancelModal(null);
+      setCancelText("");
+      setSelected(null);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to cancel");
     } finally { setProcessing(false); }
   };
 
@@ -270,9 +287,25 @@ export default function OnlineOrders() {
                         </button>
                       </div>
                     )}
+
+                    {/* Cancel button — available for any active order */}
+                    {!["completed", "cancelled", "rejected"].includes(order.status) && (
+                      <button
+                        onClick={() => setCancelModal(order._id)}
+                        disabled={processing}
+                        className="w-full py-2.5 border border-red-300 text-red-500 hover:bg-red-50 font-semibold rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60 text-sm">
+                        <XCircle size={15} /> Cancel Order
+                      </button>
+                    )}
+
                     {order.status === "rejected" && order.rejectionReason && (
                       <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2">
                         Reason: {order.rejectionReason}
+                      </p>
+                    )}
+                    {order.status === "cancelled" && order.rejectionReason && (
+                      <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2">
+                        Cancelled: {order.rejectionReason}
                       </p>
                     )}
                   </div>
@@ -280,6 +313,32 @@ export default function OnlineOrders() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Cancel modal */}
+      {cancelModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h2 className="font-bold text-gray-800 dark:text-white mb-3">Cancel Order</h2>
+            <textarea
+              value={cancelText}
+              onChange={e => setCancelText(e.target.value)}
+              placeholder="Reason for cancellation (optional)..."
+              className="w-full border dark:border-gray-700 rounded-xl p-3 text-sm resize-none dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400"
+              rows={3}
+            />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => { setCancelModal(null); setCancelText(""); }}
+                className="flex-1 py-2.5 border rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition text-sm font-medium">
+                Back
+              </button>
+              <button onClick={handleCancel} disabled={processing}
+                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition text-sm disabled:opacity-60">
+                Confirm Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

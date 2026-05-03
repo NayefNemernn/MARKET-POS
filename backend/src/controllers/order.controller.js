@@ -183,6 +183,41 @@ export const rejectOrder = async (req, res) => {
   }
 };
 
+/* ── PATCH /api/orders/:id/cancel  (admin) ─────────────────── */
+export const cancelOrder = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const order = await OnlineOrder.findOne({ _id: req.params.id, storeId: req.storeId });
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (["completed", "cancelled"].includes(order.status))
+      return res.status(400).json({ message: "Order is already finished" });
+
+    order.status          = "cancelled";
+    order.rejectionReason = reason || "";
+    await order.save();
+
+    const io = getIO();
+    if (io) {
+      io.to(`store_${req.storeId}_admin`).emit("order_status_changed", {
+        orderId: order._id, orderNumber: order.orderNumber, status: "cancelled",
+      });
+      io.to(`store_${req.storeId}_cashier`).emit("order_status_changed", {
+        orderId: order._id, orderNumber: order.orderNumber, status: "cancelled",
+      });
+    }
+
+    await AuditLog.create({
+      storeId: req.storeId, userId: req.user._id, username: req.user.username,
+      action: "order_cancelled",
+      description: `Order ${order.orderNumber} cancelled${reason ? ` — ${reason}` : ""}`,
+    });
+
+    res.json({ message: "Order cancelled", order });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 /* ── PATCH /api/orders/:id/out-for-delivery  (admin/cashier) ── */
 export const markOutForDelivery = async (req, res) => {
   try {
