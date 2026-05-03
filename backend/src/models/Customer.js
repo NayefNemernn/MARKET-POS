@@ -21,6 +21,12 @@ const customerSchema = new mongoose.Schema(
     totalPointsEarned:  { type: Number, default: 0 },
     totalPointsRedeemed:{ type: Number, default: 0 },
 
+    // ── Online account ────────────────────────────────────────
+    password:            { type: String, default: "", select: false },
+    locationDescription: { type: String, default: "" },
+    lat:                 { type: Number, default: null },
+    lng:                 { type: Number, default: null },
+
     // ── Status ────────────────────────────────────────────────
     active: { type: Boolean, default: true },
   },

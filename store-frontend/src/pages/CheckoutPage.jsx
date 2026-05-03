@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useOutletContext, useNavigate, Link } from "react-router-dom";
-import { submitOrder } from "../api/index";
+import { submitOrder, customerUpdateMe } from "../api/index";
 import { useCartStore, selectTotal } from "../store/cartStore";
-import { ArrowLeft, User, Phone, MapPin, FileText, Loader2, Navigation, Link2 } from "lucide-react";
+import { useAuthStore } from "../store/authStore";
+import { ArrowLeft, User, Phone, MapPin, FileText, Loader2, Navigation, Link2, CheckCircle2 } from "lucide-react";
+import AuthModal from "../components/AuthModal";
 import toast from "react-hot-toast";
 
 // Try to extract lat/lng from a Google Maps URL
@@ -31,11 +33,38 @@ export default function CheckoutPage() {
   const total       = subtotal + deliveryFee;
   const sym         = store?.currencySymbol || "$";
 
-  const [form, setForm]         = useState({ name: "", phone: "", address: "", locationDescription: "", notes: "", lat: null, lng: null });
-  const [mapsLink, setMapsLink] = useState("");
-  const [errors, setErrors]     = useState({});
-  const [loading, setLoading]   = useState(false);
-  const [locating, setLocating] = useState(false);
+  const { customer, token, updateCustomer } = useAuthStore();
+  const [showAuth, setShowAuth] = useState(false);
+
+  const [form, setForm]         = useState({
+    name:                customer?.name                || "",
+    phone:               customer?.phone               || "",
+    address:             customer?.address             || "",
+    locationDescription: customer?.locationDescription || "",
+    notes:               "",
+    lat:                 customer?.lat  || null,
+    lng:                 customer?.lng  || null,
+  });
+  const [mapsLink, setMapsLink]   = useState("");
+  const [errors,   setErrors]     = useState({});
+  const [loading,  setLoading]    = useState(false);
+  const [locating, setLocating]   = useState(false);
+  const [saveProfile, setSaveProfile] = useState(false);
+
+  // When customer logs in mid-checkout, pre-fill
+  useEffect(() => {
+    if (customer) {
+      setForm(f => ({
+        ...f,
+        name:                f.name  || customer.name  || "",
+        phone:               f.phone || customer.phone || "",
+        address:             f.address || customer.address || "",
+        locationDescription: f.locationDescription || customer.locationDescription || "",
+        lat:                 f.lat || customer.lat || null,
+        lng:                 f.lng || customer.lng || null,
+      }));
+    }
+  }, [customer]);
 
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: "" })); };
 
@@ -108,12 +137,12 @@ export default function CheckoutPage() {
     if (!validate()) return;
     setLoading(true);
     try {
-      // Include the maps link in locationDescription if provided and no coords extracted
       const locationDescription = form.locationDescription
         || (mapsLink && !form.lat ? mapsLink : "");
 
       const result = await submitOrder({
         slug,
+        customerId: customer?._id,
         customer: {
           name:                form.name,
           phone:               form.phone,
@@ -125,6 +154,20 @@ export default function CheckoutPage() {
         },
         items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
       });
+
+      // Save updated profile if customer is logged in and opted in
+      if (customer && token && saveProfile) {
+        try {
+          const updated = await customerUpdateMe(slug, token, {
+            name: form.name, phone: form.phone,
+            address: form.address,
+            locationDescription,
+            lat: form.lat, lng: form.lng,
+          });
+          updateCustomer(updated.customer);
+        } catch {}
+      }
+
       clearCart();
       navigate(`/store/${slug}/order/${result.orderId}`, { replace: true });
     } catch (err) {
@@ -152,6 +195,22 @@ export default function CheckoutPage() {
       </Link>
 
       <h1 className="text-xl font-bold text-gray-800 mb-5">Delivery Details</h1>
+
+      {/* Auth banner */}
+      {customer ? (
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-2xl px-4 py-3 mb-4">
+          <CheckCircle2 size={16} className="text-green-600 shrink-0" />
+          <p className="text-sm text-green-700">Logged in as <strong>{customer.name}</strong> — info pre-filled below</p>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 mb-4">
+          <p className="text-sm text-blue-700">Save your info for faster checkout next time</p>
+          <button type="button" onClick={() => setShowAuth(true)}
+            className="shrink-0 ml-3 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition">
+            Login / Register
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Name */}
@@ -273,11 +332,26 @@ export default function CheckoutPage() {
           <p className="text-xs text-gray-400 text-center pt-1">💵 Cash on delivery</p>
         </div>
 
+        {/* Save profile option for logged-in users */}
+        {customer && (
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={saveProfile}
+              onChange={e => setSaveProfile(e.target.checked)}
+              className="w-4 h-4 rounded accent-blue-600"
+            />
+            <span className="text-sm text-gray-600">Save updated info to my profile</span>
+          </label>
+        )}
+
         <button type="submit" disabled={loading}
           className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-base">
           {loading ? <><Loader2 size={18} className="animate-spin" /> Placing order...</> : "Place Order 🚀"}
         </button>
       </form>
+
+      {showAuth && <AuthModal slug={slug} onClose={() => setShowAuth(false)} />}
     </div>
   );
 }
