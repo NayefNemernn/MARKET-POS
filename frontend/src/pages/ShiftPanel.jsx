@@ -38,9 +38,9 @@ function DenominationCounter({ value, onChange, label }) {
         return (
           <div key={d.value} className="flex items-center gap-3">
             <span className="text-xs font-mono w-12 text-gray-500">{d.label}</span>
-            <button onClick={() => update(Math.max(0, count - 1))} className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-200 transition"><Minus size={10}/></button>
+            <button onClick={() => update(Math.max(0, count - 1))} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-200 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none"><Minus size={14}/></button>
             <span className="w-8 text-center text-sm font-bold">{count}</span>
-            <button onClick={() => update(count + 1)} className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-200 transition"><Plus size={10}/></button>
+            <button onClick={() => update(count + 1)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-200 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none"><Plus size={14}/></button>
             <span className="text-xs text-gray-500 ml-2">{count > 0 ? `= ${(count * d.value).toLocaleString()} ل.ل` : ""}</span>
           </div>
         );
@@ -173,8 +173,8 @@ ${shift.notes ? `<hr/><p style="font-size:11px;color:#666">${t.notesPrefix} ${sh
           {shift.notes && <div className={`${CARD} p-4`}><p className="text-xs text-gray-500 uppercase tracking-widest mb-1">{t.closingNotes}</p><p className="text-sm">{shift.notes}</p></div>}
         </div>
         <div className="p-5 border-t dark:border-white/10 flex gap-3">
-          <button onClick={printReport} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition">{t.printZReport}</button>
-          <button onClick={onClose} className="flex-1 py-3 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm transition">{t.close}</button>
+          <button onClick={printReport} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.printZReport}</button>
+          <button onClick={onClose} className="flex-1 py-3 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.close}</button>
         </div>
       </div>
     </div>
@@ -249,7 +249,7 @@ export default function ShiftPanel() {
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950 p-5" dir={lang === "ar" ? "rtl" : "ltr"}>
-      <div className="max-w-3xl mx-auto space-y-5">
+      <div className="w-full space-y-5">
 
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center"><Clock size={20} className="text-white"/></div>
@@ -275,7 +275,7 @@ export default function ShiftPanel() {
                 <DenominationCounter value={openDenoms} onChange={setOpenDenoms} label={t.denomsLabel}/>
               )}
             </div>
-            <button onClick={handleOpen} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition">{t.openShift}</button>
+            <button onClick={handleOpen} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.openShift}</button>
           </div>
         )}
 
@@ -356,8 +356,8 @@ export default function ShiftPanel() {
                     className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 bg-transparent text-sm outline-none resize-none focus:ring-2 focus:ring-red-400"/>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={handleClose} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition">{t.closeAndPrint}</button>
-                  <button onClick={() => setShowClose(false)} className="flex-1 py-3 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold transition">{t.cancel}</button>
+                  <button onClick={handleClose} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold shadow-[0_4px_0_0_#b91c1c] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.closeAndPrint}</button>
+                  <button onClick={() => setShowClose(false)} className="flex-1 py-3 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.cancel}</button>
                 </div>
               </div>
             )}
@@ -420,8 +420,8 @@ export default function ShiftPanel() {
                   className="w-full border dark:border-white/10 rounded-xl px-3 py-2 bg-transparent text-sm outline-none focus:ring-2 focus:ring-indigo-500"/>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={handleCashEvent} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition">{t.confirm}</button>
-                <button onClick={() => setCashEventModal(false)} className="flex-1 py-3 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm transition">{t.cancel}</button>
+                <button onClick={handleCashEvent} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.confirm}</button>
+                <button onClick={() => setCashEventModal(false)} className="flex-1 py-3 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.cancel}</button>
               </div>
             </div>
           </div>

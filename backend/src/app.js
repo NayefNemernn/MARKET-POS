@@ -24,6 +24,8 @@ import discountRoutes   from "./routes/discount.routes.js";
 import supplierRoutes   from "./routes/supplier.routes.js";
 import promoRoutes      from "./routes/promo.routes.js";
 import pointsOfferRoutes from "./routes/pointsOffer.routes.js";
+import batchRoutes       from "./routes/batch.routes.js";
+import aiInsightsRoutes  from "./routes/aiInsights.routes.js";
 
 dotenv.config();
 const app = express();
@@ -70,6 +72,8 @@ app.use("/api/orders",        orderRoutes);
 app.use("/api/telegram",      telegramRoutes);
 app.use("/api/promos",        promoRoutes);
 app.use("/api/points-offers", pointsOfferRoutes);
+app.use("/api/batches",       batchRoutes);
+app.use("/api/ai",            aiInsightsRoutes);
 
 app.get("/", (req, res) => res.send("Market POS API running ✅"));
 app.use(errorHandler);

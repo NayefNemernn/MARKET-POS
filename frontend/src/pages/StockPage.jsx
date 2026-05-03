@@ -57,7 +57,7 @@ export default function StockPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950 p-5">
-      <div className="max-w-6xl mx-auto space-y-5">
+      <div className="w-full space-y-5">
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -65,7 +65,7 @@ export default function StockPage() {
             <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center"><Package size={20} className="text-white"/></div>
             <div><h1 className="text-xl font-bold">{t.title}</h1><p className="text-xs text-gray-500">{t.subtitle}</p></div>
           </div>
-          <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 hover:bg-gray-50 transition">
+          <button onClick={load} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 hover:bg-gray-50 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
             <RefreshCw size={13}/> {t.refresh}
           </button>
         </div>
@@ -205,8 +205,8 @@ export default function StockPage() {
                   className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 bg-transparent text-sm outline-none focus:ring-2 focus:ring-blue-500"/>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={handleAdjust} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition">{t.apply}</button>
-                <button onClick={() => setAdjustModal(null)} className="flex-1 py-3 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm transition">{t.cancel}</button>
+                <button onClick={handleAdjust} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.apply}</button>
+                <button onClick={() => setAdjustModal(null)} className="flex-1 py-3 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.cancel}</button>
               </div>
             </div>
           </div>

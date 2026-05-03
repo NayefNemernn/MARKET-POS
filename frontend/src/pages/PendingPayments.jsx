@@ -44,7 +44,7 @@ export default function PendingPayments() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950 p-5 w-full">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Truck size={24} className="text-orange-500" />
@@ -56,7 +56,7 @@ export default function PendingPayments() {
           )}
         </div>
         <button onClick={load}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
           <RefreshCw size={15} /> Refresh
         </button>
       </div>
@@ -136,7 +136,7 @@ export default function PendingPayments() {
                 <button
                   onClick={() => handleConfirm(sale)}
                   disabled={isProcessing}
-                  className="w-full py-3.5 bg-green-500 hover:bg-green-600 disabled:opacity-60 text-white font-bold text-sm transition flex items-center justify-center gap-2">
+                  className="w-full py-3.5 bg-green-500 hover:bg-green-600 disabled:opacity-60 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-[0_4px_0_0_#15803d] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                   {isProcessing
                     ? <><RefreshCw size={16} className="animate-spin" /> Confirming...</>
                     : <><CheckCircle2 size={16} /> Confirm Cash Received</>

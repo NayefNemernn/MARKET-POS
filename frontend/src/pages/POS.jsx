@@ -12,7 +12,7 @@ import { useCurrency }   from "../context/CurrencyContext";
 import ExchangeRateBar   from "../components/ExchangeRateBar";
 import VoiceButton       from "../components/common/VoiceButton";
 import { connectSocket } from "../lib/socket";
-import { Truck, X as XIcon } from "lucide-react";
+import { Truck, X as XIcon, PauseCircle } from "lucide-react";
 import OnlineOrdersPanel from "../components/pos/OnlineOrdersPanel";
 import {
   cacheProducts, getCachedProducts,
@@ -117,14 +117,48 @@ export default function POS({ setPage }) {
   const [loading,          setLoading]          = useState(true);
   const [flashId,          setFlashId]          = useState(null); // add-to-cart animation
 
-  const { cart, addToCart, increase, decrease, clearCart, loadDeliveryOrder, total } = useCart();
+  const { cart, addToCart, increase, decrease, clearCart, loadCart, loadDeliveryOrder, total } = useCart();
   const { user, store: ctxStore }   = useAuth();
   const { t }      = useTranslation();
   const { toLBP, formatLBP, formatUSD, displayCurrency } = useCurrency();
 
-  const [incomingOrder,  setIncomingOrder]  = useState(null); // socket order_accepted popup
+  const [incomingOrder,  setIncomingOrder]  = useState(null);
   const [isDeliveryMode, setIsDeliveryMode] = useState(false);
-  const [deliveryOrder,  setDeliveryOrder]  = useState(null); // for checkout modal
+  const [deliveryOrder,  setDeliveryOrder]  = useState(null);
+
+  // ── Held carts (client-side only, no stock deducted) ──────────────────────
+  const [heldCarts,    setHeldCarts]    = useState([]);
+  const [holdCounter,  setHoldCounter]  = useState(0);
+
+  const holdCart = () => {
+    if (cart.length === 0) return;
+    const n = holdCounter + 1;
+    setHoldCounter(n);
+    setHeldCarts(prev => [...prev, { id: Date.now(), label: `Order #${n}`, items: [...cart] }]);
+    clearCart();
+    toast("Order held — serve next customer", { icon: "⏸️" });
+  };
+
+  const resumeCart = (heldId) => {
+    const held = heldCarts.find(h => h.id === heldId);
+    if (!held) return;
+    if (cart.length > 0) {
+      const n = holdCounter + 1;
+      setHoldCounter(n);
+      setHeldCarts(prev => [
+        ...prev.filter(h => h.id !== heldId),
+        { id: Date.now(), label: `Order #${n}`, items: [...cart] },
+      ]);
+    } else {
+      setHeldCarts(prev => prev.filter(h => h.id !== heldId));
+    }
+    loadCart(held.items);
+    toast.success(`Resumed ${held.label}`);
+  };
+
+  const discardHeld = (heldId) => {
+    setHeldCarts(prev => prev.filter(h => h.id !== heldId));
+  };
 
   /* ── load products ── */
   const load = async () => {
@@ -304,14 +338,15 @@ export default function POS({ setPage }) {
                 <button
                   key={c._id}
                   onClick={() => setSelectedCategory(c._id)}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold
-                    whitespace-nowrap transition-all shrink-0
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold
+                    whitespace-nowrap shrink-0 select-none
+                    transition-[transform,box-shadow,background-color] duration-75
                     ${selectedCategory === c._id
-                      ? "bg-blue-600 text-white shadow-[0_0_14px_rgba(59,130,246,0.45)] scale-[1.04]"
-                      : "bg-white dark:bg-[#1c1c1c] text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#252525]"
+                      ? "bg-blue-600 text-white shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px]"
+                      : "bg-white dark:bg-[#1c1c1c] text-gray-600 dark:text-gray-300 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.35)] active:shadow-none active:translate-y-[4px] hover:bg-gray-50 dark:hover:bg-[#252525]"
                     }`}
                 >
-                  <span className="text-sm leading-none">
+                  <span className="text-base leading-none">
                     {c._id === "all" ? "🏪" : getCategoryIcon(c.name)}
                   </span>
                   {c.name}
@@ -343,19 +378,18 @@ export default function POS({ setPage }) {
                       key={p._id}
                       onClick={() => addProductSafe(p)}
                       className={`
-                        relative flex flex-col rounded-2xl overflow-hidden
+                        relative flex flex-col rounded-2xl overflow-visible
                         bg-white dark:bg-[#141414]
-                        shadow-[4px_4px_12px_#d1d5db,-4px_-4px_12px_#ffffff]
-                        dark:shadow-[4px_4px_12px_#050505,-4px_-4px_12px_#1a1a1a]
-                        transition-all duration-200
+                        transition-[transform,box-shadow] duration-75 select-none
                         ${out
-                          ? "opacity-60 cursor-not-allowed"
-                          : "cursor-pointer hover:shadow-[0_8px_28px_rgba(59,130,246,0.18)] hover:-translate-y-0.5"
+                          ? "opacity-60 cursor-not-allowed shadow-[0_4px_0_0_rgba(0,0,0,0.1)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.35)]"
+                          : "cursor-pointer shadow-[0_6px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_6px_0_0_rgba(0,0,0,0.45)] active:shadow-none active:translate-y-[6px]"
                         }
-                        ${flash ? "scale-[1.05] shadow-[0_0_20px_rgba(59,130,246,0.3)]" : ""}
-                        ${qty > 0 ? "ring-2 ring-blue-500/50" : ""}
+                        ${flash ? "scale-[1.03]" : ""}
+                        ${qty > 0 ? "ring-2 ring-blue-500/60 ring-offset-1 dark:ring-offset-[#0b0b0b]" : ""}
                       `}
                     >
+                      <div className="rounded-2xl overflow-hidden flex flex-col flex-1">
                       {/* Out-of-stock overlay */}
                       {out && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center
@@ -416,18 +450,25 @@ export default function POS({ setPage }) {
                             <button
                               disabled={out}
                               onClick={() => decrease(p._id)}
-                              className="w-6 h-6 rounded-full bg-gray-100 dark:bg-[#252525]
+                              className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-[#252525]
                                 text-sm font-bold flex items-center justify-center
-                                hover:bg-red-100 dark:hover:bg-red-900/30
-                                hover:text-red-500 transition-colors disabled:opacity-40"
+                                shadow-[0_3px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_3px_0_0_rgba(0,0,0,0.4)]
+                                active:shadow-none active:translate-y-[3px]
+                                hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-500
+                                transition-[transform,box-shadow,background-color] duration-75
+                                disabled:opacity-40 select-none"
                             >−</button>
-                            <span className="text-xs font-bold w-3 text-center tabular-nums">{qty}</span>
+                            <span className="text-xs font-bold w-4 text-center tabular-nums">{qty}</span>
                             <button
                               disabled={out}
                               onClick={() => increase(p._id)}
-                              className="w-6 h-6 rounded-full bg-blue-600 text-white
+                              className="w-8 h-8 rounded-xl bg-blue-600 text-white
                                 text-sm font-bold flex items-center justify-center
-                                hover:bg-blue-700 transition disabled:opacity-40"
+                                shadow-[0_3px_0_0_#1d4ed8]
+                                active:shadow-none active:translate-y-[3px]
+                                hover:bg-blue-500
+                                transition-[transform,box-shadow,background-color] duration-75
+                                disabled:opacity-40 select-none"
                             >+</button>
                           </div>
                           {qty > 0 && (
@@ -436,6 +477,7 @@ export default function POS({ setPage }) {
                             </span>
                           )}
                         </div>
+                      </div>
                       </div>
                     </div>
                   );
@@ -455,20 +497,68 @@ export default function POS({ setPage }) {
           </div>
         </div>
 
-        {/* ── RIGHT: Cart ── */}
-        <Cart
-          cart={cart}
-          increase={increase}
-          decrease={decrease}
-          clearCart={clearCart}
-          total={total}
-          onCheckout={() => setOpenCheckout(true)}
-          t={t}
-          formatUSD={formatUSD}
-          formatLBP={formatLBP}
-          toLBP={toLBP}
-          displayCurrency={displayCurrency}
-        />
+        {/* ── RIGHT: Cart + Held orders ── */}
+        <div className="w-72 xl:w-80 shrink-0 flex flex-col gap-2 overflow-hidden">
+          <Cart
+            cart={cart}
+            increase={increase}
+            decrease={decrease}
+            clearCart={clearCart}
+            total={total}
+            onCheckout={() => setOpenCheckout(true)}
+            onHold={holdCart}
+            heldCount={heldCarts.length}
+            t={t}
+            formatUSD={formatUSD}
+            formatLBP={formatLBP}
+            toLBP={toLBP}
+            displayCurrency={displayCurrency}
+          />
+
+          {/* Held orders panel */}
+          {heldCarts.length > 0 && (
+            <div className="shrink-0 rounded-2xl bg-white dark:bg-[#141414] border border-amber-200 dark:border-amber-500/20 shadow-sm overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-amber-100 dark:border-amber-500/10 flex items-center gap-2 bg-amber-50/60 dark:bg-amber-900/10">
+                <PauseCircle size={13} className="text-amber-500 shrink-0" />
+                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">On Hold</span>
+                <span className="ml-auto text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full font-semibold tabular-nums">
+                  {heldCarts.length}
+                </span>
+              </div>
+              <div className="max-h-44 overflow-y-auto divide-y divide-gray-100 dark:divide-white/5">
+                {heldCarts.map(h => (
+                  <div key={h.id} className="flex items-center gap-2 px-3 py-2.5">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate">{h.label}</p>
+                      <p className="text-xs text-gray-400 tabular-nums">
+                        {h.items.length} item{h.items.length !== 1 ? "s" : ""} · {formatUSD(h.items.reduce((s, i) => s + i.price * i.quantity, 0))}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => resumeCart(h.id)}
+                      className="text-xs px-3 py-2 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold shrink-0
+                        shadow-[0_3px_0_0_rgba(22,163,74,0.3)] dark:shadow-[0_3px_0_0_rgba(22,163,74,0.2)]
+                        active:shadow-none active:translate-y-[3px]
+                        transition-[transform,box-shadow] duration-75 select-none"
+                    >
+                      Resume
+                    </button>
+                    <button
+                      onClick={() => discardHeld(h.id)}
+                      className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400
+                        hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20
+                        shadow-[0_3px_0_0_rgba(0,0,0,0.08)] dark:shadow-[0_3px_0_0_rgba(0,0,0,0.3)]
+                        active:shadow-none active:translate-y-[3px]
+                        transition-[transform,box-shadow,background-color] duration-75 select-none shrink-0"
+                    >
+                      <XIcon size={12}/>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Delivery mode banner */}

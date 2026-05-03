@@ -61,8 +61,10 @@ export default function Dashboard() {
 
   const Toggle = ({ label, state, set }) => (
     <button onClick={() => set(!state)}
-      className={`px-4 py-2 rounded-xl text-sm transition font-medium
-        ${state ? "bg-blue-600 text-white" : "bg-white dark:bg-[#141414] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10"}`}>
+      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-[transform,box-shadow] duration-75 select-none
+        ${state
+          ? "bg-blue-600 text-white shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px]"
+          : "bg-white dark:bg-[#141414] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px]"}`}>
       {label}
     </button>
   );
@@ -97,8 +99,10 @@ export default function Dashboard() {
           <div className="flex gap-2 flex-wrap">
             {PERIODS.map(p => (
               <button key={p} onClick={() => setSalesMode(p)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition
-                  ${salesMode === p ? "bg-blue-600 text-white" : "bg-white dark:bg-[#141414] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10"}`}>
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-[transform,box-shadow] duration-75 select-none
+                  ${salesMode === p
+                    ? "bg-blue-600 text-white shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px]"
+                    : "bg-white dark:bg-[#141414] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px]"}`}>
                 {periodLabel[p]}
               </button>
             ))}

@@ -4,6 +4,7 @@ import App from "./App";
 import { ThemeProvider }    from "./context/ThemeContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
+import { UIScaleProvider }  from "./context/UIScaleContext";
 import "./index.css";
 import { saveToken } from "./lib/offlineDB";
 
@@ -58,12 +59,14 @@ localStorage.setItem = function(key, value) {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <LanguageProvider>
-        <CurrencyProvider>
-          <App />
-        </CurrencyProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <UIScaleProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <CurrencyProvider>
+            <App />
+          </CurrencyProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </UIScaleProvider>
   </React.StrictMode>
 );

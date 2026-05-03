@@ -73,11 +73,11 @@ function CustomerFormModal({ customer, onSave, onClose, t }) {
           </div>
         </div>
         <div className="px-6 pb-6 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-[#1c1c1c] text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-200 transition">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-[#1c1c1c] text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-200 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
             {t.cancel}
           </button>
           <button onClick={submit} disabled={loading}
-            className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition disabled:opacity-50 flex items-center justify-center gap-2">
+            className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
             {loading ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"/> : null}
             {customer ? t.saveChanges : t.addCustomer}
           </button>
@@ -275,7 +275,7 @@ export default function Customers() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="p-6 space-y-5 max-w-5xl mx-auto">
+      <div className="p-6 space-y-5">
 
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -286,7 +286,7 @@ export default function Customers() {
             <p className="text-sm text-gray-500 dark:text-gray-400">{customers.length} {t.customersCount}</p>
           </div>
           <button onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition">
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
             <Plus size={16}/> {t.newCustomer}
           </button>
         </div>
@@ -357,15 +357,15 @@ export default function Customers() {
                 {/* Actions */}
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => setViewId(c._id)}
-                    className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] hover:bg-blue-100 dark:hover:bg-blue-900/30 flex items-center justify-center transition text-gray-500 hover:text-blue-600">
+                    className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] hover:bg-blue-100 dark:hover:bg-blue-900/30 flex items-center justify-center text-gray-500 hover:text-blue-600 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                     <Eye size={13}/>
                   </button>
                   <button onClick={() => { setEditCustomer(c); setShowForm(true); }}
-                    className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] hover:bg-gray-200 dark:hover:bg-[#252525] flex items-center justify-center transition text-gray-500">
+                    className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] hover:bg-gray-200 dark:hover:bg-[#252525] flex items-center justify-center text-gray-500 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                     <Edit2 size={13}/>
                   </button>
                   <button onClick={() => handleDelete(c._id, c.name)}
-                    className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center transition text-gray-500 hover:text-red-500">
+                    className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-gray-500 hover:text-red-500 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                     <Trash2 size={13}/>
                   </button>
                 </div>

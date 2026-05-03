@@ -374,7 +374,7 @@ export default function StoreSettings() {
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950" dir={lang === "ar" ? "rtl" : "ltr"}>
-      <div className="p-5 space-y-5 max-w-5xl mx-auto">
+      <div className="p-5 space-y-5">
 
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -424,8 +424,8 @@ export default function StoreSettings() {
               if (id === "promos")  loadPromos();
               if (id === "points")  loadPtOffers();
             }}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition
-                ${tab === id ? "bg-indigo-600 text-white" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"}`}>
+              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium transition-[transform,box-shadow] duration-75 select-none
+                ${tab === id ? "bg-indigo-600 text-white shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 active:translate-y-[4px]"}`}>
               <Icon size={14} /> {label}
             </button>
           ))}
@@ -508,7 +508,7 @@ export default function StoreSettings() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition"
+              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none"
             >
               <Save size={14} />
               {saving ? t.saving : t.saveSettings}
@@ -526,7 +526,7 @@ export default function StoreSettings() {
               </p>
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none"
               >
                 <UserPlus size={14} /> {t.addCashier}
               </button>
@@ -554,7 +554,7 @@ export default function StoreSettings() {
                 >
                   {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} {n > 1 ? t.devicesUnitPlural : t.devicesUnit}</option>)}
                 </select>
-                <button className="bg-green-600 text-white rounded-xl hover:bg-green-700 transition text-sm font-semibold py-2">
+                <button className="bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-[0_4px_0_0_#15803d] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none text-sm font-semibold py-2.5">
                   {t.create}
                 </button>
               </form>
@@ -637,7 +637,6 @@ export default function StoreSettings() {
             </div>
           </div>
         )}
-      </div>
 
         {/* ── ONLINE STORE TAB ── */}
         {tab === "onlinestore" && (
@@ -713,7 +712,7 @@ export default function StoreSettings() {
               </div>
 
               <button onClick={handleSaveOnline} disabled={savingOnline}
-                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-semibold text-sm transition">
+                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-semibold text-sm shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                 <Save size={15} />
                 {savingOnline ? "Saving..." : "Save Online Settings"}
               </button>
@@ -802,12 +801,12 @@ export default function StoreSettings() {
 
               <div className="flex gap-3">
                 <button onClick={handleSaveOnline} disabled={savingOnline}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-semibold text-sm transition">
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-semibold text-sm shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                   <Save size={15} />
                   {savingOnline ? "Saving..." : "Save"}
                 </button>
                 <button onClick={testTelegram} disabled={testingTelegram}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white rounded-xl font-semibold text-sm transition">
+                  className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white rounded-xl font-semibold text-sm shadow-[0_4px_0_0_#15803d] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                   {testingTelegram ? "Sending..." : "✈️ Test All Drivers"}
                 </button>
               </div>
@@ -843,7 +842,7 @@ export default function StoreSettings() {
                       Print this QR code and place it at your counter so customers can scan to order online.
                     </p>
                     <button onClick={printQR}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-gray-800 dark:bg-white dark:text-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-700 dark:hover:bg-gray-100 transition">
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gray-800 dark:bg-white dark:text-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-700 dark:hover:bg-gray-100 shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                       <Printer size={16} /> Print QR Code
                     </button>
                   </div>
@@ -907,12 +906,12 @@ export default function StoreSettings() {
                   <span className="text-sm text-gray-600 dark:text-gray-400">Active</span>
                 </label>
                 <button onClick={handleSavePromo}
-                  className="ml-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition flex items-center gap-2">
+                  className="ml-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm flex items-center gap-2 shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                   <Save size={14} /> {editingPromo ? "Update" : "Create"} Promo
                 </button>
                 {editingPromo && (
                   <button onClick={() => { setEditingPromo(null); setPromoForm({ code: "", type: "percent", value: "", minOrder: "", usageLimit: "", expiresAt: "", isActive: true }); }}
-                    className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
+                    className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                     Cancel
                   </button>
                 )}
@@ -1013,12 +1012,12 @@ export default function StoreSettings() {
                   <span className="text-sm text-gray-600 dark:text-gray-400">Active</span>
                 </label>
                 <button onClick={handleSavePtOffer}
-                  className="ml-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition flex items-center gap-2">
+                  className="ml-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm flex items-center gap-2 shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                   <Save size={14} /> {editingOffer ? "Update" : "Create"} Offer
                 </button>
                 {editingOffer && (
                   <button onClick={() => { setEditingOffer(null); setPtForm({ name: "", description: "", pointsCost: "", offerType: "discount_fixed", offerValue: "", isActive: true, validUntil: "" }); }}
-                    className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
+                    className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                     Cancel
                   </button>
                 )}
@@ -1060,6 +1059,7 @@ export default function StoreSettings() {
             </div>
           </div>
         )}
+      </div>
 
       {/* Change Password Modal */}
       {pwModal && (
@@ -1076,7 +1076,7 @@ export default function StoreSettings() {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-transparent dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm mb-4"
             />
             <button onClick={handleChangePassword} disabled={newPassword.length < 4}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl font-semibold text-sm transition">
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl font-semibold text-sm shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
               {t.updatePassword}
             </button>
           </div>

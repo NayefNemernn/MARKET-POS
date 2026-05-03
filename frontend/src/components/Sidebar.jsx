@@ -2,17 +2,19 @@ import {
   LayoutDashboard, ShoppingCart, Package, Tags,
   Users, BarChart3, ChevronLeft, ChevronRight,
   CreditCard, LogOut, Moon, Sun, Pencil, Check, X,
-  Shield, Store, UserCircle2, Globe, Truck,
+  Shield, Store, UserCircle2, Globe, Truck, Layers, Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import { useUIScale } from "../context/UIScaleContext";
 import toast from "react-hot-toast";
 
 export default function Sidebar({ user, page, setPage }) {
   const [collapsed, setCollapsed]   = useState(false);
   const { dark, setDark }           = useTheme();
   const { logout, storeName, updateStore } = useAuth();
+  const { level, increase, decrease, max } = useUIScale();
 
   const [editing,   setEditing]   = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -108,6 +110,8 @@ export default function Sidebar({ user, page, setPage }) {
           <>
             <Item id="onlineorders"    label="Online Orders"    icon={Globe}  />
             <Item id="pendingpayments" label="Pending Payments" icon={Truck}  />
+            <Item id="batches"         label="Batch Tracking"   icon={Layers}   />
+            <Item id="aiinsights"      label="AI Insights"      icon={Sparkles} />
           </>
         )}
         <Item id="pos"        label="Point of Sale" icon={ShoppingCart} />
@@ -120,6 +124,41 @@ export default function Sidebar({ user, page, setPage }) {
 
       {/* FOOTER */}
       <div className="p-3 flex flex-col gap-2 border-t dark:border-gray-800">
+
+        {/* UI Scale control */}
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800"
+          title={collapsed ? "UI Size" : ""}>
+          <button
+            onClick={decrease} disabled={level === 0}
+            className="w-8 h-8 flex items-center justify-center rounded-lg font-bold text-base
+              text-gray-600 dark:text-gray-300
+              shadow-[0_3px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_3px_0_0_rgba(0,0,0,0.4)]
+              active:shadow-none active:translate-y-[3px]
+              bg-white dark:bg-gray-700
+              hover:bg-gray-50 dark:hover:bg-gray-600
+              disabled:opacity-30 disabled:shadow-none disabled:translate-y-0
+              transition-[transform,box-shadow] duration-75 select-none shrink-0">
+            −
+          </button>
+          {!collapsed && (
+            <span className="flex-1 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 select-none">
+              Size {level + 1}/{max + 1}
+            </span>
+          )}
+          <button
+            onClick={increase} disabled={level === max}
+            className="w-8 h-8 flex items-center justify-center rounded-lg font-bold text-base
+              text-gray-600 dark:text-gray-300
+              shadow-[0_3px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_3px_0_0_rgba(0,0,0,0.4)]
+              active:shadow-none active:translate-y-[3px]
+              bg-white dark:bg-gray-700
+              hover:bg-gray-50 dark:hover:bg-gray-600
+              disabled:opacity-30 disabled:shadow-none disabled:translate-y-0
+              transition-[transform,box-shadow] duration-75 select-none shrink-0">
+            +
+          </button>
+        </div>
+
         <button onClick={() => setDark(!dark)} title={collapsed ? (dark ? "Light Mode" : "Dark Mode") : ""}
           className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all text-sm">
           {dark ? <Sun size={16}/> : <Moon size={16}/>}

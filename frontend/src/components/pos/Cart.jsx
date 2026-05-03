@@ -1,4 +1,4 @@
-import { ShoppingBag, Trash2 } from "lucide-react";
+import { ShoppingBag, Trash2, PauseCircle } from "lucide-react";
 import CartItem from "./CartItem";
 
 export default function Cart({
@@ -8,6 +8,8 @@ export default function Cart({
   clearCart,
   total,
   onCheckout,
+  onHold,
+  heldCount,
   t,
   formatUSD,
   formatLBP,
@@ -37,7 +39,7 @@ export default function Cart({
   };
 
   return (
-    <div className="w-72 xl:w-80 flex flex-col shrink-0
+    <div className="flex-1 min-h-0 flex flex-col
       bg-white dark:bg-[#141414] rounded-2xl
       shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff]
       dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]
@@ -53,19 +55,41 @@ export default function Cart({
             <ShoppingBag size={14} className="text-blue-600 dark:text-blue-400" />
           </div>
           <span className="font-semibold text-sm">{t.currentOrder}</span>
+          {heldCount > 0 && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-semibold tabular-nums">
+              {heldCount} held
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
           {cart.length > 0 && (
-            <button
-              onClick={clearCart}
-              title="Clear cart"
-              className="w-7 h-7 flex items-center justify-center rounded-lg
-                text-gray-400 hover:text-red-500 dark:hover:text-red-400
-                hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-            >
-              <Trash2 size={13}/>
-            </button>
+            <>
+              <button
+                onClick={onHold}
+                title="Hold order"
+                className="w-9 h-9 flex items-center justify-center rounded-xl
+                  bg-amber-50 dark:bg-amber-900/20 text-amber-500 dark:text-amber-400
+                  shadow-[0_4px_0_0_rgba(245,158,11,0.3)] dark:shadow-[0_4px_0_0_rgba(245,158,11,0.2)]
+                  active:shadow-none active:translate-y-[4px]
+                  hover:bg-amber-100 dark:hover:bg-amber-900/30
+                  transition-[transform,box-shadow,background-color] duration-75 select-none"
+              >
+                <PauseCircle size={15}/>
+              </button>
+              <button
+                onClick={clearCart}
+                title="Clear cart"
+                className="w-9 h-9 flex items-center justify-center rounded-xl
+                  bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400
+                  shadow-[0_4px_0_0_rgba(239,68,68,0.25)] dark:shadow-[0_4px_0_0_rgba(239,68,68,0.15)]
+                  active:shadow-none active:translate-y-[4px]
+                  hover:bg-red-100 dark:hover:bg-red-900/30
+                  transition-[transform,box-shadow,background-color] duration-75 select-none"
+              >
+                <Trash2 size={15}/>
+              </button>
+            </>
           )}
           <span className={`text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums
             ${cartCount > 0
@@ -126,14 +150,14 @@ export default function Cart({
         <button
           onClick={onCheckout}
           disabled={cart.length === 0}
-          className="w-full py-3 rounded-xl font-bold text-sm transition-all
+          className="w-full py-4 rounded-xl font-bold text-base
             text-white
             bg-gradient-to-r from-green-600 to-emerald-500
             hover:from-green-500 hover:to-emerald-400
-            shadow-[0_4px_14px_rgba(34,197,94,0.4)]
-            hover:shadow-[0_4px_20px_rgba(34,197,94,0.55)]
-            active:scale-[0.98]
-            disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+            shadow-[0_6px_0_0_#15803d]
+            active:shadow-none active:translate-y-[6px]
+            transition-[transform,box-shadow] duration-75 select-none
+            disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0"
         >
           {checkoutLabel()}
         </button>

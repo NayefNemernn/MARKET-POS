@@ -110,7 +110,7 @@ export default function Categories() {
             type="submit"
             className="flex items-center gap-2 px-5 py-3 rounded-xl
               bg-blue-600 hover:bg-blue-700 text-white font-medium
-              transition text-sm"
+              shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none text-sm"
           >
             <Plus size={16}/> {t.add}
           </button>

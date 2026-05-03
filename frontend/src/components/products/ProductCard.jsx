@@ -1,11 +1,11 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, Layers } from "lucide-react";
 import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 
 const LOW_STOCK_THRESHOLD = 5;
 
-export default function ProductCard({ product, onDelete, onEdit, selected, onToggleSelect }) {
+export default function ProductCard({ product, onDelete, onEdit, onBatches, selected, onToggleSelect }) {
   const t = useProductsTranslation();
   const lowStock = product.stock <= LOW_STOCK_THRESHOLD;
 
@@ -72,12 +72,25 @@ export default function ProductCard({ product, onDelete, onEdit, selected, onTog
           {t.stockLabel}: {product.stock}
         </span>
 
-        <button
-          onClick={e => { e.stopPropagation(); onDelete(product._id); }}
-          className="text-sm text-red-500 hover:text-red-700"
-        >
-          {t.delete}
-        </button>
+        <div className="flex items-center gap-2">
+          {onBatches && (
+            <button
+              onClick={e => { e.stopPropagation(); onBatches(product); }}
+              title="View batches"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg
+                bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400
+                hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition"
+            >
+              <Layers size={11}/> Batches
+            </button>
+          )}
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(product._id); }}
+            className="text-sm text-red-500 hover:text-red-700"
+          >
+            {t.delete}
+          </button>
+        </div>
       </div>
     </motion.div>
   );

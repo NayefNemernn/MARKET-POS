@@ -92,6 +92,11 @@ export const useCart = () => {
   };
 
   /* ======================
+     LOAD CART (hold/resume)
+  ====================== */
+  const loadCart = (items) => setCart(items.map(i => ({ ...i })));
+
+  /* ======================
      CLEAR CART
   ====================== */
   const clearCart = () => setCart([]);
@@ -110,6 +115,7 @@ export const useCart = () => {
     increase,
     decrease,
     clearCart,
+    loadCart,
     loadDeliveryOrder,
     total
   };

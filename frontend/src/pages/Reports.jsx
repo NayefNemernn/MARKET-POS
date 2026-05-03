@@ -247,12 +247,12 @@ export default function Reports() {
           <div className="flex gap-2 items-center flex-wrap">
             {[["day",t.today||"Today"],["week",t.week||"Week"],["month",t.month||"Month"],["year",t.year||"Year"]].map(([val,label])=>(
               <button key={val} onClick={()=>setPeriod(val)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${period===val?"bg-purple-600 text-white":"bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300"}`}>
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-[transform,box-shadow] duration-75 select-none ${period===val?"bg-purple-600 text-white shadow-[0_4px_0_0_#6d28d9] active:shadow-none active:translate-y-[4px]":"bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px]"}`}>
                 {label}
               </button>
             ))}
             <button onClick={exportCSV}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border border-gray-200 dark:border-white/10 bg-white dark:bg-[#141414] hover:bg-gray-50 transition text-gray-600 dark:text-gray-300">
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm border border-gray-200 dark:border-white/10 bg-white dark:bg-[#141414] hover:bg-gray-50 text-gray-600 dark:text-gray-300 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
               <Download size={14}/> CSV
             </button>
           </div>
@@ -262,8 +262,8 @@ export default function Reports() {
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {TABS.map(([key,label,icon])=>(
             <button key={key} onClick={()=>setTab(key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition shrink-0
-                ${tab===key?"bg-purple-600 text-white shadow-[0_0_12px_rgba(139,92,246,0.4)]":"bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-gray-300"}`}>
+              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-[transform,box-shadow] duration-75 select-none shrink-0
+                ${tab===key?"bg-purple-600 text-white shadow-[0_4px_0_0_#6d28d9] active:shadow-none active:translate-y-[4px]":"bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px]"}`}>
               {icon}{label}
             </button>
           ))}

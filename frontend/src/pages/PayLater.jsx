@@ -157,7 +157,7 @@ function ItemsModal({ sale, close }) {
 
           <button
             onClick={printItems}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none"
           >
             <Printer size={15}/> Print Items List
           </button>
@@ -375,18 +375,18 @@ export default function PayLater() {
                         {/* Actions */}
                         <div className="flex flex-col gap-2 shrink-0">
                           <button onClick={() => setSelected(s)}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold
-                              bg-green-600 hover:bg-green-700 text-white transition
-                              shadow-[0_4px_12px_rgba(34,197,94,0.3)]">
+                            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold
+                              bg-green-600 hover:bg-green-700 text-white
+                              shadow-[0_4px_0_0_#15803d] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                             <DollarSign size={13}/> {t.receivePayment}
                           </button>
 
-                          {/* ── NEW: View Items button ── */}
                           <button onClick={() => setViewingItems(s)}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold
+                            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold
                               bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800
                               text-blue-600 dark:text-blue-400
-                              hover:bg-blue-100 dark:hover:bg-blue-900/30 transition">
+                              hover:bg-blue-100 dark:hover:bg-blue-900/30
+                              shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                             <ShoppingBag size={13}/> View Items
                             <span className="ml-auto bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none">
                               {s.items.length}
@@ -394,15 +394,17 @@ export default function PayLater() {
                           </button>
 
                           <button onClick={() => setDrawerCustomer(s)}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium
+                            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium
                               bg-gray-100 dark:bg-[#252525] text-gray-600 dark:text-gray-300
-                              hover:bg-gray-200 dark:hover:bg-[#333] transition">
+                              hover:bg-gray-200 dark:hover:bg-[#333]
+                              shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                             <History size={13}/> {t.viewHistory}
                           </button>
                           <button onClick={() => setEditCustomer(s)}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium
+                            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium
                               bg-gray-100 dark:bg-[#252525] text-gray-600 dark:text-gray-300
-                              hover:bg-gray-200 dark:hover:bg-[#333] transition">
+                              hover:bg-gray-200 dark:hover:bg-[#333]
+                              shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                             <Pencil size={13}/> {t.editCustomer}
                           </button>
                         </div>

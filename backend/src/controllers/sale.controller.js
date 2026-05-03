@@ -5,6 +5,7 @@ import AuditLog from "../models/AuditLog.js";
 import StockLog from "../models/StockLog.js";
 import HoldSale from "../models/HoldSale.js";
 import Payment  from "../models/Payment.js";
+import Batch    from "../models/Batch.js";
 
 async function audit(req, action, description, meta = {}) {
   try { await AuditLog.create({ storeId: req.storeId, userId: req.user._id, username: req.user.username, action, description, meta }); } catch {}
@@ -48,6 +49,22 @@ export const createSale = async (req, res) => {
       saleItems.push({ productId: product._id, name: product.name, price: product.price, cost: product.cost || 0, quantity: item.quantity, subtotal: itemSubtotal, discountAmount: item.discountAmount || 0 });
 
       const stockBefore = product.stock;
+
+      // FIFO batch deduction — earliest expiry first, no-expiry batches last
+      const batchesWithExpiry = await Batch.find({ productId: product._id, storeId, remainingQty: { $gt: 0 }, expiryDate: { $ne: null } }).sort({ expiryDate: 1 });
+      const batchesNoExpiry   = await Batch.find({ productId: product._id, storeId, remainingQty: { $gt: 0 }, expiryDate: null }).sort({ createdAt: 1 });
+      const activeBatches = [...batchesWithExpiry, ...batchesNoExpiry];
+
+      if (activeBatches.length > 0) {
+        let remaining = item.quantity;
+        for (const batch of activeBatches) {
+          if (remaining <= 0) break;
+          const deduct = Math.min(batch.remainingQty, remaining);
+          await Batch.findByIdAndUpdate(batch._id, { $inc: { remainingQty: -deduct } });
+          remaining -= deduct;
+        }
+      }
+
       await Product.findByIdAndUpdate(product._id, { $inc: { stock: -item.quantity } });
       await logStock(req, { ...product.toObject(), stock: stockBefore }, -item.quantity, "sale");
     }

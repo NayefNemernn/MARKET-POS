@@ -3,7 +3,7 @@ import { useRefresh } from "../context/RefreshContext";
 import {
   Search, Barcode, Printer, ScanLine, X, Plus, Package, Upload, Download,
   FileSpreadsheet, CheckCircle, AlertCircle, ChevronLeft, ChevronRight,
-  Trash2, SlidersHorizontal, ArrowUpDown, Filter,
+  Trash2, SlidersHorizontal, ArrowUpDown, Filter, Layers,
 } from "lucide-react";
 
 import {
@@ -13,6 +13,7 @@ import {
   deleteProduct,
   importProductsExcel,
 } from "../api/product.api";
+import { getBatchesForProduct, createBatch } from "../api/batch.api";
 
 import { getCategories, createCategory } from "../api/category.api";
 import {
@@ -87,6 +88,14 @@ export default function Products() {
 
   // ── Bulk select ──
   const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // ── Batch modal state ──
+  const [batchProduct,   setBatchProduct]   = useState(null);
+  const [productBatches, setProductBatches] = useState([]);
+  const [loadingBatches, setLoadingBatches] = useState(false);
+  const [showAddBatch,   setShowAddBatch]   = useState(false);
+  const [batchForm,      setBatchForm]      = useState({ expiryDate: "", initialQty: "", costPrice: "", notes: "" });
+  const [savingBatch,    setSavingBatch]    = useState(false);
 
   // ── Import state ──
   const [showImport,   setShowImport]   = useState(false);
@@ -380,6 +389,44 @@ export default function Products() {
     toast.success(t.fieldsFilled, { icon: "✨" });
   }, [exchangeRate]);
 
+  // ── Batch modal helpers ───────────────────────────────────────────────────
+  const openBatches = async (product) => {
+    setBatchProduct(product);
+    setShowAddBatch(false);
+    setBatchForm({ expiryDate: "", initialQty: "", costPrice: "", notes: "" });
+    setLoadingBatches(true);
+    try {
+      const data = await getBatchesForProduct(product._id);
+      setProductBatches(data);
+    } catch { setProductBatches([]); }
+    finally { setLoadingBatches(false); }
+  };
+
+  const handleAddBatch = async () => {
+    if (!batchForm.initialQty) { toast.error("Quantity is required"); return; }
+    setSavingBatch(true);
+    try {
+      await createBatch({ productId: batchProduct._id, ...batchForm, initialQty: Number(batchForm.initialQty), costPrice: batchForm.costPrice ? Number(batchForm.costPrice) : undefined });
+      toast.success("Batch added");
+      setShowAddBatch(false);
+      setBatchForm({ expiryDate: "", initialQty: "", costPrice: "", notes: "" });
+      const data = await getBatchesForProduct(batchProduct._id);
+      setProductBatches(data);
+      refresh();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to add batch");
+    } finally { setSavingBatch(false); }
+  };
+
+  const batchExpiryBadge = (b) => {
+    if (!b.expiryDate) return null;
+    const days = Math.ceil((new Date(b.expiryDate) - new Date()) / 86400000);
+    if (days < 0)  return <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">Expired</span>;
+    if (days <= 7) return <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">{days}d left</span>;
+    if (days <= 30) return <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">{days}d left</span>;
+    return <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">{days}d left</span>;
+  };
+
   // ── Shared select/input class ─────────────────────────────────────────────
   const selectCls = "px-3 py-2 rounded-xl text-sm outline-none transition " +
     "bg-gray-50 dark:bg-[#0f0f0f] border border-gray-200 dark:border-white/5 " +
@@ -640,6 +687,7 @@ export default function Products() {
                     product={p}
                     onDelete={remove}
                     onEdit={product => setEditingProduct(product)}
+                    onBatches={openBatches}
                     selected={selectedIds.has(p._id)}
                     onToggleSelect={toggleSelect}
                   />
@@ -707,6 +755,103 @@ export default function Products() {
         editPreview={preview}
         setEditPreview={setPreview}
       />
+
+      {/* ── BATCHES MODAL ──────────────────────────────────────────────────── */}
+      {batchProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg bg-white dark:bg-[#141414] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/5 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                  <Layers size={18} className="text-emerald-600 dark:text-emerald-400"/>
+                </div>
+                <div>
+                  <h2 className="font-bold text-sm">{batchProduct.name}</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Batch tracking · {productBatches.length} batch{productBatches.length !== 1 ? "es" : ""}</p>
+                </div>
+              </div>
+              <button onClick={() => setBatchProduct(null)} className="text-gray-400 hover:text-gray-600 transition"><X size={20}/></button>
+            </div>
+
+            {/* Batch list */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {loadingBatches ? (
+                <div className="flex items-center justify-center py-10 text-gray-400 text-sm">Loading…</div>
+              ) : productBatches.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                  <Layers size={32} className="opacity-20 mb-2"/>
+                  <p className="text-sm">No batches yet</p>
+                </div>
+              ) : productBatches.map(b => (
+                <div key={b._id} className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-50 dark:bg-[#1c1c1c] border border-gray-100 dark:border-white/5">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono font-bold text-gray-600 dark:text-gray-300">{b.batchNumber}</span>
+                      {batchExpiryBadge(b)}
+                      {b.remainingQty === 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500">Depleted</span>}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                      {b.expiryDate && <span>Exp: {new Date(b.expiryDate).toLocaleDateString()}</span>}
+                      {b.supplierName && <span>· {b.supplierName}</span>}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{b.remainingQty} <span className="text-xs font-normal text-gray-400">/ {b.initialQty}</span></p>
+                    <div className="w-20 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1 overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${b.initialQty > 0 ? (b.remainingQty / b.initialQty) * 100 : 0}%` }}/>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add batch form */}
+            {showAddBatch ? (
+              <div className="border-t border-gray-100 dark:border-white/5 p-4 space-y-3 shrink-0">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Receive New Stock</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Qty *</label>
+                    <input type="number" min="1" placeholder="0" value={batchForm.initialQty} onChange={e => setBatchForm(f => ({ ...f, initialQty: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl text-sm border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0f0f0f] outline-none focus:border-emerald-400 transition"/>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Expiry Date</label>
+                    <input type="date" value={batchForm.expiryDate} onChange={e => setBatchForm(f => ({ ...f, expiryDate: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl text-sm border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0f0f0f] outline-none focus:border-emerald-400 transition"/>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Cost Price</label>
+                    <input type="number" min="0" step="0.01" placeholder="0.00" value={batchForm.costPrice} onChange={e => setBatchForm(f => ({ ...f, costPrice: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl text-sm border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0f0f0f] outline-none focus:border-emerald-400 transition"/>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Notes</label>
+                    <input placeholder="Optional" value={batchForm.notes} onChange={e => setBatchForm(f => ({ ...f, notes: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl text-sm border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0f0f0f] outline-none focus:border-emerald-400 transition"/>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setShowAddBatch(false)} className="flex-1 py-2 rounded-xl text-sm bg-gray-100 dark:bg-[#252525] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2f2f2f] transition">Cancel</button>
+                  <button onClick={handleAddBatch} disabled={savingBatch}
+                    className="flex-1 py-2 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white transition">
+                    {savingBatch ? "Saving…" : "Add Batch"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="border-t border-gray-100 dark:border-white/5 p-4 shrink-0">
+                <button onClick={() => setShowAddBatch(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition">
+                  <Plus size={15}/> Receive New Stock
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── IMPORT MODAL ───────────────────────────────────────────────────── */}
       {showImport && (

@@ -3,7 +3,7 @@ import { useLang } from "../context/LanguageContext";
 import {
   LayoutDashboard, ShoppingCart, Package, Tags, Users, BarChart3,
   Clock, Sun, Moon, LogOut, Pencil, Check, X, Shield, Store,
-  UserCircle2, ClipboardList, TrendingDown, Tag, Truck, Globe,
+  UserCircle2, ClipboardList, TrendingDown, Tag, Truck, Globe, Layers, Sparkles,
 } from "lucide-react";
 import { useTheme }  from "../context/ThemeContext";
 import { useAuth }   from "../context/AuthContext";
@@ -30,6 +30,8 @@ const NAV_LABELS = {
   superadminpanel: "Super Admin",
   onlineorders:    "Online Orders",
   pendingpayments: "Pending Payments",
+  batches:         "Batch Tracking",
+  aiinsights:      "AI Insights",
 };
 
 const NAV_COLORS = {
@@ -51,6 +53,8 @@ const NAV_COLORS = {
   superadminpanel: { bg: "#7c3aed", glow: "rgba(124,58,237,0.5)"   },
   onlineorders:    { bg: "#0284c7", glow: "rgba(2,132,199,0.5)"    },
   pendingpayments: { bg: "#ea580c", glow: "rgba(234,88,12,0.5)"    },
+  batches:         { bg: "#059669", glow: "rgba(5,150,105,0.5)"    },
+  aiinsights:      { bg: "#7c3aed", glow: "rgba(124,58,237,0.5)"  },
 };
 
 export default function DashboardLayout({ children, page, setPage, user }) {
@@ -108,6 +112,8 @@ export default function DashboardLayout({ children, page, setPage, user }) {
         { key: "suppliers",     icon: Truck,           adminOnly: true  },
         { key: "onlineorders",    icon: Globe,           adminOnly: true  },
         { key: "pendingpayments", icon: Truck,           adminOnly: false },
+        { key: "batches",         icon: Layers,          adminOnly: true  },
+        { key: "aiinsights",      icon: Sparkles,        adminOnly: true  },
         { key: "adminpanel",      icon: Shield,          adminOnly: true  },
         { key: "storesettings",   icon: Store,           adminOnly: true  },
       ].filter(item => !item.adminOnly || isAdmin);

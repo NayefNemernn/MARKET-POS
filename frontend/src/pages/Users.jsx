@@ -99,7 +99,7 @@ export default function Users() {
             </div>
             <button onClick={() => setShowForm(!showForm)}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl
-                hover:bg-blue-700 transition text-sm font-medium">
+                hover:bg-blue-700 shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none text-sm font-medium">
               <UserPlus size={15}/> {t.addUser}
             </button>
           </div>
@@ -143,7 +143,7 @@ export default function Users() {
                   <option value="cashier">{t.cashier}</option>
                   <option value="admin">{t.admin}</option>
                 </select>
-                <button className="bg-green-600 text-white rounded-xl hover:bg-green-700 transition text-sm font-medium">
+                <button className="bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-[0_4px_0_0_#15803d] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none text-sm font-medium">
                   {t.create}
                 </button>
               </motion.form>
@@ -206,21 +206,21 @@ export default function Users() {
                 {/* Actions */}
                 <div className="flex flex-col gap-2">
                   <button onClick={() => { setPwModal(user); setNewPin(""); }}
-                    className="flex items-center justify-center gap-2 w-full py-2 rounded-xl
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
                       bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400
-                      hover:bg-indigo-100 transition text-xs font-medium">
+                      hover:bg-indigo-100 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none text-xs font-medium">
                     <KeyRound size={13}/> {t.changePin}
                   </button>
                   <div className="flex gap-2">
                     <button onClick={() => toggleStatus(user)}
-                      className={`flex-1 py-2 rounded-xl text-white text-xs font-medium transition
-                        ${user.active ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"}`}>
+                      className={`flex-1 py-2.5 rounded-xl text-white text-xs font-medium transition-[transform,box-shadow] duration-75 select-none active:shadow-none active:translate-y-[4px]
+                        ${user.active ? "bg-red-500 hover:bg-red-600 shadow-[0_4px_0_0_#b91c1c]" : "bg-green-500 hover:bg-green-600 shadow-[0_4px_0_0_#15803d]"}`}>
                       {user.active ? t.disable : t.enable}
                     </button>
                     <button onClick={() => deleteUser(user._id)}
-                      className="flex-1 py-2 rounded-xl text-xs font-medium
+                      className="flex-1 py-2.5 rounded-xl text-xs font-medium
                         bg-gray-100 dark:bg-[#252525] text-gray-600 dark:text-gray-400
-                        hover:bg-gray-200 dark:hover:bg-[#333] transition">
+                        hover:bg-gray-200 dark:hover:bg-[#333] shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                       {t.delete}
                     </button>
                   </div>
@@ -259,7 +259,7 @@ export default function Users() {
               <button onClick={handleChangePassword}
                 disabled={pwLoading || newPin.length < 4}
                 className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm
-                  hover:bg-blue-700 disabled:opacity-40 transition">
+                  hover:bg-blue-700 disabled:opacity-40 shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                 {pwLoading ? t.saving : t.updatePin}
               </button>
             </motion.div>

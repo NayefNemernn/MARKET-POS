@@ -120,7 +120,7 @@ export default function AdminPanel() {
   return (
     <RequireAdmin>
       <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950" dir={lang === "ar" ? "rtl" : "ltr"}>
-        <div className="p-5 space-y-5 max-w-4xl mx-auto">
+        <div className="p-5 space-y-5">
 
           {/* HEADER */}
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -134,14 +134,16 @@ export default function AdminPanel() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm
+              <button onClick={load} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm
                 bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10
-                hover:bg-gray-50 dark:hover:bg-[#1c1c1c] transition text-gray-600 dark:text-gray-300">
+                hover:bg-gray-50 dark:hover:bg-[#1c1c1c] text-gray-600 dark:text-gray-300
+                shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                 <RefreshCw size={13}/> {t.refresh}
               </button>
               <button onClick={() => setShowForm(!showForm)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium
-                  bg-blue-600 hover:bg-blue-700 text-white transition">
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium
+                  bg-blue-600 hover:bg-blue-700 text-white
+                  shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                 <UserPlus size={14}/> {t.addUser}
               </button>
             </div>
@@ -169,7 +171,7 @@ export default function AdminPanel() {
                 className="border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 bg-white dark:bg-[#141414] text-sm outline-none">
                 <option value="cashier">{t.cashier}</option>
               </select>
-              <button className="bg-green-600 text-white rounded-xl hover:bg-green-700 transition text-sm font-semibold py-2">
+              <button className="bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-[0_4px_0_0_#15803d] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none text-sm font-semibold py-2.5">
                 {t.createUser}
               </button>
             </form>
@@ -232,20 +234,22 @@ export default function AdminPanel() {
                   {/* Actions */}
                   <div className="flex items-center gap-2 ms-auto flex-wrap">
                     <button onClick={() => { setPwModal(user); setNewPin(""); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                        bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 hover:bg-indigo-100 transition">
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium
+                        bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 hover:bg-indigo-100
+                        shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                       <KeyRound size={11}/> {t.password}
                     </button>
                     {user.isOnline && (
                       <button onClick={() => forceLogout(user)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                          bg-amber-50 dark:bg-amber-900/20 text-amber-600 hover:bg-amber-100 transition">
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium
+                          bg-amber-50 dark:bg-amber-900/20 text-amber-600 hover:bg-amber-100
+                          shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
                         <LogOut size={11}/> {t.kickAll}
                       </button>
                     )}
                     <button onClick={() => toggleStatus(user)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition
-                        ${user.active ? "bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100" : "bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100"}`}>
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-[transform,box-shadow] duration-75 select-none active:shadow-none active:translate-y-[4px]
+                        ${user.active ? "bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)]" : "bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)]"}`}>
                       {user.active ? <><XCircle size={11}/> {t.disable}</> : <><CheckCircle size={11}/> {t.enable}</>}
                     </button>
                     <button onClick={() => deleteUser(user)}
@@ -308,7 +312,7 @@ export default function AdminPanel() {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10
                 bg-transparent focus:ring-2 focus:ring-blue-500 outline-none text-sm mb-4"/>
             <button onClick={changePassword} disabled={newPin.length < 4}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl font-semibold text-sm transition">
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl font-semibold text-sm shadow-[0_4px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">
               {t.updatePassword}
             </button>
           </div>

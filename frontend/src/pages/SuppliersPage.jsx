@@ -73,7 +73,7 @@ export default function SuppliersPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950 p-5">
-      <div className="max-w-6xl mx-auto space-y-5">
+      <div className="w-full space-y-5">
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -81,14 +81,14 @@ export default function SuppliersPage() {
             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center"><Truck size={20} className="text-white"/></div>
             <div><h1 className="text-xl font-bold">{t.title}</h1><p className="text-xs text-gray-500">{t.subtitle}</p></div>
           </div>
-          <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 hover:bg-gray-50 transition"><RefreshCw size={13}/></button>
+          <button onClick={load} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 hover:bg-gray-50 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none"><RefreshCw size={13}/></button>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 p-1 bg-white dark:bg-[#141414] rounded-xl border border-gray-200 dark:border-white/10 w-fit">
           {[["suppliers", t.tabSuppliers], ["orders", t.tabOrders]].map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === key ? "bg-indigo-600 text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5"}`}>
+              className={`px-4 py-2.5 rounded-lg text-sm font-medium select-none ${tab === key ? "bg-indigo-600 text-white shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 transition"}`}>
               {label}
             </button>
           ))}
@@ -97,7 +97,7 @@ export default function SuppliersPage() {
         {/* SUPPLIERS TAB */}
         {tab === "suppliers" && (
           <div className="space-y-4">
-            <button onClick={() => setShowSupForm(!showSupForm)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition"><Plus size={14}/> {t.addSupplier}</button>
+            <button onClick={() => setShowSupForm(!showSupForm)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none"><Plus size={14}/> {t.addSupplier}</button>
 
             {showSupForm && (
               <form onSubmit={handleCreateSupplier} className={`${CARD} p-5 space-y-3`}>
@@ -111,8 +111,8 @@ export default function SuppliersPage() {
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  <button type="submit" className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm">{t.save}</button>
-                  <button type="button" onClick={() => setShowSupForm(false)} className="px-6 py-2.5 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-medium text-sm">{t.cancel}</button>
+                  <button type="submit" className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.save}</button>
+                  <button type="button" onClick={() => setShowSupForm(false)} className="px-6 py-2.5 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-medium text-sm shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.cancel}</button>
                 </div>
               </form>
             )}
@@ -143,7 +143,7 @@ export default function SuppliersPage() {
         {/* PURCHASE ORDERS TAB */}
         {tab === "orders" && (
           <div className="space-y-4">
-            <button onClick={() => setShowOrderForm(!showOrderForm)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition"><Plus size={14}/> {t.newPurchaseOrder}</button>
+            <button onClick={() => setShowOrderForm(!showOrderForm)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none"><Plus size={14}/> {t.newPurchaseOrder}</button>
 
             {showOrderForm && (
               <div className={`${CARD} p-5 space-y-4`}>
@@ -202,8 +202,8 @@ export default function SuppliersPage() {
                 )}
 
                 <div className="flex gap-3">
-                  <button onClick={handleCreateOrder} className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm">{t.saveUpdateStock}</button>
-                  <button onClick={() => { setShowOrderForm(false); setOrderForm({ supplierId: "", supplierName: "", notes: "", items: [] }); }} className="px-6 py-2.5 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-medium text-sm">{t.cancel}</button>
+                  <button onClick={handleCreateOrder} className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm shadow-[0_4px_0_0_#3730a3] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.saveUpdateStock}</button>
+                  <button onClick={() => { setShowOrderForm(false); setOrderForm({ supplierId: "", supplierName: "", notes: "", items: [] }); }} className="px-6 py-2.5 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-medium text-sm shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.cancel}</button>
                 </div>
               </div>
             )}

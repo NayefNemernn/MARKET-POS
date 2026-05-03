@@ -54,7 +54,7 @@ export default function ExpensesPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950 p-5">
-      <div className="max-w-5xl mx-auto space-y-5">
+      <div className="w-full space-y-5">
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -63,8 +63,8 @@ export default function ExpensesPage() {
             <div><h1 className="text-xl font-bold">{t.title}</h1><p className="text-xs text-gray-500">{t.subtitle}</p></div>
           </div>
           <div className="flex gap-2">
-            <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 hover:bg-gray-50 transition"><RefreshCw size={13}/></button>
-            <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition"><Plus size={14}/> {t.addExpense}</button>
+            <button onClick={load} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 hover:bg-gray-50 shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none"><RefreshCw size={13}/></button>
+            <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-500 hover:bg-red-600 text-white shadow-[0_4px_0_0_#b91c1c] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none"><Plus size={14}/> {t.addExpense}</button>
           </div>
         </div>
 
@@ -137,8 +137,8 @@ export default function ExpensesPage() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button type="submit" className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium text-sm transition">{t.saveExpense}</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2.5 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-medium text-sm transition">{t.cancel}</button>
+              <button type="submit" className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium text-sm shadow-[0_4px_0_0_#b91c1c] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.saveExpense}</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2.5 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-medium text-sm shadow-[0_4px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:shadow-none active:translate-y-[4px] transition-[transform,box-shadow] duration-75 select-none">{t.cancel}</button>
             </div>
           </form>
         )}
