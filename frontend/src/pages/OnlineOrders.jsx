@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import {
   ShoppingBag, CheckCircle2, XCircle, Clock, Truck,
   Package, Eye, RefreshCw, ChevronDown, ChevronUp,
-  Phone, MapPin, MessageSquare,
+  Phone, MapPin, MessageSquare, Search, X,
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -31,6 +31,7 @@ export default function OnlineOrders() {
   const [rejectText,  setRejectText]  = useState("");
   const [processing,  setProcessing]  = useState(false);
   const [newCount,    setNewCount]    = useState(0);
+  const [search,      setSearch]      = useState("");
   const audioRef = useRef(null);
 
   const storeId = ctxStore?._id || user?.storeId;
@@ -106,7 +107,18 @@ export default function OnlineOrders() {
     return `${Math.floor(s/3600)}h ago`;
   };
 
-  const filtered = filter === "all" ? orders : orders.filter(o => o.status === filter);
+  const filtered = orders
+    .filter(o => filter === "all" || o.status === filter)
+    .filter(o => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        o.orderNumber?.toLowerCase().includes(q) ||
+        o.customer?.name?.toLowerCase().includes(q) ||
+        o.customer?.phone?.includes(q) ||
+        o.assignedDriver?.name?.toLowerCase().includes(q)
+      );
+    });
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -128,6 +140,23 @@ export default function OnlineOrders() {
           className="flex items-center gap-2 px-4 py-2 rounded-xl border dark:border-gray-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition">
           <RefreshCw size={15} /> Refresh
         </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by order #, customer, phone, driver..."
+          className="w-full pl-9 pr-9 py-2.5 rounded-xl border dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <X size={14} />
+          </button>
+        )}
       </div>
 
       {/* Filter tabs */}

@@ -310,17 +310,25 @@ export const cashCollected = async (req, res) => {
     if (order.status !== "out_for_delivery")
       return res.status(400).json({ message: "Order is not out for delivery" });
 
-    order.status = "pending_payment";
+    if (order.saleId) {
+      await Sale.findByIdAndUpdate(order.saleId, { status: "completed", paid: true });
+    }
+
+    order.status        = "completed";
+    order.paymentStatus = "paid";
     await order.save();
 
     const io = getIO();
     if (io) {
       io.to(`store_${order.storeId}_admin`).emit("order_status_changed", {
-        orderId: order._id, orderNumber: order.orderNumber, status: "pending_payment",
+        orderId: order._id, orderNumber: order.orderNumber, status: "completed",
+      });
+      io.to(`store_${order.storeId}_cashier`).emit("order_completed", {
+        orderId: order._id, orderNumber: order.orderNumber,
       });
     }
 
-    res.json({ message: "Cash collected confirmed", order });
+    res.json({ message: "Cash collected, order completed", order });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
