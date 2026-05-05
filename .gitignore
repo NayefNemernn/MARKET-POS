@@ -9,11 +9,13 @@
 # builds
 **/dist/
 **/build/
+**/dev-dist/
 **/.next/
 **/.nuxt/
 
-# uploads
-backend/uploads/
+# uploads (keep the folder placeholder but ignore actual uploads)
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # logs
 *.log
