@@ -57,7 +57,7 @@ export default function SuperAdminPanel() {
   const [editingPlan,    setEditingPlan]    = useState(null);
   const [planForm,       setPlanForm]       = useState({ plan: "", maxUsers: "", maxProducts: "", expiresAt: "", monthlyPrice: "" });
   const [createModal,    setCreateModal]    = useState(false);
-  const [createForm,     setCreateForm]     = useState({ storeName: "", username: "", password: "", currency: "USD", language: "en", plan: "trial" });
+  const [createForm,     setCreateForm]     = useState({ storeName: "", storeType: "market", username: "", password: "", cafeName: "", cafeUsername: "", cafePassword: "", currency: "USD", language: "en", plan: "trial" });
   const [deleteTarget,   setDeleteTarget]   = useState(null);
   const [resetTarget,    setResetTarget]    = useState(null);
   const [resetPassword,  setResetPassword]  = useState("");
@@ -126,7 +126,7 @@ export default function SuperAdminPanel() {
   const openPlanEditor    = (store) => { setEditingPlan(store); const d = PLAN_LIMITS[store.plan] || PLAN_LIMITS.basic; const exp = store.planExpiresAt ? new Date(store.planExpiresAt).toISOString().split("T")[0] : ""; setPlanForm({ plan: store.plan, maxUsers: store.maxUsers || d.maxUsers, maxProducts: store.maxProducts || d.maxProducts, expiresAt: exp, monthlyPrice: store.monthlyPrice || "" }); };
   const handlePlanChange  = (e) => { const d = PLAN_LIMITS[e.target.value]; const exp = new Date(); exp.setDate(exp.getDate() + d.days); setPlanForm(f => ({ ...f, plan: e.target.value, maxUsers: d.maxUsers, maxProducts: d.maxProducts, expiresAt: exp.toISOString().split("T")[0] })); };
   const savePlan          = async () => { try { await updateStorePlan(editingPlan._id, planForm); toast.success("Plan updated"); setEditingPlan(null); loadData(); } catch { toast.error("Failed"); } };
-  const handleCreateStore = async () => { try { await createStore(createForm); toast.success("Store created"); setCreateModal(false); setCreateForm({ storeName: "", username: "", password: "", currency: "USD", language: "en", plan: "trial" }); loadData(); } catch (e) { toast.error(e.response?.data?.message || "Failed"); } };
+  const handleCreateStore = async () => { try { await createStore(createForm); toast.success("Store created"); setCreateModal(false); setCreateForm({ storeName: "", storeType: "market", username: "", password: "", cafeName: "", cafeUsername: "", cafePassword: "", currency: "USD", language: "en", plan: "trial" }); loadData(); } catch (e) { toast.error(e.response?.data?.message || "Failed"); } };
   const handleDeleteStore = async () => { try { await deleteStore(deleteTarget._id); toast.success("Store deleted"); setDeleteTarget(null); loadData(); } catch { toast.error("Failed"); } };
   const handleResetPW     = async () => { if (!resetPassword.trim()) return toast.error("Enter password"); try { await resetAdminPassword(resetTarget._id, { newPassword: resetPassword }); toast.success("Password reset"); setResetTarget(null); setResetPassword(""); } catch { toast.error("Failed"); } };
   const handleImpersonate = async (store) => { try { const d = await impersonateStore(store._id); toast.success(`Logged in as ${d.user.username}`); login(d); } catch { toast.error("Failed"); } };
@@ -307,7 +307,11 @@ export default function SuperAdminPanel() {
                       <td className="px-3 py-2"><input type="checkbox" checked={selected.includes(store._id)} onChange={() => toggleSelect(store._id)} /></td>
                       <td className="px-3 py-2 font-medium text-gray-800 dark:text-white">
                         {store.name}
-                        <div className="text-xs text-gray-400">{store.slug}</div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-xs text-gray-400">{store.slug}</span>
+                          {store.storeType === "cafe" && <span className="px-1 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">☕ Café</span>}
+                          {store.storeType === "both" && <span className="px-1 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400">🏪 Both</span>}
+                        </div>
                         {store.internalNotes && <div className="text-xs text-yellow-600 truncate max-w-[100px]">📝 {store.internalNotes}</div>}
                       </td>
                       <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{store.owner?.username}</td>
@@ -686,13 +690,63 @@ export default function SuperAdminPanel() {
       {/* Create Store */}
       {createModal && (
         <Modal title={t.modalCreateStore} onClose={() => setCreateModal(false)}>
-          <div className="space-y-3">
-            {[{ label: t.fieldStoreName, key: "storeName", ph: "e.g. My Market" }, { label: t.fieldAdminUser, key: "username", ph: "e.g. marketAdmin" }, { label: t.fieldAdminPass, key: "password", ph: "e.g. 123456" }].map(f => (
-              <div key={f.key}>
-                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">{f.label}</label>
-                <input type="text" placeholder={f.ph} value={createForm[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+          <div className="space-y-4">
+
+            {/* Store name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">{t.fieldStoreName}</label>
+              <input type="text" placeholder="e.g. My Café" value={createForm.storeName} onChange={e => setCreateForm(p => ({ ...p, storeName: e.target.value }))} className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+            </div>
+
+            {/* Store type selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Store Type</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: "market", icon: "🛒", label: "Market Only" },
+                  { key: "cafe",   icon: "☕", label: "Café Only"   },
+                  { key: "both",   icon: "🏪", label: "Market + Café" },
+                ].map(opt => (
+                  <button key={opt.key} type="button"
+                    onClick={() => setCreateForm(p => ({ ...p, storeType: opt.key }))}
+                    className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 text-sm font-semibold transition
+                      ${createForm.storeType === opt.key
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                        : "border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300"}`}>
+                    <span className="text-xl">{opt.icon}</span>
+                    <span className="text-xs leading-tight text-center">{opt.label}</span>
+                  </button>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Market admin credentials */}
+            {(createForm.storeType === "market" || createForm.storeType === "both") && (
+              <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
+                <p className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">🛒 Market Admin Login</p>
+                {[{ label: "Admin Username", key: "username", ph: "e.g. marketAdmin" }, { label: "Admin Password", key: "password", ph: "e.g. 123456" }].map(f => (
+                  <div key={f.key}>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">{f.label}</label>
+                    <input type="text" placeholder={f.ph} value={createForm[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Café manager credentials */}
+            {(createForm.storeType === "cafe" || createForm.storeType === "both") && (
+              <div className="space-y-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800">
+                <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide">☕ Café Manager Login</p>
+                {[{ label: "Manager Name", key: "cafeName", ph: "e.g. Sara" }, { label: "Manager Username", key: "cafeUsername", ph: "e.g. cafeManager" }, { label: "Manager Password", key: "cafePassword", ph: "e.g. 123456" }].map(f => (
+                  <div key={f.key}>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">{f.label}</label>
+                    <input type="text" placeholder={f.ph} value={createForm[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Plan + Currency */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">{t.fieldPlan}</label>
@@ -707,7 +761,8 @@ export default function SuperAdminPanel() {
                 </select>
               </div>
             </div>
-            <div className="flex gap-3 pt-2">
+
+            <div className="flex gap-3 pt-1">
               <button onClick={handleCreateStore} className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 font-medium hover:bg-blue-700">{t.btnCreateStore}</button>
               <button onClick={() => setCreateModal(false)} className="flex-1 bg-gray-100 text-gray-700 rounded-xl py-2.5 font-medium dark:bg-gray-700 dark:text-gray-300">{t.cancel}</button>
             </div>

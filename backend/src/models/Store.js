@@ -8,10 +8,17 @@ const storeSchema = new mongoose.Schema(
     logo:       { type: String, default: "" },
 
     // ── Owner (the admin who created/owns this store) ─────────
+    // null for cafe-only stores (no market POS user)
     owner: {
-      type:     mongoose.Schema.Types.ObjectId,
-      ref:      "User",
-      required: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref:  "User",
+    },
+
+    // ── Store type ────────────────────────────────────────────
+    storeType: {
+      type:    String,
+      enum:    ["market", "cafe", "both"],
+      default: "market",
     },
 
     // ── Business Info ─────────────────────────────────────────

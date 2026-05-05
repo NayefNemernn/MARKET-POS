@@ -243,18 +243,61 @@ export const clearStoreUserProducts = async (req, res) => {
 ───────────────────────────────────────────── */
 export const createStore = async (req, res) => {
   try {
-    const { storeName, username, password, currency, language, plan, maxUsers, maxProducts } = req.body;
-    if (!storeName || !username || !password) return res.status(400).json({ message: "storeName, username and password are required" });
-    const existingUser = await User.findOne({ username });
-    if (existingUser) return res.status(400).json({ message: "Username already taken" });
+    const {
+      storeName, currency, language, plan, maxUsers, maxProducts,
+      storeType = "market",
+      // market / both credentials
+      username, password,
+      // cafe / both credentials
+      cafeName, cafeUsername, cafePassword,
+    } = req.body;
+
+    if (!storeName) return res.status(400).json({ message: "storeName is required" });
+
     const limits  = { trial: { maxUsers: 2, maxProducts: 100 }, basic: { maxUsers: 5, maxProducts: 500 }, pro: { maxUsers: 20, maxProducts: 2000 }, enterprise: { maxUsers: 100, maxProducts: 99999 } };
     const selPlan = plan || "trial";
-    const admin   = new User({ username, password, role: "admin" });
-    await admin.save();
-    const store   = await Store.create({ name: storeName, owner: admin._id, currency: currency || "USD", language: language || "en", plan: selPlan, maxUsers: maxUsers || limits[selPlan].maxUsers, maxProducts: maxProducts || limits[selPlan].maxProducts });
-    admin.storeId = store._id;
-    await admin.save();
-    res.status(201).json({ message: "Store created", store, admin: { id: admin._id, username: admin.username } });
+    const slug    = storeName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now().toString(36);
+
+    let adminUser   = null;
+    let cafeManager = null;
+
+    /* ── Market admin ── */
+    if (storeType === "market" || storeType === "both") {
+      if (!username || !password) return res.status(400).json({ message: "Admin username and password are required" });
+      if (await User.findOne({ username })) return res.status(400).json({ message: "Username already taken" });
+      adminUser = new User({ username, password, role: "admin" });
+      await adminUser.save();
+    }
+
+    /* ── Store ── */
+    const store = await Store.create({
+      name:         storeName,
+      slug,
+      owner:        adminUser?._id || undefined,
+      storeType,
+      cafeEnabled:  storeType === "cafe" || storeType === "both",
+      currency:     currency || "USD",
+      language:     language || "en",
+      plan:         selPlan,
+      maxUsers:     maxUsers     || limits[selPlan].maxUsers,
+      maxProducts:  maxProducts  || limits[selPlan].maxProducts,
+    });
+
+    if (adminUser) { adminUser.storeId = store._id; await adminUser.save(); }
+
+    /* ── Cafe manager ── */
+    if (storeType === "cafe" || storeType === "both") {
+      if (!cafeUsername || !cafePassword || !cafeName) return res.status(400).json({ message: "Café manager name, username and password are required" });
+      if (await CafeStaff.findOne({ username: cafeUsername.toLowerCase() })) return res.status(400).json({ message: "Café username already taken" });
+      cafeManager = await CafeStaff.create({ storeId: store._id, name: cafeName, username: cafeUsername.toLowerCase(), password: cafePassword, role: "manager" });
+    }
+
+    res.status(201).json({
+      message: "Store created",
+      store,
+      ...(adminUser   && { admin:       { id: adminUser._id,   username: adminUser.username } }),
+      ...(cafeManager && { cafeManager: { id: cafeManager._id, username: cafeManager.username } }),
+    });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
