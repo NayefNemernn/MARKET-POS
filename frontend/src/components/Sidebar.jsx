@@ -3,7 +3,6 @@ import {
   Users, BarChart3, ChevronLeft, ChevronRight,
   CreditCard, LogOut, Moon, Sun, Pencil, Check, X,
   Shield, Store, UserCircle2, Globe, Truck, Layers, Sparkles,
-  Coffee, Monitor, Calendar,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
@@ -51,7 +50,6 @@ export default function Sidebar({ user, page, setPage, store }) {
   );
 
   const isAdmin      = user?.role === "admin";
-  const cafeEnabled  = store?.cafeEnabled;
 
   return (
     <div className={`h-screen flex flex-col bg-white dark:bg-gray-900 border-r dark:border-gray-800 shadow-sm transition-all duration-300 ${collapsed ? "w-20" : "w-64"}`}>
@@ -114,15 +112,6 @@ export default function Sidebar({ user, page, setPage, store }) {
             <Item id="pendingpayments" label="Pending Payments" icon={Truck}  />
             <Item id="batches"         label="Batch Tracking"   icon={Layers}   />
             <Item id="aiinsights"      label="AI Insights"      icon={Sparkles} />
-          </>
-        )}
-        {cafeEnabled && (
-          <>
-            {!collapsed && <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest px-4 mt-2 mb-1">Café</p>}
-            <Item id="cafe"             label="Floor Map"     icon={Coffee}   />
-            <Item id="cafekitchen"      label="Kitchen"       icon={Monitor}  />
-            <Item id="cafereservations" label="Reservations"  icon={Calendar} />
-            {isAdmin && <Item id="cafesettings" label="Table Layout" icon={Store} />}
           </>
         )}
         <Item id="pos"        label="Point of Sale" icon={ShoppingCart} />

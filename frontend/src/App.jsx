@@ -26,13 +26,7 @@ import OnlineOrders              from "./pages/OnlineOrders";
 import PendingPayments           from "./pages/PendingPayments";
 import BatchManagement           from "./pages/BatchManagement";
 import AIInsights                from "./pages/AIInsights";
-import Cafe                      from "./pages/Cafe";
-import CafeKitchen               from "./pages/CafeKitchen";
-import CafeReservations          from "./pages/CafeReservations";
-import CafeSettings              from "./pages/CafeSettings";
-import CafeMenuPage              from "./pages/CafeMenuPage";
-
-const ADMIN_PAGES = ["dashboard", "users", "adminpanel", "storesettings", "stock", "expenses", "discounts", "suppliers", "onlineorders", "batches", "aiinsights", "cafe", "cafekitchen", "cafereservations", "cafesettings", "cafemenu"];
+const ADMIN_PAGES = ["dashboard", "users", "adminpanel", "storesettings", "stock", "expenses", "discounts", "suppliers", "onlineorders", "batches", "aiinsights"];
 
 function AppInner() {
   const { user, store, planExpired, daysUntilExpiry } = useAuth();
@@ -73,11 +67,6 @@ function AppInner() {
       case "pendingpayments":  return <PendingPayments />;
       case "batches":          return user.role === "admin" ? <BatchManagement />   : <POS setPage={setPage} user={user} />;
       case "aiinsights":       return user.role === "admin" ? <AIInsights />           : <POS setPage={setPage} user={user} />;
-      case "cafe":             return store?.cafeEnabled    ? <Cafe setPage={setPage} />              : <POS setPage={setPage} user={user} />;
-      case "cafekitchen":      return store?.cafeEnabled    ? <CafeKitchen setPage={setPage} />       : <POS setPage={setPage} user={user} />;
-      case "cafereservations": return store?.cafeEnabled    ? <CafeReservations setPage={setPage} />  : <POS setPage={setPage} user={user} />;
-      case "cafesettings":     return store?.cafeEnabled && user.role === "admin" ? <CafeSettings setPage={setPage} /> : <POS setPage={setPage} user={user} />;
-      case "cafemenu":         return store?.cafeEnabled && user.role === "admin" ? <CafeMenuPage setPage={setPage} /> : <POS setPage={setPage} user={user} />;
       default:              return <POS setPage={setPage} user={user} />;
     }
   };

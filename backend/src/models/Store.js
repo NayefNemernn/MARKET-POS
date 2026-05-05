@@ -55,7 +55,8 @@ const storeSchema = new mongoose.Schema(
     },
 
     // ── Café Module ───────────────────────────────────────────
-    cafeEnabled: { type: Boolean, default: false },
+    cafeEnabled:        { type: Boolean, default: false },
+    cafePointsPerItem:  { type: Number, default: 10 },
 
     // ── Status ────────────────────────────────────────────────
     active: { type: Boolean, default: true },

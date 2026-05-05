@@ -4,7 +4,6 @@ import {
   LayoutDashboard, ShoppingCart, Package, Tags, Users, BarChart3,
   Clock, Sun, Moon, LogOut, Pencil, Check, X, Shield, Store,
   UserCircle2, ClipboardList, TrendingDown, Tag, Truck, Globe, Layers, Sparkles,
-  Coffee, Monitor, Calendar, UtensilsCrossed,
 } from "lucide-react";
 import { useTheme }  from "../context/ThemeContext";
 import { useAuth }   from "../context/AuthContext";
@@ -33,11 +32,6 @@ const NAV_LABELS = {
   pendingpayments: "Pending Payments",
   batches:         "Batch Tracking",
   aiinsights:      "AI Insights",
-  cafe:            "Café Floor",
-  cafekitchen:     "Kitchen",
-  cafereservations:"Reservations",
-  cafemenu:        "Café Menu",
-  cafesettings:    "Table Layout",
 };
 
 const NAV_COLORS = {
@@ -61,11 +55,6 @@ const NAV_COLORS = {
   pendingpayments: { bg: "#ea580c", glow: "rgba(234,88,12,0.5)"    },
   batches:         { bg: "#059669", glow: "rgba(5,150,105,0.5)"    },
   aiinsights:      { bg: "#7c3aed", glow: "rgba(124,58,237,0.5)"  },
-  cafe:            { bg: "#92400e", glow: "rgba(146,64,14,0.5)"   },
-  cafekitchen:     { bg: "#374151", glow: "rgba(55,65,81,0.5)"    },
-  cafereservations:{ bg: "#0891b2", glow: "rgba(8,145,178,0.5)"   },
-  cafemenu:        { bg: "#c8793a", glow: "rgba(200,121,58,0.5)"  },
-  cafesettings:    { bg: "#6366f1", glow: "rgba(99,102,241,0.5)"  },
 };
 
 export default function DashboardLayout({ children, page, setPage, user }) {
@@ -75,7 +64,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
 
   const isAdmin      = user?.role === "admin";
   const isSuperAdmin = user?.role === "superadmin";
-  const cafeEnabled  = store?.cafeEnabled;
   const isPOS        = page === "pos";
 
   const [open,       setOpen]       = useState(false);
@@ -130,16 +118,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
         { key: "storesettings",   icon: Store,           adminOnly: true  },
       ].filter(item => !item.adminOnly || isAdmin);
 
-  const cafeMenu = (!isSuperAdmin && cafeEnabled)
-    ? [
-        { key: "cafe",             icon: Coffee   },
-        { key: "cafekitchen",      icon: Monitor  },
-        { key: "cafereservations", icon: Calendar },
-        ...(isAdmin ? [{ key: "cafemenu",     icon: UtensilsCrossed }] : []),
-        ...(isAdmin ? [{ key: "cafesettings", icon: Store }] : []),
-      ]
-    : [];
-
   const toggle  = useCallback(() => setOpen(v => !v), []);
   const close   = useCallback(() => { setOpen(false); setEditingName(false); }, []);
 
@@ -151,9 +129,8 @@ export default function DashboardLayout({ children, page, setPage, user }) {
         e.preventDefault(); toggle();
       }
       if (e.key === "Escape") close();
-      const allItems = [...menu, ...cafeMenu];
       const idx = parseInt(e.key) - 1;
-      if (!isNaN(idx) && idx >= 0 && idx < allItems.length && open) { setPage(allItems[idx].key); close(); }
+      if (!isNaN(idx) && idx >= 0 && idx < menu.length && open) { setPage(menu[idx].key); close(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -311,21 +288,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
                 ))}
               </div>
 
-              {/* Café section */}
-              {cafeMenu.length > 0 && (
-                <>
-                  <div className="px-4 py-1.5 border-t border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 flex items-center gap-1.5">
-                    <Coffee size={11} className="text-amber-600 dark:text-amber-400"/>
-                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest">Café</span>
-                  </div>
-                  <div className="px-3 pb-3 pt-1.5 grid grid-cols-2 gap-1.5">
-                    {cafeMenu.map((item, i) => (
-                      <NavItem key={item.key} item={item} index={menu.length + i} />
-                    ))}
-                  </div>
-                </>
-              )}
-
               {/* Utility row */}
               <div className="flex items-center justify-between gap-2 px-4 py-2.5
                 border-t border-gray-100 dark:border-white/8
@@ -375,7 +337,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
               {/* Keyboard hint */}
               <div className="px-4 py-2 border-t border-gray-50 dark:border-white/5">
                 <p className="text-[10px] text-gray-300 dark:text-gray-600 text-center">
-                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">S</kbd> or <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">`</kbd> toggle · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">1–{menu.length + cafeMenu.length}</kbd> jump · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">Esc</kbd> close
+                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">S</kbd> or <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">`</kbd> toggle · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">1–{menu.length}</kbd> jump · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">Esc</kbd> close
                 </p>
               </div>
             </motion.div>

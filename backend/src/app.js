@@ -27,6 +27,7 @@ import pointsOfferRoutes from "./routes/pointsOffer.routes.js";
 import batchRoutes       from "./routes/batch.routes.js";
 import aiInsightsRoutes  from "./routes/aiInsights.routes.js";
 import cafeRoutes        from "./routes/cafe.routes.js";
+import cafePublicRoutes  from "./routes/cafePublic.routes.js";
 
 dotenv.config();
 const app = express();
@@ -76,6 +77,19 @@ app.use("/api/points-offers", pointsOfferRoutes);
 app.use("/api/batches",       batchRoutes);
 app.use("/api/ai",            aiInsightsRoutes);
 app.use("/api/cafe",          cafeRoutes);
+app.use("/api/cafe/public/:slug", cafePublicRoutes);
+
+/* Public trivia endpoint (no auth) */
+app.get("/api/cafe/trivia/public/:slug", async (req, res) => {
+  try {
+    const Store            = (await import("./models/Store.js")).default;
+    const CafeTriviaQuestion = (await import("./models/CafeTriviaQuestion.js")).default;
+    const store = await Store.findOne({ slug: req.params.slug, active: true, cafeEnabled: true });
+    if (!store) return res.status(404).json({ message: "Café not found" });
+    const questions = await CafeTriviaQuestion.find({ storeId: store._id, isActive: true });
+    res.json({ questions });
+  } catch { res.status(500).json({ message: "Server error" }); }
+});
 
 app.get("/", (req, res) => res.send("Market POS API running ✅"));
 app.use(errorHandler);

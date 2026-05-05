@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
+    "@react-oauth/google": "^0.13.5",
     "axios": "^1.6.8",
     "browser-image-compression": "^2.0.2",
+    "canvas-confetti": "^1.9.4",
     "framer-motion": "^12.36.0",
     "jsbarcode": "^3.12.3",
     "lucide-react": "^0.575.0",
