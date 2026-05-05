@@ -26,6 +26,7 @@ import promoRoutes      from "./routes/promo.routes.js";
 import pointsOfferRoutes from "./routes/pointsOffer.routes.js";
 import batchRoutes       from "./routes/batch.routes.js";
 import aiInsightsRoutes  from "./routes/aiInsights.routes.js";
+import cafeRoutes        from "./routes/cafe.routes.js";
 
 dotenv.config();
 const app = express();
@@ -74,6 +75,7 @@ app.use("/api/promos",        promoRoutes);
 app.use("/api/points-offers", pointsOfferRoutes);
 app.use("/api/batches",       batchRoutes);
 app.use("/api/ai",            aiInsightsRoutes);
+app.use("/api/cafe",          cafeRoutes);
 
 app.get("/", (req, res) => res.send("Market POS API running ✅"));
 app.use(errorHandler);

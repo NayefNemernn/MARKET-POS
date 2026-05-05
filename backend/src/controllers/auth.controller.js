@@ -153,6 +153,8 @@ export const login = async (req, res) => {
             receiptFooter:  store.receiptFooter,
             plan:           store.plan,
             planExpiresAt:  store.planExpiresAt,
+            cafeEnabled:    store.cafeEnabled || false,
+            isOnlineStoreActive: store.isOnlineStoreActive || false,
           }
         : null,
     });

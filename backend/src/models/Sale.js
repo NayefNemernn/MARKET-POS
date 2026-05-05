@@ -24,7 +24,7 @@ const saleSchema = new mongoose.Schema(
     discountAmount: { type: Number, default: 0 }, // cart-level discount
 
     // ── Delivery / Online Order ───────────────────────────────
-    saleType:        { type: String, enum: ["in_store", "delivery"], default: "in_store" },
+    saleType:        { type: String, enum: ["in_store", "delivery", "cafe"], default: "in_store" },
     orderId:         { type: mongoose.Schema.Types.ObjectId, ref: "OnlineOrder", default: null },
     deliveryAddress: { type: String, default: "" },
 

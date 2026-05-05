@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
-  getAllStores, getPlatformStats, updateStorePlan, toggleStoreActive,
+  getAllStores, getPlatformStats, updateStorePlan, toggleStoreActive, toggleCafeEnabled,
   createStore, deleteStore, resetAdminPassword, impersonateStore,
   sendNotification, getStoreDetails, bulkAction, bulkNotify,
   transferOwner, cloneStore, exportStores, getPlatformAuditLog,
@@ -10,6 +10,7 @@ import {
   deleteStoreUser, forceLogoutStoreUser, forceLogoutStoreDevice,
   changeStoreUserPW, getStoreUserSales, clearStoreUserSales, clearStoreUserProducts,
   getSuperAdminProfile,
+  getCafeStaffList, createCafeStaffMember, updateCafeStaffMember, deleteCafeStaffMember,
 } from "../api/superadmin.api";
 import { useAuth } from "../context/AuthContext";
 import { useSuperAdminTranslation } from "../hooks/useSuperAdminTranslation";
@@ -96,6 +97,13 @@ export default function SuperAdminPanel() {
   const [userSales,        setUserSales]         = useState([]);
   const [expandedUser,     setExpandedUser]      = useState({});
 
+  // Café staff panel
+  const [cafeStaffStore,   setCafeStaffStore]    = useState(null);
+  const [cafeStaffList,    setCafeStaffList]      = useState([]);
+  const [cafeStaffLoading, setCafeStaffLoading]   = useState(false);
+  const [cafeStaffForm,    setCafeStaffForm]      = useState({ name: "", username: "", password: "", role: "staff" });
+  const [cafeStaffShowForm,setCafeStaffShowForm]  = useState(false);
+
   useEffect(() => { loadData(); }, []);
   // Reset to first tab when language switches so tab comparison stays valid
   useEffect(() => { setTab(t.tabStores); }, [lang]);
@@ -114,6 +122,7 @@ export default function SuperAdminPanel() {
 
   /* ── Store handlers ── */
   const handleToggle      = async (id) => { try { const r = await toggleStoreActive(id); toast.success(`Store ${r.active ? "activated" : "deactivated"}`); setStores(p => p.map(s => s._id === id ? { ...s, active: r.active } : s)); } catch { toast.error("Failed"); } };
+  const handleToggleCafe  = async (id) => { try { const r = await toggleCafeEnabled(id); toast.success(`Café ${r.cafeEnabled ? "enabled" : "disabled"}`); setStores(p => p.map(s => s._id === id ? { ...s, cafeEnabled: r.cafeEnabled } : s)); } catch { toast.error("Failed"); } };
   const openPlanEditor    = (store) => { setEditingPlan(store); const d = PLAN_LIMITS[store.plan] || PLAN_LIMITS.basic; const exp = store.planExpiresAt ? new Date(store.planExpiresAt).toISOString().split("T")[0] : ""; setPlanForm({ plan: store.plan, maxUsers: store.maxUsers || d.maxUsers, maxProducts: store.maxProducts || d.maxProducts, expiresAt: exp, monthlyPrice: store.monthlyPrice || "" }); };
   const handlePlanChange  = (e) => { const d = PLAN_LIMITS[e.target.value]; const exp = new Date(); exp.setDate(exp.getDate() + d.days); setPlanForm(f => ({ ...f, plan: e.target.value, maxUsers: d.maxUsers, maxProducts: d.maxProducts, expiresAt: exp.toISOString().split("T")[0] })); };
   const savePlan          = async () => { try { await updateStorePlan(editingPlan._id, planForm); toast.success("Plan updated"); setEditingPlan(null); loadData(); } catch { toast.error("Failed"); } };
@@ -164,6 +173,41 @@ export default function SuperAdminPanel() {
   const handleClearUserSales   = async (u) => { if (!confirm(`Delete ALL sales for "${u.username}"?`)) return; try { const r = await clearStoreUserSales(usersStoreTarget._id, u._id); toast.success(r.message); reloadStoreUsers(); } catch { toast.error("Failed"); } };
   const handleClearUserProducts = async (u) => { if (!confirm(`Delete ALL products for this store?`)) return; try { const r = await clearStoreUserProducts(usersStoreTarget._id, u._id); toast.success(r.message); reloadStoreUsers(); } catch { toast.error("Failed"); } };
   const handleUpdateMaxDevices  = async (u, newMax) => { if (newMax < 1 || newMax > 10) return; try { await updateStoreUser(usersStoreTarget._id, u._id, { maxDevices: newMax }); reloadStoreUsers(); } catch { toast.error("Failed"); } };
+
+  /* ── Café staff handlers ── */
+  const openCafeStaff = async (store) => {
+    setCafeStaffStore(store); setCafeStaffLoading(true); setCafeStaffList([]); setCafeStaffShowForm(false);
+    setCafeStaffForm({ name: "", username: "", password: "", role: "staff" });
+    try { setCafeStaffList(await getCafeStaffList(store._id)); } catch { toast.error("Failed to load café staff"); }
+    finally { setCafeStaffLoading(false); }
+  };
+  const handleCreateCafeStaff = async (e) => {
+    e.preventDefault();
+    if (!cafeStaffForm.name || !cafeStaffForm.username || !cafeStaffForm.password)
+      return toast.error("All fields required");
+    try {
+      const s = await createCafeStaffMember(cafeStaffStore._id, cafeStaffForm);
+      setCafeStaffList(p => [s, ...p]);
+      setCafeStaffForm({ name: "", username: "", password: "", role: "staff" });
+      setCafeStaffShowForm(false);
+      toast.success("Staff member created");
+    } catch (err) { toast.error(err.response?.data?.message || "Failed"); }
+  };
+  const handleToggleCafeStaff = async (s) => {
+    try {
+      const u = await updateCafeStaffMember(cafeStaffStore._id, s._id, { isActive: !s.isActive });
+      setCafeStaffList(p => p.map(x => x._id === s._id ? { ...x, isActive: u.isActive } : x));
+      toast.success(`${s.name} ${u.isActive ? "enabled" : "disabled"}`);
+    } catch { toast.error("Failed"); }
+  };
+  const handleDeleteCafeStaff = async (s) => {
+    if (!confirm(`Delete staff "${s.name}"?`)) return;
+    try {
+      await deleteCafeStaffMember(cafeStaffStore._id, s._id);
+      setCafeStaffList(p => p.filter(x => x._id !== s._id));
+      toast.success("Deleted");
+    } catch { toast.error("Failed"); }
+  };
 
   const toggleSelect = (id) => setSelected(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const selectAll    = () => setSelected(filtered.map(s => s._id));
@@ -289,6 +333,8 @@ export default function SuperAdminPanel() {
                             { l: t.btnNotes,                                   c: "amber",  f: () => { setNotesTarget(store); setNotesText(store.internalNotes || ""); } },
                             { l: t.btnTransfer,                                c: "orange", f: () => setTransferTarget(store) },
                             { l: t.btnClone,                                   c: "cyan",   f: () => setCloneTarget(store) },
+                            { l: store.cafeEnabled ? "☕ Café ON" : "☕ Café OFF", c: store.cafeEnabled ? "amber" : "gray", f: () => handleToggleCafe(store._id) },
+                            { l: "👨‍🍳 Café Staff",                               c: "amber",  f: () => openCafeStaff(store) },
                             { l: t.btnDelete,                                  c: "red",    f: () => setDeleteTarget(store) },
                           ].map(btn => (
                             <button key={btn.l} onClick={btn.f}
@@ -915,6 +961,109 @@ export default function SuperAdminPanel() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── CAFÉ STAFF MODAL ── */}
+      {cafeStaffStore && (
+        <Modal title={`☕ Café Staff — ${cafeStaffStore.name}`} onClose={() => setCafeStaffStore(null)} wide>
+          <div className="space-y-4">
+            {/* URL hint */}
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-3">
+              <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+                Staff access URL: <code className="bg-amber-100 dark:bg-amber-800 px-1.5 py-0.5 rounded font-mono">/cafe</code>
+                {" "}— share this URL along with their username &amp; password
+              </p>
+            </div>
+
+            {/* Add staff form toggle */}
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-gray-800 dark:text-white text-sm">
+                Staff Members ({cafeStaffList.length})
+              </h4>
+              <button onClick={() => setCafeStaffShowForm(!cafeStaffShowForm)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600">
+                {cafeStaffShowForm ? "✕ Cancel" : "+ Add Staff"}
+              </button>
+            </div>
+
+            {/* Create form */}
+            {cafeStaffShowForm && (
+              <form onSubmit={handleCreateCafeStaff} className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 space-y-3 border border-gray-200 dark:border-gray-600">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Full Name</label>
+                    <input value={cafeStaffForm.name} onChange={e => setCafeStaffForm(p => ({ ...p, name: e.target.value }))}
+                      placeholder="e.g. Ali Hassan"
+                      className="w-full px-3 py-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-white outline-none focus:border-amber-400"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Username</label>
+                    <input value={cafeStaffForm.username} onChange={e => setCafeStaffForm(p => ({ ...p, username: e.target.value }))}
+                      placeholder="e.g. ali.hassan"
+                      className="w-full px-3 py-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-white outline-none focus:border-amber-400"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Password</label>
+                    <input type="password" value={cafeStaffForm.password} onChange={e => setCafeStaffForm(p => ({ ...p, password: e.target.value }))}
+                      placeholder="Set password"
+                      className="w-full px-3 py-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-white outline-none focus:border-amber-400"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Role</label>
+                    <select value={cafeStaffForm.role} onChange={e => setCafeStaffForm(p => ({ ...p, role: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-white outline-none">
+                      <option value="staff">Staff (Floor + Kitchen)</option>
+                      <option value="manager">Manager (Full Access)</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold">
+                  Create Staff Member
+                </button>
+              </form>
+            )}
+
+            {/* Staff list */}
+            {cafeStaffLoading ? (
+              <div className="text-center py-6 text-gray-400">Loading…</div>
+            ) : cafeStaffList.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <div className="text-3xl mb-2">☕</div>
+                <p className="text-sm">No café staff yet. Add the first member above.</p>
+              </div>
+            ) : (
+              <div className="divide-y dark:divide-gray-700 rounded-xl border dark:border-gray-700 overflow-hidden">
+                {cafeStaffList.map(s => (
+                  <div key={s._id} className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${s.role === "manager" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30" : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}>
+                      {s.name[0]?.toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold dark:text-white">{s.name}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${s.role === "manager" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"}`}>
+                          {s.role}
+                        </span>
+                        {!s.isActive && <span className="text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-1.5 py-0.5 rounded font-medium">Disabled</span>}
+                      </div>
+                      <p className="text-xs text-gray-400 font-mono">@{s.username}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleToggleCafeStaff(s)}
+                        className={`px-2 py-1 rounded text-xs font-semibold ${s.isActive ? "bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400" : "bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400"}`}>
+                        {s.isActive ? "Disable" : "Enable"}
+                      </button>
+                      <button onClick={() => handleDeleteCafeStaff(s)}
+                        className="px-2 py-1 rounded text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
 
     </div>

@@ -2,7 +2,7 @@ import express from "express";
 import { protect, isSuperAdmin } from "../middleware/auth.middleware.js";
 import {
   getAllStores, getStoreDetails, createStore, deleteStore,
-  updateStorePlan, toggleStoreActive, resetAdminPassword,
+  updateStorePlan, toggleStoreActive, toggleCafeEnabled, resetAdminPassword,
   createCashier, impersonateStore, sendNotification,
   bulkNotify, bulkAction, transferOwner, cloneStore,
   exportStores, getPlatformAuditLog, updateStoreNotes,
@@ -12,6 +12,7 @@ import {
   deleteStoreUser, forceLogoutStoreUser, forceLogoutStoreDevice,
   changeStoreUserPassword, getStoreGlobalStats, getStoreUserSales,
   clearStoreUserSales, clearStoreUserProducts,
+  getCafeStaff, createCafeStaffByAdmin, updateCafeStaffByAdmin, deleteCafeStaffByAdmin,
 } from "../controllers/superadmin.controller.js";
 
 const router = express.Router();
@@ -38,6 +39,7 @@ router.get("/stores/:id",                    getStoreDetails);
 router.delete("/stores/:id",                 deleteStore);
 router.put("/stores/:id/plan",               updateStorePlan);
 router.put("/stores/:id/toggle",             toggleStoreActive);
+router.put("/stores/:id/toggle-cafe",        toggleCafeEnabled);
 router.put("/stores/:id/reset-password",     resetAdminPassword);
 router.post("/stores/:id/cashier",           createCashier);
 router.post("/stores/:id/impersonate",       impersonateStore);
@@ -50,6 +52,10 @@ router.post("/stores/:id/clone",             cloneStore);
 // Store users management (superadmin only)
 router.get("/stores/:id/users",                              getStoreUsers);
 router.get("/stores/:id/users/stats",                        getStoreGlobalStats);
+router.get("/stores/:id/cafe-staff",                         getCafeStaff);
+router.post("/stores/:id/cafe-staff",                        createCafeStaffByAdmin);
+router.patch("/stores/:id/cafe-staff/:staffId",              updateCafeStaffByAdmin);
+router.delete("/stores/:id/cafe-staff/:staffId",             deleteCafeStaffByAdmin);
 router.post("/stores/:id/users",                             createStoreUser);
 router.patch("/stores/:id/users/:userId",                    updateStoreUser);
 router.delete("/stores/:id/users/:userId",                   deleteStoreUser);

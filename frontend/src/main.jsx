@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
+import App     from "./App";
+import CafeApp from "./pages/CafeApp";
 import { ThemeProvider }    from "./context/ThemeContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
@@ -57,16 +58,24 @@ localStorage.setItem = function(key, value) {
   if (key === "token") saveToken(value).catch(() => {});
 };
 
+/* Detect café sub-app via URL path */
+const isCafePath = window.location.pathname === "/cafe" ||
+                   window.location.pathname.startsWith("/cafe/");
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <UIScaleProvider>
-      <ThemeProvider>
-        <LanguageProvider>
-          <CurrencyProvider>
-            <App />
-          </CurrencyProvider>
-        </LanguageProvider>
-      </ThemeProvider>
-    </UIScaleProvider>
+    {isCafePath ? (
+      <CafeApp />
+    ) : (
+      <UIScaleProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <CurrencyProvider>
+              <App />
+            </CurrencyProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </UIScaleProvider>
+    )}
   </React.StrictMode>
 );

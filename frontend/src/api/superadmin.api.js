@@ -16,6 +16,7 @@ export const getStoreDetails        = (id)         => api.get(`/superadmin/store
 export const deleteStore            = (id)         => api.delete(`/superadmin/stores/${id}`).then(r => r.data);
 export const updateStorePlan        = (id, data)   => api.put(`/superadmin/stores/${id}/plan`, data).then(r => r.data);
 export const toggleStoreActive      = (id)         => api.put(`/superadmin/stores/${id}/toggle`).then(r => r.data);
+export const toggleCafeEnabled      = (id)         => api.put(`/superadmin/stores/${id}/toggle-cafe`).then(r => r.data);
 export const resetAdminPassword     = (id, data)   => api.put(`/superadmin/stores/${id}/reset-password`, data).then(r => r.data);
 export const createCashier          = (id, data)   => api.post(`/superadmin/stores/${id}/cashier`, data).then(r => r.data);
 export const impersonateStore       = (id)         => api.post(`/superadmin/stores/${id}/impersonate`).then(r => r.data);
@@ -37,3 +38,7 @@ export const changeStoreUserPW      = (id, uid, d) => api.post(`/superadmin/stor
 export const getStoreUserSales      = (id, uid)    => api.get(`/superadmin/stores/${id}/users/${uid}/sales`).then(r => r.data);
 export const clearStoreUserSales    = (id, uid)    => api.delete(`/superadmin/stores/${id}/users/${uid}/clear-sales`).then(r => r.data);
 export const clearStoreUserProducts = (id, uid)    => api.delete(`/superadmin/stores/${id}/users/${uid}/clear-products`).then(r => r.data);
+export const getCafeStaffList      = (storeId)               => api.get(`/superadmin/stores/${storeId}/cafe-staff`).then(r => r.data);
+export const createCafeStaffMember = (storeId, data)          => api.post(`/superadmin/stores/${storeId}/cafe-staff`, data).then(r => r.data);
+export const updateCafeStaffMember = (storeId, staffId, data) => api.patch(`/superadmin/stores/${storeId}/cafe-staff/${staffId}`, data).then(r => r.data);
+export const deleteCafeStaffMember = (storeId, staffId)       => api.delete(`/superadmin/stores/${storeId}/cafe-staff/${staffId}`).then(r => r.data);

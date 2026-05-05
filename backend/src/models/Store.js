@@ -54,6 +54,9 @@ const storeSchema = new mongoose.Schema(
       default: [],
     },
 
+    // ── Café Module ───────────────────────────────────────────
+    cafeEnabled: { type: Boolean, default: false },
+
     // ── Status ────────────────────────────────────────────────
     active: { type: Boolean, default: true },
 

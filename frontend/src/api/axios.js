@@ -14,8 +14,10 @@ const api = axios.create({
 });
 
 // Attach JWT token to every protected request
+// Use café staff token when on /cafe path, otherwise use main POS token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const isCafe = window.location.pathname === "/cafe" || window.location.pathname.startsWith("/cafe/");
+  const token  = (isCafe && localStorage.getItem("cafe_token")) || localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

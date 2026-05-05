@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { logout as logoutApi } from "../api/auth.api";
+import { getMyStore } from "../api/store.api";
 import api from "../api/axios";
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser]   = useState(() => { try { return JSON.parse(localStorage.getItem("user"));  } catch { localStorage.removeItem("user");  return null; } });
@@ -52,6 +53,19 @@ export const AuthProvider = ({ children }) => {
   const daysUntilExpiry = store?.planExpiresAt
     ? Math.ceil((new Date(store.planExpiresAt) - new Date()) / (1000 * 60 * 60 * 24))
     : null;
+
+  /* ── Refresh store from server on mount (picks up superadmin changes) ── */
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token || !user || user.role === "superadmin") return;
+    getMyStore()
+      .then(freshStore => {
+        const merged = { ...store, ...freshStore, _id: freshStore._id || store?._id };
+        localStorage.setItem("store", JSON.stringify(merged));
+        setStore(merged);
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Global 401 interceptor ── */
   useEffect(() => {

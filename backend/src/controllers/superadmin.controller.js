@@ -1,10 +1,11 @@
-import Store    from "../models/Store.js";
-import User     from "../models/User.js";
-import Sale     from "../models/Sale.js";
-import Product  from "../models/Product.js";
-import AuditLog from "../models/AuditLog.js";
-import Category from "../models/Category.js";
-import jwt      from "jsonwebtoken";
+import Store     from "../models/Store.js";
+import User      from "../models/User.js";
+import Sale      from "../models/Sale.js";
+import Product   from "../models/Product.js";
+import AuditLog  from "../models/AuditLog.js";
+import Category  from "../models/Category.js";
+import CafeStaff from "../models/CafeStaff.js";
+import jwt       from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
 
 /* ─────────────────────────────────────────────
@@ -301,6 +302,19 @@ export const toggleStoreActive = async (req, res) => {
 };
 
 /* ─────────────────────────────────────────────
+   TOGGLE CAFE MODULE
+───────────────────────────────────────────── */
+export const toggleCafeEnabled = async (req, res) => {
+  try {
+    const store = await Store.findById(req.params.id);
+    if (!store) return res.status(404).json({ message: "Store not found" });
+    store.cafeEnabled = !store.cafeEnabled;
+    await store.save();
+    res.json({ cafeEnabled: store.cafeEnabled });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+/* ─────────────────────────────────────────────
    RESET ADMIN PASSWORD
 ───────────────────────────────────────────── */
 export const resetAdminPassword = async (req, res) => {
@@ -559,5 +573,56 @@ export const createSuperAdmin = async (req, res) => {
     if (!username || !password) return res.status(400).json({ message: "username and password required" });
     const superAdmin = await User.create({ username, password, role: "superadmin" });
     res.status(201).json({ message: "Super admin created", id: superAdmin._id });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+/* ─────────────────────────────────────────────
+   CAFÉ STAFF MANAGEMENT (superadmin only)
+───────────────────────────────────────────── */
+export const getCafeStaff = async (req, res) => {
+  try {
+    const staff = await CafeStaff.find({ storeId: req.params.id }).select("-password").sort({ createdAt: -1 });
+    res.json(staff);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+export const createCafeStaffByAdmin = async (req, res) => {
+  try {
+    const { name, username, password, role } = req.body;
+    if (!name || !username || !password)
+      return res.status(400).json({ message: "Name, username and password required" });
+
+    const exists = await CafeStaff.findOne({ username: username.trim().toLowerCase() });
+    if (exists) return res.status(409).json({ message: "Username already taken" });
+
+    const staff = await CafeStaff.create({
+      storeId: req.params.id,
+      name, username: username.trim().toLowerCase(),
+      password, role: role || "staff",
+    });
+    const { password: _, ...rest } = staff.toObject();
+    res.status(201).json(rest);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+export const updateCafeStaffByAdmin = async (req, res) => {
+  try {
+    const staff = await CafeStaff.findOne({ _id: req.params.staffId, storeId: req.params.id });
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+    const { name, role, isActive, password } = req.body;
+    if (name !== undefined)     staff.name     = name;
+    if (role !== undefined)     staff.role     = role;
+    if (isActive !== undefined) staff.isActive = isActive;
+    if (password)               staff.password = password;
+    await staff.save();
+    const { password: _, ...rest } = staff.toObject();
+    res.json(rest);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+export const deleteCafeStaffByAdmin = async (req, res) => {
+  try {
+    await CafeStaff.findOneAndDelete({ _id: req.params.staffId, storeId: req.params.id });
+    res.json({ message: "Deleted" });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };

@@ -18,6 +18,7 @@ const auditLogSchema = new mongoose.Schema(
         "discount_applied",
         "paylater_payment",
         "order_accepted", "order_rejected", "order_payment_confirmed", "order_cancelled",
+        "cafe_checkout",
       ],
       required: true,
     },
