@@ -18,7 +18,7 @@ export default function ProductCard({ product, onDelete, onEdit, onBatches, sele
       whileTap={{ scale: 0.98 }}
       onClick={() => onEdit(product)}
       className="
-        relative p-4 space-y-3 cursor-pointer h-full
+        relative p-3 space-y-2 cursor-pointer h-full overflow-hidden
         rounded-3xl
         bg-gray-100 dark:bg-[#141414]
         shadow-[10px_10px_25px_#d1d5db,-10px_-10px_25px_#ffffff]
@@ -69,9 +69,10 @@ export default function ProductCard({ product, onDelete, onEdit, onBatches, sele
       </p>
 
       {/* FOOTER */}
-      <div className="flex items-center justify-between">
+      <div className="space-y-2">
+        {/* Stock badge — full width */}
         <span className={`
-          text-xs px-3 py-1 rounded-full font-medium
+          block w-full text-center text-xs px-2 py-1 rounded-xl font-semibold
           ${lowStock
             ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
             : "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400"
@@ -80,21 +81,27 @@ export default function ProductCard({ product, onDelete, onEdit, onBatches, sele
           {t.stockLabel}: {product.stock}
         </span>
 
-        <div className="flex items-center gap-2">
+        {/* Action buttons — stacked row inside card */}
+        <div
+          className="flex gap-1.5"
+          onClick={e => e.stopPropagation()}
+        >
           {onBatches && (
             <button
               onClick={e => { e.stopPropagation(); onBatches(product); }}
               title="View batches"
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg
+              className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-xl font-medium
                 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400
                 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition"
             >
-              <Layers size={11}/> Batches
+              <Layers size={10}/> Batches
             </button>
           )}
           <button
             onClick={e => { e.stopPropagation(); onDelete(product._id); }}
-            className="text-sm text-red-500 hover:text-red-700"
+            className="flex-1 text-xs py-1.5 rounded-xl font-medium
+              bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400
+              hover:bg-red-100 dark:hover:bg-red-900/30 transition"
           >
             {t.delete}
           </button>
