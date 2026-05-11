@@ -38,6 +38,7 @@ export const useCart = () => {
           stock:     product.stock,
           image:     product.image || "",
           quantity:  1,
+          vatExempt: product.vatExempt || false,
         }
       ];
     });

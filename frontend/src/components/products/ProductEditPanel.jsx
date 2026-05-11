@@ -172,6 +172,7 @@ export default function ProductEditPanel({
       data.append("barcode", editingProduct.barcode);
       data.append("hasVariants",        String(!!editingProduct.hasVariants));
       data.append("isAvailableOnline",  String(!!editingProduct.isAvailableOnline));
+      data.append("vatExempt",          String(!!editingProduct.vatExempt));
       if (editingProduct.variants?.length) {
         data.append("variants", JSON.stringify(
           editingProduct.variants.map(v => ({
@@ -571,8 +572,28 @@ export default function ProductEditPanel({
 
             </div>
 
-            {/* Online Store toggle */}
-            <div className="px-5 pb-4">
+            {/* VAT Exempt + Online Store toggles */}
+            <div className="px-5 pb-4 space-y-2">
+              {/* VAT Exempt toggle */}
+              <button
+                onClick={() => setEditingProduct({ ...editingProduct, vatExempt: !editingProduct.vatExempt })}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition
+                  ${editingProduct.vatExempt
+                    ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
+                    : "border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:border-amber-300"
+                  }`}
+              >
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <span className="text-base">🧾</span>
+                  VAT Exempt
+                  <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">(e.g. basic food, medicine)</span>
+                </div>
+                <div className={`w-10 h-5 rounded-full transition-all relative ${editingProduct.vatExempt ? "bg-amber-500" : "bg-gray-300 dark:bg-gray-600"}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${editingProduct.vatExempt ? "left-5" : "left-0.5"}`}/>
+                </div>
+              </button>
+
+              {/* Online Store toggle */}
               <button
                 onClick={() => setEditingProduct({ ...editingProduct, isAvailableOnline: !editingProduct.isAvailableOnline })}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition

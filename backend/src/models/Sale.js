@@ -7,21 +7,23 @@ const saleSchema = new mongoose.Schema(
 
     items: [
       {
-        productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
-        name:      String,
-        price:     Number,
-        cost:      { type: Number, default: 0 },
-        quantity:  { type: Number, required: true },
-        subtotal:  Number,
+        productId:  { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
+        name:       String,
+        price:      Number,
+        cost:       { type: Number, default: 0 },
+        quantity:   { type: Number, required: true },
+        subtotal:   Number,
+        vatExempt:  { type: Boolean, default: false },
         // per-item discount
         discountAmount: { type: Number, default: 0 },
       },
     ],
 
-    total:          { type: Number, required: true },
-    subtotal:       { type: Number, default: 0 },
-    taxAmount:      { type: Number, default: 0 },
-    discountAmount: { type: Number, default: 0 }, // cart-level discount
+    total:           { type: Number, required: true },
+    subtotal:        { type: Number, default: 0 },
+    vatableAmount:   { type: Number, default: 0 }, // subtotal of VAT-applicable items
+    taxAmount:       { type: Number, default: 0 },
+    discountAmount:  { type: Number, default: 0 }, // cart-level discount
 
     // ── Delivery / Online Order ───────────────────────────────
     saleType:        { type: String, enum: ["in_store", "delivery", "cafe"], default: "in_store" },

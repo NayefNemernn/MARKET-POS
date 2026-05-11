@@ -37,6 +37,7 @@ export const createSale = async (req, res) => {
       return res.status(400).json({ message: "Split payment requires at least 2 methods" });
 
     let subtotal = 0;
+    let vatableAmount = 0;
     const saleItems = [];
 
     for (const item of items) {
@@ -46,7 +47,8 @@ export const createSale = async (req, res) => {
 
       const itemSubtotal = +(product.price * item.quantity).toFixed(2);
       subtotal += itemSubtotal;
-      saleItems.push({ productId: product._id, name: product.name, price: product.price, cost: product.cost || 0, quantity: item.quantity, subtotal: itemSubtotal, discountAmount: item.discountAmount || 0 });
+      if (!product.vatExempt) vatableAmount += itemSubtotal;
+      saleItems.push({ productId: product._id, name: product.name, price: product.price, cost: product.cost || 0, quantity: item.quantity, subtotal: itemSubtotal, vatExempt: !!product.vatExempt, discountAmount: item.discountAmount || 0 });
 
       const stockBefore = product.stock;
 
@@ -69,7 +71,7 @@ export const createSale = async (req, res) => {
       await logStock(req, { ...product.toObject(), stock: stockBefore }, -item.quantity, "sale");
     }
 
-    const taxAmount = +(subtotal * (taxRate / 100)).toFixed(2);
+    const taxAmount = +(vatableAmount * (taxRate / 100)).toFixed(2);
     const discount  = +Math.min(discountAmount, subtotal).toFixed(2);
     const total     = +(subtotal + taxAmount - discount).toFixed(2);
 
@@ -82,7 +84,7 @@ export const createSale = async (req, res) => {
     const saleStatus = isDelivery ? "pending_payment" : "completed";
 
     const sale = await Sale.create({
-      storeId, userId: req.user._id, items: saleItems, subtotal, total, taxAmount,
+      storeId, userId: req.user._id, items: saleItems, subtotal, vatableAmount: +vatableAmount.toFixed(2), total, taxAmount,
       discountAmount: discount, paymentMethod,
       splitPayments: paymentMethod === "split" ? splitPayments : [],
       paid: isPaid, customerName: customerName || "", customerId: customerId || null,

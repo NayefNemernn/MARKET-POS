@@ -27,6 +27,9 @@ const productSchema = new mongoose.Schema(
     hasVariants: { type: Boolean, default: false },
     variants:    { type: [variantSchema], default: [] },
 
+    // ── VAT ───────────────────────────────────────────────────
+    vatExempt: { type: Boolean, default: false }, // true = no VAT applied (e.g. basic food, medicine)
+
     // ── Online Store ──────────────────────────────────────────
     isAvailableOnline: { type: Boolean, default: true },
 

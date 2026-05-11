@@ -285,6 +285,7 @@ export const checkoutOrder = async (req, res) => {
     // Build sale items — deduct stock only for productId items
     const saleItems = [];
     let subtotal = 0;
+    let vatableAmount = 0;
 
     for (const item of activeItems) {
       const itemSub = +(item.price * item.quantity).toFixed(2);
@@ -301,20 +302,25 @@ export const checkoutOrder = async (req, res) => {
           await product.save();
           const tableLabel = order.tableNumber ? `Table ${order.tableNumber}` : (order.label || "Walk-in");
           await StockLog.create({ storeId, productId: product._id, userId: actor, productName: product.name, type: "sale", quantityBefore: before, change: -item.quantity, quantityAfter: product.stock, reason: `Café ${tableLabel}` });
-          saleItems.push({ productId: product._id, name: item.name, price: item.price, cost: product.cost || 0, quantity: item.quantity, subtotal: itemSub });
+          if (!product.vatExempt) vatableAmount += itemSub;
+          saleItems.push({ productId: product._id, name: item.name, price: item.price, cost: product.cost || 0, quantity: item.quantity, subtotal: itemSub, vatExempt: !!product.vatExempt });
         } else {
-          saleItems.push({ productId: item.productId, name: item.name, price: item.price, cost: 0, quantity: item.quantity, subtotal: itemSub });
+          vatableAmount += itemSub;
+          saleItems.push({ productId: item.productId, name: item.name, price: item.price, cost: 0, quantity: item.quantity, subtotal: itemSub, vatExempt: false });
         }
       } else {
-        // Café menu item → no stock deduction
-        saleItems.push({ name: item.name, price: item.price, cost: 0, quantity: item.quantity, subtotal: itemSub });
+        // Café menu item → no stock deduction, taxable by default
+        vatableAmount += itemSub;
+        saleItems.push({ name: item.name, price: item.price, cost: 0, quantity: item.quantity, subtotal: itemSub, vatExempt: false });
       }
     }
 
     const scAmt    = +(subtotal * (order.serviceCharge || 0) / 100).toFixed(2);
     const discAmt  = +(subtotal * (order.discount      || 0) / 100).toFixed(2);
+    // Apply service charge + discount proportionally to vatable amount
+    const vatableBase = +(vatableAmount + vatableAmount / subtotal * (scAmt - discAmt)).toFixed(2);
+    const taxAmt   = +(vatableBase * taxRate / 100).toFixed(2);
     const taxBase  = +(subtotal + scAmt - discAmt).toFixed(2);
-    const taxAmt   = +(taxBase * taxRate / 100).toFixed(2);
     const total    = +(taxBase + taxAmt).toFixed(2);
 
     const orderLabel = order.tableNumber ? `Table ${order.tableNumber}` : (order.label || "Walk-in");
@@ -329,6 +335,7 @@ export const checkoutOrder = async (req, res) => {
       items:          saleItems,
       total,
       subtotal,
+      vatableAmount:  +vatableAmount.toFixed(2),
       taxAmount:      taxAmt,
       discountAmount: discAmt,
       saleType:       "cafe",

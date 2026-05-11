@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 /* ── thermal receipt printer ─────────────────────────────── */
-function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change, storeName }) {
+function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change, storeName, taxRate, taxNumber }) {
   const win = window.open("", "_blank", "width=360,height=700");
   if (!win) { window.print(); return; }
 
@@ -50,6 +50,18 @@ function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change,
       <td style="text-align:right">−$${sale.discountAmount.toFixed(2)}</td>
     </tr>` : "";
 
+  const subtotalBeforeVat = sale.subtotal ?? sale.items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const vatAmt = sale.taxAmount ?? 0;
+  const vatRow = (taxRate > 0 && vatAmt > 0) ? `
+    <tr class="vat-row">
+      <td>Subtotal</td><td></td>
+      <td style="text-align:right">$${(+subtotalBeforeVat).toFixed(2)}</td>
+    </tr>
+    <tr class="vat-row">
+      <td>VAT (${taxRate}%)</td><td></td>
+      <td style="text-align:right">$${vatAmt.toFixed(2)}</td>
+    </tr>` : "";
+
   const changeRow = change > 0 ? `
     <tr class="change-row">
       <td>Change</td><td></td>
@@ -74,6 +86,7 @@ function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change,
   .item-name{font-size:13px;font-weight:900}
   .sub-row td{font-size:11px;color:#444;font-weight:700;padding-bottom:5px}
   .disc-row td{color:#7c2d12;font-size:13px;font-weight:900;padding-top:3px}
+  .vat-row td{font-size:12px;font-weight:700;color:#555;padding-top:2px}
   .total-row td{font-weight:900;font-size:17px;padding-top:8px;border-top:2px solid #000}
   .lbp-row td{font-size:11px;font-weight:700;color:#7c2d12;padding-bottom:6px}
   .change-row td{color:#14532d;font-weight:900;font-size:14px;padding-top:4px}
@@ -86,6 +99,7 @@ function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change,
   <div class="store">
     <h1>${storeName.toUpperCase()}</h1>
     <p>${now.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})} &nbsp;·&nbsp; ${now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</p>
+    ${taxNumber ? `<p style="font-size:11px">VAT No: ${taxNumber}</p>` : ""}
     ${sale.customerName ? `<p>Customer: ${sale.customerName}</p>` : ""}
   </div>
   <hr/>
@@ -96,6 +110,7 @@ function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change,
   <hr/>
   <table><tbody>
     ${discountRow}
+    ${vatRow}
     <tr class="total-row"><td>TOTAL</td><td></td><td style="text-align:right">$${sale.total.toFixed(2)}</td></tr>
     <tr class="lbp-row"><td colspan="3">${parseInt(toLBP(sale.total)).toLocaleString()} ل.ل &nbsp;·&nbsp; @ ${parseInt(exchangeRate).toLocaleString()} ل.ل/$1</td></tr>
     ${changeRow}
@@ -119,7 +134,7 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
   const { t }           = useTranslation();
   const { saveOffline } = useOfflineSales();
   const { toLBP, formatLBP, formatUSD, exchangeRate } = useCurrency();
-  const { storeName }   = useAuth();
+  const { storeName, taxRate, store }   = useAuth();
 
   // Delivery mode: pre-fill
   const isDelivery = !!deliveryOrder;
@@ -161,7 +176,11 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
     return +Math.min(v, total).toFixed(2);
   })();
 
-  const finalTotal = +(total - discountAmount).toFixed(2);
+  /* ── VAT calculation (only on non-exempt items) ── */
+  const vatableSubtotal = cart.reduce((sum, i) => i.vatExempt ? sum : sum + i.price * i.quantity, 0);
+  const vatAmount = taxRate > 0 ? +(vatableSubtotal * (taxRate / 100)).toFixed(2) : 0;
+
+  const finalTotal = +(total + vatAmount - discountAmount).toFixed(2);
 
   /* ── change calc ── */
   useEffect(() => {
@@ -236,6 +255,7 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
         setReceipt({
           _id: "offline-" + Date.now(),
           items: cart.map(i => ({ name: i.name, price: i.price, quantity: i.quantity })),
+          subtotal: total, taxAmount: vatAmount,
           total: finalTotal, discountAmount, paymentMethod: "paylater",
           customerName: offlinePayload.customerName,
           createdAt: new Date().toISOString(), offline: true,
@@ -297,6 +317,7 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
         saleResult = {
           _id: "offline-" + Date.now(),
           items: cart.map(i => ({ name: i.name, price: i.price, quantity: i.quantity })),
+          subtotal: total, taxAmount: vatAmount,
           total: finalTotal, discountAmount, paymentMethod: method,
           splitPayments: payload.splitPayments || [],
           customerName: payload.customerName,
@@ -345,6 +366,18 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
                   <span>−{formatUSD(receipt.discountAmount)}</span>
                 </div>
               )}
+              {taxRate > 0 && (receipt.taxAmount ?? 0) > 0 && (
+                <>
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>Subtotal (excl. VAT)</span>
+                    <span>{formatUSD(receipt.subtotal ?? receipt.total - (receipt.taxAmount ?? 0))}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>VAT ({taxRate}%)</span>
+                    <span>+{formatUSD(receipt.taxAmount)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between font-bold text-base">
                 <span>Total</span>
                 <div className="text-right">
@@ -377,7 +410,7 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
 
           <div className="px-6 pb-6 flex gap-3">
             <button
-              onClick={() => printReceipt(receipt, { toLBP, formatLBP, formatUSD, exchangeRate, change, storeName })}
+              onClick={() => printReceipt(receipt, { toLBP, formatLBP, formatUSD, exchangeRate, change, storeName, taxRate, taxNumber: store?.taxNumber || "" })}
               className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold transition"
             >
               <Printer size={16}/> Print
@@ -441,15 +474,20 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
             <p className="text-blue-200 text-xs mb-1">Total Amount</p>
             <div className="flex items-end gap-3">
               <p className="text-3xl font-black">{formatUSD(finalTotal)}</p>
-              {discountAmount > 0 && (
+              {(discountAmount > 0 || vatAmount > 0) && (
                 <p className="text-blue-300 text-sm line-through mb-1">{formatUSD(total)}</p>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="bg-white/20 rounded-full px-2.5 py-0.5 text-xs">{formatLBP(toLBP(finalTotal))}</span>
               {discountAmount > 0 && (
                 <span className="bg-amber-400/30 text-amber-200 rounded-full px-2.5 py-0.5 text-xs font-semibold">
                   −{formatUSD(discountAmount)} off
+                </span>
+              )}
+              {vatAmount > 0 && (
+                <span className="bg-white/20 text-blue-100 rounded-full px-2.5 py-0.5 text-xs">
+                  VAT {taxRate}%: +{formatUSD(vatAmount)}
                 </span>
               )}
             </div>
