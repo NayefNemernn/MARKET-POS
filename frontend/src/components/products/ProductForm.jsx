@@ -24,17 +24,28 @@ export default function ProductForm({
   // The raw value typed into the price field
   const [priceInput, setPriceInput] = useState(form.price || "");
 
-  // Sync price display when form.price is set externally (e.g. AI fill)
+  // Sync price display when form.price is set externally (e.g. AI fill or form reset).
+  // We track whether the last form.price change came from the user typing so we
+  // never accidentally reset priceCurrency back to "usd" mid-typing.
   const prevFormPrice = useRef(form.price);
+  const skipEffect = useRef(false);
+
   useEffect(() => {
-    if (form.price !== prevFormPrice.current && form.price !== "") {
-      setPriceInput(String(form.price));
-      setPriceCurrency("usd");
+    if (skipEffect.current) {
+      // This change was caused by handlePriceChange — just advance the tracker.
+      skipEffect.current = false;
       prevFormPrice.current = form.price;
+      return;
     }
-    if (form.price === "" && prevFormPrice.current !== "") {
-      setPriceInput("");
-      prevFormPrice.current = "";
+    // External change (AI fill, form reset, etc.) — sync the visible input.
+    if (form.price !== prevFormPrice.current) {
+      if (form.price !== "") {
+        setPriceInput(String(form.price));
+        setPriceCurrency("usd"); // AI always sends USD
+      } else {
+        setPriceInput("");
+      }
+      prevFormPrice.current = form.price;
     }
   }, [form.price]);
 
@@ -42,6 +53,7 @@ export default function ProductForm({
   const handlePriceChange = (raw) => {
     setPriceInput(raw);
     const num = parseFloat(raw);
+    skipEffect.current = true; // tell the effect this change came from typing
     if (isNaN(num) || raw === "") {
       setForm({ ...form, price: "" });
       return;
