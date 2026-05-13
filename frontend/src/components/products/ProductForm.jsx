@@ -3,31 +3,30 @@ import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 import { useCurrency } from "../../context/CurrencyContext";
 import VoiceButton from "../common/VoiceButton";
 
-// ── Brand logo auto-detect via Clearbit ──────────────────────────────────────
-const checkImage = (url) =>
-  new Promise((resolve) => {
-    const img = new Image();
-    img.onload  = () => resolve(true);
-    img.onerror = () => resolve(false);
-    img.src = url;
-  });
-
+// ── Brand logo auto-detect ────────────────────────────────────────────────────
 async function findBrandLogo(name) {
-  const words = name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 1);
-  if (!words.length) return null;
-  const tries = [
-    words[0],
-    words.length > 1 ? words.slice(0, 2).join("")  : null,
-    words.length > 1 ? words.slice(0, 2).join("-") : null,
-  ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
-  for (const t of tries) {
-    const url = `https://logo.clearbit.com/${t}.com?size=128`;
-    if (await checkImage(url)) return url;
+  const query = name.trim().split(/\s+/).slice(0, 3).join(" ");
+  if (query.length < 2) return null;
+
+  // Use Clearbit autocomplete to find the real company + logo URL
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(
+      `https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(query)}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(tid);
+    if (res.ok) {
+      const companies = await res.json();
+      if (Array.isArray(companies) && companies.length > 0 && companies[0].logo) {
+        return companies[0].logo; // trust the response — don't re-check the URL
+      }
+    }
+  } catch {
+    clearTimeout(tid);
   }
+
   return null;
 }
 
