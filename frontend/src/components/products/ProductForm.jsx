@@ -3,6 +3,34 @@ import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 import { useCurrency } from "../../context/CurrencyContext";
 import VoiceButton from "../common/VoiceButton";
 
+// ── Brand logo auto-detect via Clearbit ──────────────────────────────────────
+const checkImage = (url) =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.onload  = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+
+async function findBrandLogo(name) {
+  const words = name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 1);
+  if (!words.length) return null;
+  const tries = [
+    words[0],
+    words.length > 1 ? words.slice(0, 2).join("")  : null,
+    words.length > 1 ? words.slice(0, 2).join("-") : null,
+  ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+  for (const t of tries) {
+    const url = `https://logo.clearbit.com/${t}.com?size=128`;
+    if (await checkImage(url)) return url;
+  }
+  return null;
+}
+
 export default function ProductForm({
   form,
   setForm,
@@ -29,6 +57,41 @@ export default function ProductForm({
   // never accidentally reset priceCurrency back to "usd" mid-typing.
   const prevFormPrice = useRef(form.price);
   const skipEffect = useRef(false);
+
+  // ── Brand logo auto-detect ───────────────────────────────────────────────
+  const [logoSearching, setLogoSearching] = useState(false);
+  const logoTimerRef = useRef(null);
+  const previewRef   = useRef(preview);
+  useEffect(() => { previewRef.current = preview; }, [preview]);
+
+  useEffect(() => {
+    const name = form.name?.trim() || "";
+    clearTimeout(logoTimerRef.current);
+    if (name.length < 3) return;
+    logoTimerRef.current = setTimeout(async () => {
+      if (previewRef.current) return; // don't override an existing image
+      setLogoSearching(true);
+      try {
+        const url = await findBrandLogo(name);
+        if (!url || previewRef.current) return;
+        try {
+          const res = await fetch(url, { mode: "cors" });
+          if (res.ok) {
+            const blob = await res.blob();
+            setImage(new File([blob], "brand-logo.png", { type: "image/png" }));
+            setPreview(URL.createObjectURL(blob));
+          } else {
+            setPreview(url);
+          }
+        } catch {
+          setPreview(url); // preview-only fallback if CORS blocks the blob fetch
+        }
+      } finally {
+        setLogoSearching(false);
+      }
+    }, 800);
+    return () => clearTimeout(logoTimerRef.current);
+  }, [form.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (skipEffect.current) {
@@ -297,6 +360,14 @@ export default function ProductForm({
         </div>
 
       </div>
+
+      {/* Logo search indicator */}
+      {logoSearching && (
+        <div className="flex items-center gap-2 -mt-2">
+          <span className="w-3.5 h-3.5 rounded-full border-2 border-gray-300 dark:border-gray-600 border-t-blue-400 animate-spin"/>
+          <span className="text-xs text-gray-400 dark:text-gray-500">Looking for brand logo…</span>
+        </div>
+      )}
 
       {/* CATEGORY DATALIST */}
       <datalist id="categories">
