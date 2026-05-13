@@ -59,8 +59,8 @@ export default function ProductForm({
       return;
     }
     if (priceCurrency === "lbp") {
-      // Convert LBP → USD for storage
-      setForm({ ...form, price: (num / exchangeRate).toFixed(4) });
+      // User types in thousands (30 → 30,000 LBP) → convert to USD for storage
+      setForm({ ...form, price: ((num * 1000) / exchangeRate).toFixed(4) });
     } else {
       setForm({ ...form, price: raw });
     }
@@ -72,11 +72,11 @@ export default function ProductForm({
     const current = parseFloat(priceInput);
     if (!isNaN(current) && current > 0) {
       if (to === "lbp") {
-        // currently USD → show LBP
-        setPriceInput(Math.round(current * exchangeRate).toString());
+        // USD → LBP thousands shorthand (divide actual LBP by 1000)
+        setPriceInput(Math.round((current * exchangeRate) / 1000).toString());
       } else {
-        // currently LBP → show USD
-        setPriceInput((current / exchangeRate).toFixed(2));
+        // LBP thousands shorthand → USD (multiply by 1000 first)
+        setPriceInput(((current * 1000) / exchangeRate).toFixed(2));
       }
     }
     setPriceCurrency(to);
@@ -89,7 +89,8 @@ export default function ProductForm({
     if (priceCurrency === "usd") {
       return `≈ ${formatLBP(toLBP(num))}`;
     } else {
-      return `≈ ${formatUSD(num / exchangeRate)}`;
+      const fullLBP = num * 1000;
+      return `${formatLBP(fullLBP)}  ≈  ${formatUSD(fullLBP / exchangeRate)}`;
     }
   };
 
@@ -227,8 +228,13 @@ export default function ProductForm({
                 placeholder={priceCurrency === "usd" ? "0.00" : "0"}
                 value={priceInput}
                 onChange={(e) => handlePriceChange(e.target.value)}
-                className={inputClass + " pl-7"}
+                className={inputClass + (priceCurrency === "lbp" ? " pl-7 pr-12" : " pl-7")}
               />
+              {priceCurrency === "lbp" && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 font-bold text-xs pointer-events-none select-none">
+                  ,000
+                </span>
+              )}
             </div>
             <VoiceButton
               onResult={(text) => {
