@@ -144,20 +144,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
   }, [open, close]);
 
   const activeColor = NAV_COLORS[page] || NAV_COLORS.pos;
-  const welcomeMsg  = store?.welcomeMessage;
-
-  // Auto-dismiss welcome banner after 2 minutes with a 1-second fade-out
-  const [welcomeVisible,  setWelcomeVisible]  = useState(true);
-  const [welcomeRendered, setWelcomeRendered] = useState(true);
-  useEffect(() => {
-    if (!welcomeMsg) return;
-    setWelcomeVisible(true);
-    setWelcomeRendered(true);
-    const SHOW_MS = 2 * 60 * 1000;
-    const fadeId   = setTimeout(() => setWelcomeVisible(false),  SHOW_MS);
-    const removeId = setTimeout(() => setWelcomeRendered(false), SHOW_MS + 1000);
-    return () => { clearTimeout(fadeId); clearTimeout(removeId); };
-  }, [welcomeMsg]);
 
   const NavItem = ({ item, index }) => {
     const Icon   = item.icon;
@@ -223,15 +209,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-neutral-950 text-gray-900 dark:text-white overflow-hidden">
 
-      {welcomeMsg && welcomeRendered && (
-        <div className={`fixed top-0 left-0 right-0 z-[200]
-          bg-gradient-to-r from-blue-600 to-indigo-600
-          text-white text-center text-xs py-1.5 px-4
-          transition-opacity duration-1000
-          ${welcomeVisible ? "opacity-100" : "opacity-0"}`}>
-          💬 {welcomeMsg}
-        </div>
-      )}
 
       {/* ── FLOATING NAV ── */}
       <div ref={navRef} className="fixed bottom-5 left-5 z-50">
@@ -406,7 +383,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
       </div>
 
       {/* ── MAIN CONTENT ── */}
-      <main className={`flex-1 overflow-hidden ${!isPOS ? "overflow-y-auto p-6 pb-10" : ""} ${(welcomeMsg || !isOnline) ? "pt-9" : ""}`}>
+      <main className={`flex-1 overflow-hidden ${!isPOS ? "overflow-y-auto p-6 pb-10" : ""} ${!isOnline ? "pt-9" : ""}`}>
         {children}
       </main>
     </div>
