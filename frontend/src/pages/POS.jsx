@@ -224,16 +224,43 @@ export default function POS({ setPage }) {
 
       <BarcodeScanner barcodeMap={barcodeMap} onScan={addProductSafe} />
 
-      {/* ── Top bar ── */}
-      <div className="px-4 pt-2 pb-1 shrink-0 flex items-center gap-2">
-        <div className="flex-1"><ExchangeRateBar /></div>
+      {/* ── Branded Header ── */}
+      <div className="shrink-0 flex items-center gap-3 px-4 py-2
+        bg-[#0f172a] dark:bg-[#080d18]
+        border-b border-white/5">
+
+        {/* BCS Logo mark */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0
+            bg-gradient-to-br from-blue-500 to-indigo-600
+            shadow-[0_0_12px_rgba(99,102,241,0.5)]">
+            <span className="text-white font-black text-[9px] tracking-tight">BCS</span>
+          </div>
+          <div className="flex flex-col leading-none">
+            <span className="text-white text-[11px] font-bold tracking-wide whitespace-nowrap">
+              Business Control System
+            </span>
+            <span className="text-white/35 text-[9px] font-medium tracking-[0.2em] uppercase mt-0.5">
+              From Nexora
+            </span>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="w-px h-5 bg-white/10 mx-1 shrink-0"/>
+
+        {/* Exchange rate (compact, right-aligned) */}
+        <div className="flex-1 flex justify-end">
+          <ExchangeRateBar compact />
+        </div>
+
+        {/* Return button */}
         <button
           onClick={() => setOpenReturn(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold
-            bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400
-            hover:bg-blue-100 dark:hover:bg-blue-900/30 transition shrink-0
-            border border-blue-200 dark:border-blue-500/30">
-          <RotateCcw size={12}/> {t.returnBtn || "Return"}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+            bg-white/10 hover:bg-white/20 text-white/80 hover:text-white
+            transition shrink-0">
+          <RotateCcw size={11}/> {t.returnBtn || "Return"}
         </button>
       </div>
 
