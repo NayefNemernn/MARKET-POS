@@ -103,9 +103,9 @@ export default function Products() {
   const [importFile,   setImportFile]   = useState(null);
   const [importing,    setImporting]    = useState(false);
   const [importResult, setImportResult] = useState(null);
-  const importInputRef = useRef(null);
-
+  const importInputRef   = useRef(null);
   const previewBarcodeRef = useRef(null);
+  const addFormRef        = useRef(null);
 
   // ── Debounce search ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -621,6 +621,10 @@ export default function Products() {
             updateProduct={updateProduct}
             createProduct={createProduct}
             categories={categories}
+            onUnknownBarcode={(code) => {
+              setBarcode(code);
+              setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+            }}
           />
 
           {/* ── STATS ────────────────────────────────────────────────────── */}
@@ -638,7 +642,7 @@ export default function Products() {
           </div>
 
           {/* ── ADD PRODUCT FORM ─────────────────────────────────────────── */}
-          <div className="rounded-2xl bg-white dark:bg-[#141414]
+          <div ref={addFormRef} className="rounded-2xl bg-white dark:bg-[#141414]
             shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff]
             dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]
             overflow-hidden">

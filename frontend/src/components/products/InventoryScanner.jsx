@@ -16,6 +16,7 @@ export default function InventoryScanner({
   updateProduct,
   createProduct,
   categories = [],
+  onUnknownBarcode,
 }) {
   const [mode,       setMode]       = useState("receive"); // "receive" | "count"
   const [qtyPerScan, setQtyPerScan] = useState(1);
@@ -100,9 +101,13 @@ export default function InventoryScanner({
         const product = products.find(p => p.barcode === code);
 
         if (!product) {
-          // Unknown barcode → open quick-add modal
-          setQuickAdd(code);
-          setQuickForm({ ...EMPTY_FORM, stock: String(qtyPerScan) });
+          if (onUnknownBarcode) {
+            onUnknownBarcode(code);
+            toast.success(`Barcode "${code}" not found — fill in the form to add it`);
+          } else {
+            setQuickAdd(code);
+            setQuickForm({ ...EMPTY_FORM, stock: String(qtyPerScan) });
+          }
           return;
         }
 
