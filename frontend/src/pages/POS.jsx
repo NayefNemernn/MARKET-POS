@@ -1,5 +1,5 @@
 import { useRefresh }    from "../context/RefreshContext";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { getAllProducts } from "../api/product.api";
 import { getCategories } from "../api/category.api";
 import { useCart }       from "../hooks/useCart";
@@ -28,6 +28,8 @@ import { getCategoryIcon } from "../lib/categoryIcon";
 
 const nameHue = (str) => [...(str || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 0);
 
+const POS_PAGE_SIZE = 40;
+
 // ── Subtle dot-grid background ────────────────────────────────────────────────
 const dotGrid = {
   backgroundImage: `radial-gradient(circle, rgba(99,102,241,0.08) 1px, transparent 1px)`,
@@ -44,7 +46,8 @@ export default function POS({ setPage }) {
   const [openCheckout,     setOpenCheckout]     = useState(false);
   const [openReturn,       setOpenReturn]       = useState(false);
   const [loading,          setLoading]          = useState(true);
-  const [flashId,          setFlashId]          = useState(null); // add-to-cart animation
+  const [flashId,          setFlashId]          = useState(null);
+  const [posPage,          setPosPage]          = useState(1);
 
   const { cart, addToCart, increase, decrease, clearCart, loadCart, loadDeliveryOrder, total } = useCart();
   const { user, store: ctxStore }   = useAuth();
@@ -196,6 +199,13 @@ export default function POS({ setPage }) {
     return matchCat && matchSearch;
   });
 
+  // Reset to page 1 whenever the filter changes
+  useEffect(() => { setPosPage(1); }, [search, selectedCategory]);
+
+  const totalPosPages   = Math.max(1, Math.ceil(filteredProducts.length / POS_PAGE_SIZE));
+  const safePosPage     = Math.min(posPage, totalPosPages);
+  const paginatedProducts = filteredProducts.slice((safePosPage - 1) * POS_PAGE_SIZE, safePosPage * POS_PAGE_SIZE);
+
   const renderPrice = (price) => {
     if (displayCurrency === "usd")
       return <span className="text-green-500 dark:text-green-400 font-bold text-sm tabular-nums">{formatUSD(price)}</span>;
@@ -250,6 +260,7 @@ export default function POS({ setPage }) {
             {!loading && (
               <span className="text-[11px] text-gray-400 shrink-0 hidden sm:block tabular-nums">
                 {filteredProducts.length} products
+                {totalPosPages > 1 && ` · p${safePosPage}/${totalPosPages}`}
               </span>
             )}
             {/* Scan hint */}
@@ -298,7 +309,7 @@ export default function POS({ setPage }) {
               </div>
             ) : (
               <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 p-1 pb-2">
-                {filteredProducts.map(p => {
+                {paginatedProducts.map(p => {
                   const qty   = cart.find(i => i.productId === p._id)?.quantity || 0;
                   const out   = p.stock === 0;
                   const flash = flashId === p._id;
@@ -434,6 +445,45 @@ export default function POS({ setPage }) {
                     </div>
                     <p className="text-sm font-medium">No products found</p>
                     <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Try a different search or category</p>
+                  </div>
+                )}
+
+                {/* Pagination controls */}
+                {totalPosPages > 1 && (
+                  <div className="col-span-full flex items-center justify-center gap-2 pt-2 pb-1">
+                    <button
+                      onClick={() => setPosPage(p => Math.max(1, p - 1))}
+                      disabled={safePosPage === 1}
+                      className="w-8 h-8 rounded-xl bg-white dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10
+                        text-sm font-bold text-gray-600 dark:text-gray-300
+                        disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-[#252525] transition"
+                    >‹</button>
+                    {Array.from({ length: totalPosPages }, (_, i) => i + 1)
+                      .filter(n => n === 1 || n === totalPosPages || Math.abs(n - safePosPage) <= 1)
+                      .reduce((acc, n, i, arr) => {
+                        if (i > 0 && n - arr[i - 1] > 1) acc.push("…");
+                        acc.push(n);
+                        return acc;
+                      }, [])
+                      .map((n, i) => n === "…" ? (
+                        <span key={`ellipsis-${i}`} className="text-xs text-gray-400 px-1">…</span>
+                      ) : (
+                        <button key={n} onClick={() => setPosPage(n)}
+                          className={`w-8 h-8 rounded-xl text-xs font-bold transition ${
+                            n === safePosPage
+                              ? "bg-blue-600 text-white shadow-[0_3px_0_0_#1d4ed8]"
+                              : "bg-white dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#252525]"
+                          }`}
+                        >{n}</button>
+                      ))
+                    }
+                    <button
+                      onClick={() => setPosPage(p => Math.min(totalPosPages, p + 1))}
+                      disabled={safePosPage === totalPosPages}
+                      className="w-8 h-8 rounded-xl bg-white dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10
+                        text-sm font-bold text-gray-600 dark:text-gray-300
+                        disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-[#252525] transition"
+                    >›</button>
                   </div>
                 )}
               </div>
