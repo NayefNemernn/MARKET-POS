@@ -186,7 +186,7 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
   useEffect(() => {
     if (method !== "cash") { setChange(0); return; }
     const received = parseFloat(cashAmount) || 0;
-    const receivedUSD = amountCurrency === "lbp" ? received / exchangeRate : received;
+    const receivedUSD = amountCurrency === "lbp" ? (received * 1000) / exchangeRate : received;
     setChange(Math.max(receivedUSD - finalTotal, 0));
   }, [cashAmount, finalTotal, amountCurrency, exchangeRate, method]);
 
@@ -587,10 +587,21 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
                   </span>
                   <input ref={amountRef} value={cashAmount} onChange={e => setCashAmount(e.target.value)}
                     placeholder="Amount received" type="number"
-                    className="w-full pl-9 pr-3 py-3 rounded-xl bg-gray-100 dark:bg-[#1c1c1c] border-2 border-transparent focus:border-green-400 outline-none text-lg font-bold transition"/>
+                    className={`w-full pl-9 py-3 rounded-xl bg-gray-100 dark:bg-[#1c1c1c] border-2 border-transparent focus:border-green-400 outline-none text-lg font-bold transition ${amountCurrency === "lbp" ? "pr-12" : "pr-3"}`}/>
+                  {amountCurrency === "lbp" && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 font-bold text-xs pointer-events-none select-none">
+                      ,000
+                    </span>
+                  )}
                 </div>
                 <VoiceButton onResult={t => { const n = t.replace(/[^0-9.]/g,""); if(n) setCashAmount(n); }} color="green"/>
               </div>
+              {/* Full LBP preview when using thousands shorthand */}
+              {amountCurrency === "lbp" && parseFloat(cashAmount) > 0 && (
+                <p className="text-xs text-amber-500 font-medium px-1 -mt-1">
+                  {formatLBP(parseFloat(cashAmount) * 1000)}  ≈  {formatUSD((parseFloat(cashAmount) * 1000) / exchangeRate)}
+                </p>
+              )}
               {/* Change display */}
               <div className={`flex justify-between items-center rounded-xl px-4 py-3 transition-all ${change > 0 ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800" : "bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/5"}`}>
                 <div className="flex items-center gap-2">
