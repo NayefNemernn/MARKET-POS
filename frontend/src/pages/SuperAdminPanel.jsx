@@ -504,203 +504,345 @@ export default function SuperAdminPanel() {
         </div>
       )}
 
-      {/* ════ STORE USERS MODAL (full AdminPanel feature set) ════ */}
+      {/* ════ STORE USERS MODAL ════ */}
       {usersStoreTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-5xl shadow-2xl max-h-[95vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b dark:border-gray-700">
-              <div>
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white">👥 {usersStoreTarget.name} — {t.storeUsersTitle}</h2>
-                <p className="text-xs text-gray-500 mt-0.5">{t.fullUserMgmt}</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-5xl shadow-2xl max-h-[96vh] flex flex-col">
+
+            {/* ── Header ── */}
+            <div className="flex items-start justify-between px-5 py-4 border-b dark:border-gray-700 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                  <Users size={18} className="text-blue-600 dark:text-blue-400"/>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base font-bold text-gray-800 dark:text-white">{usersStoreTarget.name}</h2>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${PLAN_COLORS[usersStoreTarget.plan] || "bg-gray-100 text-gray-600"}`}>{usersStoreTarget.plan}</span>
+                    {usersStoreTarget.storeType === "cafe" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-semibold">☕ Café</span>}
+                    {usersStoreTarget.storeType === "both"  && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 font-semibold">🏪+☕</span>}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">User Management · {storeUsers.length} {storeUsers.length === 1 ? "user" : "users"}</p>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={reloadStoreUsers} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-lg dark:border-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"><RefreshCw size={12}/> {t.refresh}</button>
-                <button onClick={() => setShowUserForm(!showUserForm)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700"><UserPlus size={12}/> {t.addUser}</button>
-                <button onClick={() => { setUsersStoreTarget(null); setStoreUsers([]); setStoreStats(null); }} className="text-gray-400 hover:text-gray-600 text-xl px-2">✕</button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={reloadStoreUsers}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-600 rounded-xl text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition font-medium">
+                  <RefreshCw size={12}/> Refresh
+                </button>
+                <button onClick={() => { setShowUserForm(true); setUsersTab("users"); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-semibold">
+                  <UserPlus size={12}/> Add User
+                </button>
+                <button onClick={() => { setUsersStoreTarget(null); setStoreUsers([]); setStoreStats(null); setShowUserForm(false); }}
+                  className="w-8 h-8 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition">
+                  <X size={16}/>
+                </button>
               </div>
             </div>
 
-            {usersLoading ? (
-              <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"/></div>
-            ) : (
-              <div className="p-5 space-y-5">
+            {/* ── Tabs ── */}
+            <div className="flex items-center gap-1 px-5 pt-3 pb-0 shrink-0">
+              {[
+                { id: "overview", label: "Overview",                         icon: "📊" },
+                { id: "users",    label: `Users (${storeUsers.length})`,     icon: "👥" },
+              ].map(tab => (
+                <button key={tab.id} onClick={() => setUsersTab(tab.id)}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border-b-2 ${
+                    usersTab === tab.id
+                      ? "text-blue-600 dark:text-blue-400 border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                      : "text-gray-500 border-transparent hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}>
+                  {tab.icon} {tab.label}
+                </button>
+              ))}
+            </div>
 
-                {/* Sub-tabs */}
-                <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
-                  {[{ id: "overview", label: t.tabOverview }, { id: "users", label: t.tabUsers }].map(tab => (
-                    <button key={tab.id} onClick={() => setUsersTab(tab.id)}
-                      className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${usersTab === tab.id ? "bg-white dark:bg-gray-700 text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-                      {tab.label}
-                    </button>
-                  ))}
+            {/* ── Body ── */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
+              {usersLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"/>
+                  <p className="text-sm text-gray-400">Loading user data…</p>
                 </div>
-
-                {/* Overview */}
-                {usersTab === "overview" && storeStats && (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {[
-                        { label: t.totalUsers,         value: storeStats.totalUsers,         icon: Users,        color: "text-blue-600",   bg: "bg-blue-50 dark:bg-blue-900/20" },
-                        { label: t.statTodayRevenue,   value: fmt(storeStats.todayRevenue),  icon: DollarSign,   color: "text-amber-600",  bg: "bg-amber-50 dark:bg-amber-900/20" },
-                        { label: t.statTodayOrders,    value: storeStats.todayOrders,        icon: ShoppingCart, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/20" },
-                        { label: t.statMonthRevenue,   value: fmt(storeStats.monthRevenue),  icon: TrendingUp,   color: "text-blue-600",   bg: "bg-blue-50 dark:bg-blue-900/20" },
-                        { label: t.statMonthOrders,    value: storeStats.monthOrders,        icon: Activity,     color: "text-green-600",  bg: "bg-green-50 dark:bg-green-900/20" },
-                        { label: t.statTotalRevenue,   value: fmt(storeStats.totalRevenue),  icon: DollarSign,   color: "text-amber-600",  bg: "bg-amber-50 dark:bg-amber-900/20" },
-                        { label: t.statTotalOrders,    value: storeStats.totalOrders,        icon: ShoppingCart, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/20" },
-                        { label: t.statTotalProducts,  value: storeStats.totalProducts,      icon: Package,      color: "text-green-600",  bg: "bg-green-50 dark:bg-green-900/20" },
-                      ].map(({ label, value, icon: Icon, color, bg }) => (
-                        <div key={label} className={`${bg} rounded-2xl p-4 border border-white/50 dark:border-white/5`}>
-                          <div className="flex items-center gap-2 mb-1"><Icon size={13} className={color}/><p className="text-xs text-gray-500">{label}</p></div>
-                          <p className={`text-xl font-bold ${color}`}>{value}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {storeStats.topUsers?.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden">
-                        <div className="px-5 py-3 border-b dark:border-gray-700 flex items-center gap-2">
-                          <TrendingUp size={14} className="text-amber-500"/>
-                          <span className="font-semibold text-sm">{t.topPerforming}</span>
-                        </div>
-                        <div className="divide-y dark:divide-gray-700">
-                          {storeStats.topUsers.map((u, i) => (
-                            <div key={u._id} className="flex items-center justify-between px-5 py-3">
-                              <div className="flex items-center gap-3">
-                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"}`}>{i+1}</span>
-                                <span className="text-sm font-medium">{u.username}</span>
-                              </div>
-                              <div className="flex gap-6 text-sm">
-                                <span className="text-gray-500">{u.orders} {t.orders}</span>
-                                <span className="font-semibold text-green-600">{fmt(u.revenue)}</span>
+              ) : (
+                <>
+                  {/* ── OVERVIEW TAB ── */}
+                  {usersTab === "overview" && storeStats && (
+                    <div className="space-y-5">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          { label: "Total Users",    value: storeStats.totalUsers,        icon: Users,        color: "blue" },
+                          { label: "Today Revenue",  value: fmt(storeStats.todayRevenue), icon: DollarSign,   color: "emerald" },
+                          { label: "Today Orders",   value: storeStats.todayOrders,       icon: ShoppingCart, color: "purple" },
+                          { label: "Month Revenue",  value: fmt(storeStats.monthRevenue), icon: TrendingUp,   color: "amber" },
+                          { label: "Month Orders",   value: storeStats.monthOrders,       icon: Activity,     color: "indigo" },
+                          { label: "Total Revenue",  value: fmt(storeStats.totalRevenue), icon: DollarSign,   color: "green" },
+                          { label: "Total Orders",   value: storeStats.totalOrders,       icon: ShoppingCart, color: "violet" },
+                          { label: "Total Products", value: storeStats.totalProducts,     icon: Package,      color: "cyan" },
+                        ].map(({ label, value, icon: Icon, color }) => (
+                          <div key={label} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition group">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-xs text-gray-500 font-medium leading-tight">{label}</p>
+                              <div className={`w-7 h-7 rounded-lg bg-${color}-100 dark:bg-${color}-900/30 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                                <Icon size={13} className={`text-${color}-600 dark:text-${color}-400`}/>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Users list */}
-                {usersTab === "users" && (
-                  <div className="space-y-4">
-                    <div className="relative">
-                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
-                      <input placeholder={t.searchUsers} value={usersSearch} onChange={e => setUsersSearch(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:border-blue-400"/>
-                    </div>
-
-                    {showUserForm && (
-                      <form onSubmit={handleCreateStoreUser} className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 grid sm:grid-cols-4 gap-3">
-                        <input placeholder={t.usernameLabel} required value={userForm.username} onChange={e => setUserForm({ ...userForm, username: e.target.value })} className="border dark:border-gray-600 rounded-xl px-3 py-2 bg-white dark:bg-gray-700 text-sm outline-none focus:ring-2 focus:ring-blue-500"/>
-                        <input placeholder={t.btnPassword} type="password" required value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} className="border dark:border-gray-600 rounded-xl px-3 py-2 bg-white dark:bg-gray-700 text-sm outline-none focus:ring-2 focus:ring-blue-500"/>
-                        <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })} className="border dark:border-gray-600 rounded-xl px-3 py-2 bg-white dark:bg-gray-700 text-sm outline-none">
-                          <option value="cashier">{t.roleCashier}</option>
-                          <option value="admin">{t.roleAdmin}</option>
-                        </select>
-                        <button className="bg-green-600 text-white rounded-xl hover:bg-green-700 text-sm font-semibold py-2">{t.create}</button>
-                      </form>
-                    )}
-
-                    <div className="space-y-3">
-                      {filteredUsers.map(u => (
-                        <div key={u._id} className="bg-gray-50 dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden">
-                          <div className="flex items-center gap-4 px-5 py-4 flex-wrap">
-                            {/* Avatar */}
-                            <div className="flex items-center gap-3 flex-1 min-w-48">
-                              <div className="relative">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${u.role === "admin" ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600" : "bg-gray-200 dark:bg-gray-700 text-gray-600"}`}>
-                                  {u.username.charAt(0).toUpperCase()}
-                                </div>
-                                {u.isOnline && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"/>}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="font-semibold text-sm">{u.username}</p>
-                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.role === "admin" ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600" : "bg-gray-200 dark:bg-gray-700 text-gray-500"}`}>{u.role}</span>
-                                  {!u.active && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600">{t.disabled}</span>}
-                                </div>
-                                <p className="text-xs text-gray-400 mt-0.5">{t.joined} {new Date(u.createdAt).toLocaleDateString()}</p>
-                              </div>
-                            </div>
-
-                            {/* Device cap */}
-                            <div className="flex items-center gap-2 bg-white dark:bg-gray-700 rounded-xl px-3 py-2">
-                              <Smartphone size={13} className="text-blue-500"/>
-                              <span className="text-xs text-gray-500 whitespace-nowrap">Max devices</span>
-                              <button onClick={() => handleUpdateMaxDevices(u, (u.maxDevices||1)-1)} disabled={(u.maxDevices||1) <= 1} className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-600 flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"><Minus size={11}/></button>
-                              <span className="text-sm font-bold w-4 text-center">{u.maxDevices || 1}</span>
-                              <button onClick={() => handleUpdateMaxDevices(u, (u.maxDevices||1)+1)} disabled={(u.maxDevices||1) >= 10} className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-600 flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"><Plus size={11}/></button>
-                              <span className="text-xs text-gray-400">({u.activeDevices || 0} {t.onlineStatus})</span>
-                            </div>
-
-                            {/* Stats */}
-                            <div className="flex gap-5 text-sm">
-                              <div className="text-center"><p className="font-semibold text-green-600">{fmt(u.stats?.totalRevenue)}</p><p className="text-xs text-gray-400">{t.statTotalRevenue}</p></div>
-                              <div className="text-center"><p className="font-semibold">{u.stats?.totalOrders || 0}</p><p className="text-xs text-gray-400">{t.statTotalOrders}</p></div>
-                            </div>
-
-                            {/* Online */}
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              {u.isOnline ? <><Wifi size={12} className="text-green-500"/><span className="text-green-600">{u.activeDevices} {t.onlineStatus}</span></> : <><WifiOff size={12}/><span>{timeAgo(u.lastLoginAt)}</span></>}
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-2 ml-auto flex-wrap">
-                              <button onClick={() => handleViewSales(u)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition"><Eye size={11}/> {t.btnSales}</button>
-                              <button onClick={() => { setUserPwModal(u); setUserNewPin(""); }} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 hover:bg-indigo-100 transition"><KeyRound size={11}/> {t.btnPassword}</button>
-                              {u.isOnline && <button onClick={() => handleForceLogout(u)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-600 hover:bg-amber-100 transition"><LogOut size={11}/> {t.btnKickAll}</button>}
-                              <button onClick={() => handleToggleStoreUser(u)} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition ${u.active ? "bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100" : "bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100"}`}>
-                                {u.active ? <><XCircle size={11}/> {t.btnDisable}</> : <><CheckCircle size={11}/> {t.btnEnable}</>}
-                              </button>
-                              <button onClick={() => handleDeleteStoreUser(u)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition"><Trash2 size={14}/></button>
-                              <button onClick={() => setExpandedUser(p => ({ ...p, [u._id]: !p[u._id] }))} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                                {expandedUser[u._id] ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-                              </button>
-                            </div>
+                            <p className={`text-xl font-black text-${color}-600 dark:text-${color}-400`}>{value}</p>
                           </div>
+                        ))}
+                      </div>
 
-                          {/* Expanded */}
-                          {expandedUser[u._id] && (
-                            <div className="border-t dark:border-gray-700 bg-white dark:bg-gray-900">
-                              {u.devices?.length > 0 && (
-                                <div className="px-5 py-4 border-b dark:border-gray-700">
-                                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2"><Smartphone size={11}/> {t.devicesLabel} ({u.devices.length}/{u.maxDevices||1})</p>
-                                  <div className="grid sm:grid-cols-3 gap-3">
-                                    {u.devices.map((d, i) => (
-                                      <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border dark:border-gray-700">
-                                        <Monitor size={14} className="text-blue-500 shrink-0"/>
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-xs font-medium truncate">{d.deviceName || "Unknown"}</p>
-                                          <p className="text-xs text-gray-400">{d.deviceOS} · {timeAgo(d.lastLoginAt)}</p>
-                                        </div>
-                                        <button onClick={() => handleKickDevice(u, d.deviceId, d.deviceName)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition shrink-0"><LogOut size={12}/></button>
-                                      </div>
-                                    ))}
+                      {storeStats.topUsers?.length > 0 && (
+                        <div className="rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                          <div className="flex items-center gap-2 px-5 py-3 bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
+                            <TrendingUp size={14} className="text-amber-500"/>
+                            <span className="font-bold text-sm text-gray-700 dark:text-gray-200">Top Performers</span>
+                          </div>
+                          <div className="divide-y dark:divide-gray-700 bg-white dark:bg-gray-900">
+                            {storeStats.topUsers.map((u, i) => (
+                              <div key={u._id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                <div className="flex items-center gap-3">
+                                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0
+                                    ${i === 0 ? "bg-amber-100 text-amber-700" : i === 1 ? "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300" : "bg-orange-100 text-orange-600"}`}>
+                                    {i + 1}
+                                  </span>
+                                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{u.username}</span>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                  <div className="text-right">
+                                    <p className="text-xs text-gray-400">Orders</p>
+                                    <p className="text-sm font-bold text-gray-700 dark:text-gray-200">{u.orders}</p>
+                                  </div>
+                                  <div className="text-right min-w-[70px]">
+                                    <p className="text-xs text-gray-400">Revenue</p>
+                                    <p className="text-sm font-black text-green-600">{fmt(u.revenue)}</p>
                                   </div>
                                 </div>
-                              )}
-                              {/* Danger zone */}
-                              <div className="px-5 py-4 bg-red-50/50 dark:bg-red-900/5 border-t border-red-100 dark:border-red-500/10">
-                                <p className="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 flex items-center gap-2"><Trash2 size={11}/> {t.dangerZone}</p>
-                                <div className="flex flex-wrap gap-2">
-                                  <button onClick={() => handleClearUserSales(u)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-gray-800 border border-red-200 dark:border-red-500/30 text-red-500 hover:bg-red-50 transition">
-                                    <Trash2 size={11}/> {t.clearAllSales} <span className="opacity-60">({u.stats?.totalOrders || 0} {t.orders})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── USERS TAB ── */}
+                  {usersTab === "users" && (
+                    <div className="space-y-4">
+                      {/* Search bar */}
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex-1">
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
+                          <input placeholder="Search users by name…" value={usersSearch} onChange={e => setUsersSearch(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 transition"/>
+                        </div>
+                        <span className="text-xs text-gray-400 shrink-0 font-medium">{filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}</span>
+                      </div>
+
+                      {/* Add user form */}
+                      {showUserForm && (
+                        <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-sm font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                              <UserPlus size={14}/> New User
+                            </p>
+                            <button onClick={() => setShowUserForm(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
+                              <X size={14}/>
+                            </button>
+                          </div>
+                          <form onSubmit={handleCreateStoreUser} className="grid sm:grid-cols-4 gap-3">
+                            <input placeholder="Username" required value={userForm.username} onChange={e => setUserForm({ ...userForm, username: e.target.value })}
+                              className="border dark:border-gray-600 rounded-xl px-3 py-2.5 bg-white dark:bg-gray-700 text-sm dark:text-white outline-none focus:ring-2 focus:ring-blue-400 transition"/>
+                            <input placeholder="Password" type="password" required value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })}
+                              className="border dark:border-gray-600 rounded-xl px-3 py-2.5 bg-white dark:bg-gray-700 text-sm dark:text-white outline-none focus:ring-2 focus:ring-blue-400 transition"/>
+                            <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })}
+                              className="border dark:border-gray-600 rounded-xl px-3 py-2.5 bg-white dark:bg-gray-700 text-sm dark:text-white outline-none">
+                              <option value="cashier">Cashier</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                            <button type="submit" className="bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-semibold py-2.5 flex items-center justify-center gap-1.5 transition">
+                              <Plus size={14}/> Create
+                            </button>
+                          </form>
+                        </div>
+                      )}
+
+                      {/* User cards */}
+                      <div className="space-y-3">
+                        {filteredUsers.map(u => (
+                          <div key={u._id} className={`rounded-2xl border overflow-hidden transition-all ${
+                            u.active
+                              ? "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 hover:shadow-sm"
+                              : "bg-red-50/40 dark:bg-red-900/10 border-red-100 dark:border-red-800/30"
+                          }`}>
+                            {/* ── Main row ── */}
+                            <div className="px-4 py-4">
+                              <div className="flex items-center gap-4 flex-wrap">
+
+                                {/* Identity */}
+                                <div className="flex items-center gap-3 min-w-[160px]">
+                                  <div className="relative shrink-0">
+                                    <div className={`w-11 h-11 rounded-full flex items-center justify-center font-black text-sm select-none
+                                      ${u.role === "admin" ? "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"}`}>
+                                      {u.username.charAt(0).toUpperCase()}
+                                    </div>
+                                    {u.isOnline && (
+                                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"/>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="font-bold text-sm text-gray-800 dark:text-white">{u.username}</p>
+                                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide
+                                        ${u.role === "admin" ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300" : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+                                        {u.role}
+                                      </span>
+                                      {!u.active && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-bold uppercase">Disabled</span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-0.5">Joined {new Date(u.createdAt).toLocaleDateString()}</p>
+                                  </div>
+                                </div>
+
+                                {/* Online pill */}
+                                <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold shrink-0
+                                  ${u.isOnline ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" : "bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400"}`}>
+                                  {u.isOnline ? <Wifi size={11}/> : <WifiOff size={11}/>}
+                                  {u.isOnline
+                                    ? `${u.activeDevices} device${u.activeDevices !== 1 ? "s" : ""} online`
+                                    : `Last: ${timeAgo(u.lastLoginAt)}`}
+                                </div>
+
+                                {/* Device limit control */}
+                                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl px-3 py-2 shrink-0 border border-gray-100 dark:border-gray-600">
+                                  <Smartphone size={12} className="text-blue-500 shrink-0"/>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Max devices</span>
+                                  <button onClick={() => handleUpdateMaxDevices(u, (u.maxDevices||1)-1)} disabled={(u.maxDevices||1) <= 1}
+                                    className="w-5 h-5 rounded-md bg-gray-200 dark:bg-gray-600 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-30 transition">
+                                    <Minus size={9}/>
                                   </button>
-                                  <button onClick={() => handleClearUserProducts(u)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-gray-800 border border-red-200 dark:border-red-500/30 text-red-500 hover:bg-red-50 transition">
-                                    <Trash2 size={11}/> {t.clearAllProducts}
+                                  <span className="text-sm font-black w-5 text-center text-gray-800 dark:text-white">{u.maxDevices || 1}</span>
+                                  <button onClick={() => handleUpdateMaxDevices(u, (u.maxDevices||1)+1)} disabled={(u.maxDevices||1) >= 10}
+                                    className="w-5 h-5 rounded-md bg-gray-200 dark:bg-gray-600 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-30 transition">
+                                    <Plus size={9}/>
+                                  </button>
+                                  <span className="text-xs text-gray-400">({u.activeDevices || 0} active)</span>
+                                </div>
+
+                                {/* Revenue & orders */}
+                                <div className="flex items-center gap-4">
+                                  <div className="text-center">
+                                    <p className="text-base font-black text-green-600 dark:text-green-400 leading-none">{fmt(u.stats?.totalRevenue)}</p>
+                                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">Revenue</p>
+                                  </div>
+                                  <div className="w-px h-8 bg-gray-200 dark:bg-gray-600"/>
+                                  <div className="text-center">
+                                    <p className="text-base font-black text-gray-700 dark:text-white leading-none">{u.stats?.totalOrders || 0}</p>
+                                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">Orders</p>
+                                  </div>
+                                </div>
+
+                                {/* Action buttons */}
+                                <div className="flex items-center gap-1.5 ml-auto flex-wrap shrink-0">
+                                  <button onClick={() => handleViewSales(u)} title="View Sales History"
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition font-semibold">
+                                    <Eye size={11}/> Sales
+                                  </button>
+                                  <button onClick={() => { setUserPwModal(u); setUserNewPin(""); }} title="Change Password"
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition font-semibold">
+                                    <KeyRound size={11}/> Password
+                                  </button>
+                                  {u.isOnline && (
+                                    <button onClick={() => handleForceLogout(u)} title="Force Logout All Devices"
+                                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 transition font-semibold">
+                                      <LogOut size={11}/> Kick All
+                                    </button>
+                                  )}
+                                  <button onClick={() => handleToggleStoreUser(u)}
+                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition
+                                      ${u.active
+                                        ? "bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 hover:bg-red-100"
+                                        : "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100"}`}>
+                                    {u.active ? <><XCircle size={11}/> Disable</> : <><CheckCircle size={11}/> Enable</>}
+                                  </button>
+                                  <button onClick={() => handleDeleteStoreUser(u)} title="Delete User"
+                                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition">
+                                    <Trash2 size={14}/>
+                                  </button>
+                                  <button onClick={() => setExpandedUser(p => ({ ...p, [u._id]: !p[u._id] }))}
+                                    title={expandedUser[u._id] ? "Collapse" : "Expand devices & danger zone"}
+                                    className={`p-1.5 rounded-lg transition ${expandedUser[u._id] ? "bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300" : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"}`}>
+                                    {expandedUser[u._id] ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
                                   </button>
                                 </div>
                               </div>
                             </div>
-                          )}
-                        </div>
-                      ))}
-                      {filteredUsers.length === 0 && <div className="text-center text-gray-400 py-8">{t.noUsersFound}</div>}
+
+                            {/* ── Expanded panel ── */}
+                            {expandedUser[u._id] && (
+                              <div className="border-t dark:border-gray-700">
+                                {/* Active sessions */}
+                                {u.devices?.length > 0 && (
+                                  <div className="px-4 py-4 bg-gray-50 dark:bg-gray-800/60">
+                                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                      <Smartphone size={11}/> Active Sessions ({u.devices.length}/{u.maxDevices||1})
+                                    </p>
+                                    <div className="grid sm:grid-cols-3 gap-2">
+                                      {u.devices.map((d, i) => (
+                                        <div key={i} className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                          <Monitor size={13} className="text-blue-500 shrink-0"/>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{d.deviceName || "Unknown device"}</p>
+                                            <p className="text-[10px] text-gray-400">{d.deviceOS} · {timeAgo(d.lastLoginAt)}</p>
+                                          </div>
+                                          <button onClick={() => handleKickDevice(u, d.deviceId, d.deviceName)} title="Kick this device"
+                                            className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition shrink-0">
+                                            <LogOut size={12}/>
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {/* Danger zone */}
+                                <div className="px-4 py-4 bg-red-50/60 dark:bg-red-950/20 border-t border-red-100 dark:border-red-500/10">
+                                  <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                    <Trash2 size={11}/> Danger Zone
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    <button onClick={() => handleClearUserSales(u)}
+                                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-gray-800 border border-red-200 dark:border-red-500/30 text-red-500 hover:bg-red-50 transition shadow-sm">
+                                      <Trash2 size={11}/> Clear All Sales
+                                      <span className="text-red-400 font-normal opacity-80">({u.stats?.totalOrders || 0} orders)</span>
+                                    </button>
+                                    <button onClick={() => handleClearUserProducts(u)}
+                                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-gray-800 border border-red-200 dark:border-red-500/30 text-red-500 hover:bg-red-50 transition shadow-sm">
+                                      <Trash2 size={11}/> Clear All Products
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {filteredUsers.length === 0 && (
+                          <div className="text-center py-14">
+                            <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
+                              <Users size={24} className="text-gray-300 dark:text-gray-600"/>
+                            </div>
+                            <p className="text-sm font-semibold text-gray-400">No users found</p>
+                            <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Try a different search or add a new user</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
