@@ -9,6 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import VoiceButton from "./common/VoiceButton";
 import useOfflineSales from "../hooks/useOfflineSales";
 import toast from "react-hot-toast";
+import QRCode from "qrcode";
 import {
   X, Banknote, CreditCard, Clock, User, Phone,
   Printer, CheckCircle2, ShoppingBag, ArrowLeftRight,
@@ -17,9 +18,15 @@ import {
 } from "lucide-react";
 
 /* ── thermal receipt printer ─────────────────────────────── */
-function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change, storeName, taxRate, taxNumber }) {
+async function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change, storeName, taxRate, taxNumber, storeUrl, deliveryPhone }) {
   const win = window.open("", "_blank", "width=360,height=700");
   if (!win) { window.print(); return; }
+
+  let qrDataUrl = null;
+  if (storeUrl) {
+    try { qrDataUrl = await QRCode.toDataURL(storeUrl, { width: 128, margin: 1, color: { dark: "#000000", light: "#ffffff" } }); }
+    catch { /* skip QR if generation fails */ }
+  }
 
   const itemRows = sale.items.map(i => `
     <tr>
@@ -94,6 +101,11 @@ function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change,
   .badge{background:#000;color:#fff;border-radius:4px;padding:3px 8px;font-weight:900;font-size:11px;letter-spacing:1px}
   .footer{text-align:center;font-size:12px;font-weight:900;color:#000;margin-top:10px;letter-spacing:1px}
   .id{text-align:center;font-size:10px;font-weight:700;color:#555;margin-top:4px}
+  .qr-section{text-align:center;margin-top:10px;padding-top:8px;border-top:1px dashed #555}
+  .qr-section img{width:110px;height:110px;margin:4px auto;display:block}
+  .qr-label{font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#000}
+  .qr-url{font-size:10px;color:#333;font-weight:700;word-break:break-all;margin-top:2px}
+  .del-phone{font-size:12px;font-weight:900;color:#000;margin-top:5px}
   @media print{@page{size:80mm auto;margin:0}body{padding:4mm 2mm}}
 </style></head><body>
   <div class="store">
@@ -119,6 +131,15 @@ function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, change,
   <hr/>
   <p class="footer">★ Thank you for your business! ★</p>
   ${sale._id && !sale._id.toString().startsWith("offline") ? `<p class="id">#${sale._id}</p>` : ""}
+  ${(qrDataUrl || deliveryPhone) ? `
+  <div class="qr-section">
+    ${qrDataUrl ? `
+      <p class="qr-label">🛒 Order Online</p>
+      <img src="${qrDataUrl}" alt="Online Store QR"/>
+      <p class="qr-url">${storeUrl}</p>
+    ` : ""}
+    ${deliveryPhone ? `<p class="del-phone">📞 Delivery: ${deliveryPhone}</p>` : ""}
+  </div>` : ""}
   <script>window.onload=()=>{window.print();window.close();}<\/script>
 </body></html>`;
 
@@ -135,6 +156,9 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
   const { saveOffline } = useOfflineSales();
   const { toLBP, formatLBP, formatUSD, exchangeRate } = useCurrency();
   const { storeName, taxRate, store }   = useAuth();
+  const STORE_FRONTEND_URL = import.meta.env.VITE_STORE_URL || "http://localhost:5174";
+  const storeUrl      = store?.slug && store?.isOnlineStoreActive ? `${STORE_FRONTEND_URL}/store/${store.slug}` : null;
+  const deliveryPhone = store?.deliveryPhone || null;
 
   // Delivery mode: pre-fill
   const isDelivery = !!deliveryOrder;
@@ -410,7 +434,7 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
 
           <div className="px-6 pb-6 flex gap-3">
             <button
-              onClick={() => printReceipt(receipt, { toLBP, formatLBP, formatUSD, exchangeRate, change, storeName, taxRate, taxNumber: store?.taxNumber || "" })}
+              onClick={() => printReceipt(receipt, { toLBP, formatLBP, formatUSD, exchangeRate, change, storeName, taxRate, taxNumber: store?.taxNumber || "", storeUrl, deliveryPhone })}
               className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold transition"
             >
               <Printer size={16}/> Print

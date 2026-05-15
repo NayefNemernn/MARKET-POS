@@ -44,7 +44,7 @@ export default function StoreSettings() {
   });
 
   const [cashierForm, setCashierForm] = useState({ username: "", password: "", maxDevices: 1 });
-  const [onlineForm,  setOnlineForm]  = useState({ isOnlineStoreActive: false, deliveryFee: 0, minimumOrder: 0, deliveryTimeMin: 30, deliveryTimeMax: 60, pointsEnabled: false, pointsPerUnit: 1, telegramBotToken: "", deliveryDrivers: [] });
+  const [onlineForm,  setOnlineForm]  = useState({ isOnlineStoreActive: false, deliveryFee: 0, minimumOrder: 0, deliveryTimeMin: 30, deliveryTimeMax: 60, pointsEnabled: false, pointsPerUnit: 1, telegramBotToken: "", deliveryDrivers: [], deliveryPhone: "" });
   const [savingOnline, setSavingOnline] = useState(false);
   const [fetchingChatId, setFetchingChatId] = useState(false);
   const [testingTelegram, setTestingTelegram] = useState(false);
@@ -98,6 +98,7 @@ export default function StoreSettings() {
         pointsPerUnit:       storeData.pointsPerUnit       || 1,
         telegramBotToken:    storeData.telegramBotToken    || "",
         deliveryDrivers:     storeData.deliveryDrivers     || [],
+        deliveryPhone:       storeData.deliveryPhone       || "",
       });
     } catch {
       toast.error(t.failedToLoad);
@@ -709,6 +710,21 @@ export default function StoreSettings() {
                     <p className="text-xs text-gray-400 mt-1">e.g. 1 = 1 point per $1 spent</p>
                   </div>
                 )}
+              </div>
+
+              {/* Delivery phone number */}
+              <div className="border-t dark:border-white/10 pt-4">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Delivery Contact Number
+                </label>
+                <p className="text-xs text-gray-400 mb-2">Printed on receipts so customers can call for delivery inquiries.</p>
+                <input
+                  type="tel"
+                  placeholder="+961 XX XXX XXX"
+                  value={onlineForm.deliveryPhone}
+                  onChange={e => setOnlineForm(f => ({ ...f, deliveryPhone: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-transparent dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
 
               <button onClick={handleSaveOnline} disabled={savingOnline}

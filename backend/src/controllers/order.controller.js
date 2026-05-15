@@ -164,10 +164,10 @@ export const submitOrder = async (req, res) => {
       scheduledFor:   scheduledFor   || null,
     });
 
-    // Notify admin via socket
+    // Notify admin + cashiers via socket
     const io = getIO();
     if (io) {
-      io.to(`store_${store._id}_admin`).emit("new_order", {
+      const orderPayload = {
         _id:          order._id,
         orderNumber:  order.orderNumber,
         customer:     order.customer,
@@ -175,7 +175,9 @@ export const submitOrder = async (req, res) => {
         itemCount:    order.items.length,
         scheduledFor: order.scheduledFor,
         createdAt:    order.createdAt,
-      });
+      };
+      io.to(`store_${store._id}_admin`).emit("new_order", orderPayload);
+      io.to(`store_${store._id}_cashier`).emit("new_order", orderPayload);
     }
 
     res.status(201).json({ orderId: order._id, orderNumber: order.orderNumber, total: order.total, pointsEarned });

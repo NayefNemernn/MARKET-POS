@@ -54,6 +54,9 @@ const storeSchema = new mongoose.Schema(
     pointsEnabled:            { type: Boolean, default: false },
     pointsPerUnit:            { type: Number, default: 1 },   // points earned per currency unit
 
+    // ── Delivery contact ──────────────────────────────────────
+    deliveryPhone: { type: String, default: "" },
+
     // ── Telegram delivery notifications ───────────────────────
     telegramBotToken: { type: String, default: "" },
     deliveryDrivers:  {
