@@ -2,7 +2,7 @@ export const superAdminTranslations = {
   en: {
     title:                "Super Admin Panel",
     subtitle:             "Full platform control",
-    createStore:          "+ Create Store",
+    createStore:          "Create Store",
     totalStores:          "Total Stores",
     activeStores:         "Active Stores",
     totalUsers:           "Total Users",

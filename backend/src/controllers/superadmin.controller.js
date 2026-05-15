@@ -606,6 +606,25 @@ export const updateSuperAdminProfile = async (req, res) => {
 };
 
 /* ─────────────────────────────────────────────
+   KICK ONE DEVICE FROM SUPERADMIN OWN SESSION
+───────────────────────────────────────────── */
+export const kickSuperAdminDevice = async (req, res) => {
+  try {
+    const { deviceId } = req.body;
+    if (!deviceId) return res.status(400).json({ message: "deviceId required" });
+    const admin = await User.findById(req.user._id);
+    if (!admin) return res.status(404).json({ message: "User not found" });
+    admin.devices = admin.devices.filter(d => d.deviceId !== deviceId);
+    if (admin.deviceId === deviceId) {
+      admin.deviceId     = admin.devices[0]?.deviceId     || null;
+      admin.sessionToken = admin.devices[0]?.sessionToken || null;
+    }
+    await admin.save();
+    res.json({ message: "Device kicked" });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+/* ─────────────────────────────────────────────
    CREATE SUPER ADMIN (one-time setup)
 ───────────────────────────────────────────── */
 export const createSuperAdmin = async (req, res) => {

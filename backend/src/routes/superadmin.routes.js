@@ -13,7 +13,7 @@ import {
   changeStoreUserPassword, getStoreGlobalStats, getStoreUserSales,
   clearStoreUserSales, clearStoreUserProducts,
   getCafeStaff, createCafeStaffByAdmin, updateCafeStaffByAdmin, deleteCafeStaffByAdmin,
-  copyProductsToStore,
+  copyProductsToStore, kickSuperAdminDevice,
 } from "../controllers/superadmin.controller.js";
 
 const router = express.Router();
@@ -30,6 +30,7 @@ router.get("/audit",                         getPlatformAuditLog);
 router.get("/export",                        exportStores);
 router.get("/profile",                       getSuperAdminProfile);
 router.put("/profile",                       updateSuperAdminProfile);
+router.post("/profile/kick-device",          kickSuperAdminDevice);
 
 router.get("/stores",                        getAllStores);
 router.post("/stores",                       createStore);

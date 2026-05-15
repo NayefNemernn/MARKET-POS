@@ -9,7 +9,7 @@ import {
   getStoreUsers, getStoreGlobalStats, createStoreUser, updateStoreUser,
   deleteStoreUser, forceLogoutStoreUser, forceLogoutStoreDevice,
   changeStoreUserPW, getStoreUserSales, clearStoreUserSales, clearStoreUserProducts,
-  getSuperAdminProfile,
+  getSuperAdminProfile, kickSuperAdminDevice,
   getCafeStaffList, createCafeStaffMember, updateCafeStaffMember, deleteCafeStaffMember,
   copyProductsToStore,
 } from "../api/superadmin.api";
@@ -30,13 +30,13 @@ const PLAN_LIMITS = { trial: { maxUsers: 2, maxProducts: 100, days: 14 }, basic:
 const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
 
 const Modal = ({ title, onClose, children, wide }) => (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div className={`bg-white dark:bg-gray-800 rounded-2xl p-6 w-full ${wide ? "max-w-3xl" : "max-w-lg"} shadow-2xl max-h-[90vh] overflow-y-auto`}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-gray-800 dark:text-white">{title}</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className={`bg-white dark:bg-[#16161f] rounded-2xl w-full ${wide ? "max-w-3xl" : "max-w-lg"} shadow-2xl shadow-black/30 max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-white/8`}>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/8">
+        <h3 className="text-base font-bold text-gray-900 dark:text-white">{title}</h3>
+        <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition text-lg leading-none">✕</button>
       </div>
-      {children}
+      <div className="px-6 py-5">{children}</div>
     </div>
   </div>
 );
@@ -158,6 +158,14 @@ export default function SuperAdminPanel() {
   const handleBulkAction  = async (action) => { if (!selected.length) return toast.error("Select stores first"); try { const r = await bulkAction({ storeIds: selected, action, days: bulkExtendDays }); toast.success(r.message); setSelected([]); loadData(); } catch { toast.error("Failed"); } };
   const handleExport      = async () => { try { const data = await exportStores(); const csv = [Object.keys(data[0]).join(","), ...data.map(r => Object.values(r).join(","))].join("\n"); const a = document.createElement("a"); a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv); a.download = "stores.csv"; a.click(); toast.success("Exported"); } catch { toast.error("Failed"); } };
   const handleProfile     = async () => { try { const r = await updateSuperAdminProfile(profileForm); toast.success(r.message); setProfileInfo(p => p ? { ...p, maxDevices: r.maxDevices || profileForm.maxDevices } : p); } catch (e) { toast.error(e.response?.data?.message || "Failed"); } };
+  const handleKickOwnDevice = async (deviceId, name) => {
+    if (!window.confirm(`Kick session "${name || "Unknown device"}"?`)) return;
+    try {
+      await kickSuperAdminDevice(deviceId);
+      toast.success("Session kicked");
+      getSuperAdminProfile().then(info => setProfileInfo(info)).catch(() => {});
+    } catch { toast.error("Failed to kick session"); }
+  };
 
   const openDetails = async (store) => {
     setDetailStore(store); setDetailLoading(true);
@@ -235,143 +243,306 @@ export default function SuperAdminPanel() {
   const filtered      = stores.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.owner?.username?.toLowerCase().includes(search.toLowerCase()));
   const filteredUsers = storeUsers.filter(u => u.username.toLowerCase().includes(usersSearch.toLowerCase()));
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">{t.detailLoading}</div>;
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-[#f4f6fb] dark:bg-[#0d0d15]">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"/>
+        <p className="text-sm font-semibold text-gray-400">{t.detailLoading}</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="flex h-screen bg-[#f2f4f8] dark:bg-[#0c0c14] overflow-hidden" dir={lang === "ar" ? "rtl" : "ltr"}>
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">🌐 {t.title}</h1>
-          <p className="text-sm text-gray-500 mt-1">{t.subtitle}</p>
+      {/* ══════════════════════ SIDEBAR ══════════════════════ */}
+      <aside className="w-[220px] shrink-0 bg-white dark:bg-[#10101c] border-r border-gray-200 dark:border-white/[0.05] flex flex-col overflow-hidden">
+
+        {/* Brand */}
+        <div className="flex items-center gap-3 px-5 h-[58px] border-b border-gray-100 dark:border-white/[0.04] shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-md shadow-blue-600/30 shrink-0">
+            <span className="text-sm">🌐</span>
+          </div>
+          <div className="leading-tight min-w-0">
+            <p className="text-[13px] font-black text-gray-900 dark:text-white tracking-tight">NEXORA</p>
+            <p className="text-[9px] font-bold text-blue-500 uppercase tracking-[0.18em]">Super Admin</p>
+          </div>
         </div>
-        <button onClick={() => setCreateModal(true)} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 shadow">{t.createStore}</button>
-      </div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        {/* Navigation */}
+        <nav className="flex-1 px-3 pt-4 pb-2 space-y-0.5 overflow-y-auto">
+          <p className="text-[9px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-[0.2em] px-3 mb-3">Menu</p>
           {[
-            { icon: "🏪", label: t.totalStores,   value: stats.totalStores },
-            { icon: "✅", label: t.activeStores,  value: stats.activeStores },
-            { icon: "👤", label: t.totalUsers,    value: stats.totalUsers },
-            { icon: "📦", label: t.totalProducts, value: stats.totalProducts },
-            { icon: "💰", label: t.totalRevenue,  value: fmt(stats.totalRevenue) },
-            { icon: "⚠️", label: t.expiringSoon,  value: stats.expiringSoon, warn: stats.expiringSoon > 0 },
-            { icon: "🚨", label: t.expired,       value: stats.expired, danger: stats.expired > 0 },
-          ].map(s => (
-            <div key={s.label} className={`bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border ${s.danger ? "border-red-300" : s.warn ? "border-yellow-300" : "border-gray-100 dark:border-gray-700"}`}>
-              <div className="text-2xl mb-1">{s.icon}</div>
-              <div className="text-xl font-bold text-gray-800 dark:text-white">{s.value}</div>
-              <div className="text-xs text-gray-500">{s.label}</div>
-            </div>
+            { key: t.tabStores,   icon: "🏪", badge: stores.length },
+            { key: t.tabActivity, icon: "⚡" },
+            { key: t.tabAuditLog, icon: "📋" },
+            { key: t.tabProfile,  icon: "👤" },
+          ].map(({ key: tk, icon, badge }) => (
+            <button key={tk} onClick={() => setTab(tk)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all text-left ${
+                tab === tk
+                  ? "bg-blue-50 dark:bg-blue-600/[0.15] text-blue-700 dark:text-blue-400 shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.05] hover:text-gray-900 dark:hover:text-gray-100"
+              }`}>
+              <span className="text-[15px] leading-none">{icon}</span>
+              <span className="flex-1 truncate">{tk}</span>
+              {badge !== undefined && (
+                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${
+                  tab === tk ? "bg-blue-100 dark:bg-blue-500/25 text-blue-700 dark:text-blue-300" : "bg-gray-100 dark:bg-white/[0.08] text-gray-500 dark:text-gray-500"
+                }`}>{badge}</span>
+              )}
+            </button>
           ))}
-        </div>
-      )}
+        </nav>
 
-      {/* Plan dist */}
-      {stats?.planDistribution?.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 flex gap-3 flex-wrap items-center">
-          <span className="text-sm font-semibold text-gray-500">{t.plans}</span>
-          {stats.planDistribution.map(p => <span key={p._id} className={`px-3 py-1 rounded-full text-xs font-medium ${PLAN_COLORS[p._id] || "bg-gray-100 text-gray-600"}`}>{p._id}: {p.count}</span>)}
-        </div>
-      )}
+        {/* Platform quick stats */}
+        {stats && (
+          <div className="mx-3 mb-3 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.04] shrink-0">
+            <p className="text-[9px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-[0.18em] mb-2.5">Platform</p>
+            {[
+              { label: "Active Stores", value: `${stats.activeStores} / ${stats.totalStores}` },
+              { label: "Total Users",   value: stats.totalUsers },
+              { label: "Revenue",       value: fmt(stats.totalRevenue) },
+              { label: "Expiring",      value: stats.expiringSoon, warn: stats.expiringSoon > 0 },
+              { label: "Expired",       value: stats.expired,      danger: stats.expired > 0 },
+            ].map(s => (
+              <div key={s.label} className="flex items-center justify-between py-1">
+                <span className="text-[11px] text-gray-400 dark:text-gray-500">{s.label}</span>
+                <span className={`text-[11px] font-black ${
+                  s.danger && s.value > 0 ? "text-red-500 dark:text-red-400"
+                  : s.warn && s.value > 0  ? "text-amber-500 dark:text-amber-400"
+                  : "text-gray-800 dark:text-gray-200"
+                }`}>{s.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </aside>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b dark:border-gray-700">
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${tab === t ? "bg-white dark:bg-gray-800 text-blue-600 border border-b-white dark:border-gray-700 dark:border-b-gray-800 -mb-px" : "text-gray-500 hover:text-gray-700"}`}>
-            {t}
+      {/* ══════════════════════ MAIN AREA ══════════════════════ */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* ── Top bar ── */}
+        <header className="h-[58px] bg-white dark:bg-[#10101c] border-b border-gray-200 dark:border-white/[0.05] flex items-center gap-4 px-6 shrink-0">
+          <div className="flex-1 flex items-center gap-2 min-w-0">
+            <span className="text-xs text-gray-400 dark:text-gray-600 font-medium">Super Admin</span>
+            <span className="text-gray-300 dark:text-gray-700">/</span>
+            <span className="text-sm font-bold text-gray-800 dark:text-white truncate">{tab}</span>
+          </div>
+          {tab === t.tabStores && (
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
+              <input type="text" placeholder="Search stores…" value={search} onChange={e => setSearch(e.target.value)}
+                className="pl-9 pr-4 py-2 border border-gray-200 dark:border-white/[0.08] rounded-xl text-[13px] bg-gray-50 dark:bg-white/[0.04] dark:text-white w-56 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition placeholder-gray-400"/>
+            </div>
+          )}
+          <button onClick={() => setCreateModal(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[13px] font-bold shadow-md shadow-blue-600/25 transition shrink-0">
+            <span className="text-base leading-none">+</span> {t.createStore}
           </button>
-        ))}
-      </div>
+        </header>
+
+        {/* ── Stats strip ── */}
+        {stats && (
+          <div className="bg-white dark:bg-[#10101c] border-b border-gray-200 dark:border-white/[0.05] px-6 py-0 flex items-stretch overflow-x-auto shrink-0">
+            {[
+              { icon: "🏪", label: "Stores",   value: stats.totalStores },
+              { icon: "✅", label: "Active",   value: stats.activeStores },
+              { icon: "👤", label: "Users",    value: stats.totalUsers },
+              { icon: "📦", label: "Products", value: stats.totalProducts },
+              { icon: "💰", label: "Revenue",  value: fmt(stats.totalRevenue) },
+              { icon: "⚠️", label: "Expiring", value: stats.expiringSoon, warn: stats.expiringSoon > 0 },
+              { icon: "🚨", label: "Expired",  value: stats.expired,      danger: stats.expired > 0 },
+            ].map((s, i) => (
+              <div key={s.label} className={`flex items-center gap-3 px-5 py-3 border-r border-gray-100 dark:border-white/[0.04] whitespace-nowrap hover:bg-gray-50 dark:hover:bg-white/[0.02] transition ${
+                i === 0 ? "pl-0" : ""
+              }`}>
+                <span className="text-base leading-none">{s.icon}</span>
+                <div>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-600 leading-none font-medium">{s.label}</p>
+                  <p className={`text-[15px] font-black leading-tight mt-0.5 ${
+                    s.danger && s.value > 0 ? "text-red-600 dark:text-red-400"
+                    : s.warn && s.value > 0  ? "text-amber-600 dark:text-amber-400"
+                    : "text-gray-900 dark:text-white"
+                  }`}>{s.value}</p>
+                </div>
+              </div>
+            ))}
+            {stats?.planDistribution?.length > 0 && (
+              <div className="flex items-center gap-2 px-5">
+                {stats.planDistribution.map(p => (
+                  <span key={p._id} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${PLAN_COLORS[p._id] || "bg-gray-100 text-gray-600"}`}>
+                    {p.count} {p._id}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Scrollable content ── */}
+        <div className="flex-1 overflow-auto p-5 space-y-5">
 
       {/* ── STORES TAB ── */}
       {tab === t.tabStores && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="p-4 border-b dark:border-gray-700 flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-white flex-1">{t.allStores} ({stores.length})</h2>
-            <input type="text" placeholder={t.search} value={search} onChange={e => setSearch(e.target.value)} className="border rounded-lg px-3 py-1.5 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white w-44" />
-            <button onClick={handleExport} className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200">{t.exportCsv}</button>
-            {selected.length > 0 && (
-              <div className="flex gap-1 items-center flex-wrap">
-                <span className="text-xs text-gray-500">{selected.length} {t.selected}</span>
-                <button onClick={() => handleBulkAction("enable")}  className="px-2 py-1 text-xs bg-green-50 text-green-600 rounded hover:bg-green-100">{t.btnEnable}</button>
-                <button onClick={() => handleBulkAction("disable")} className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100">{t.btnDisable}</button>
-                <button onClick={() => handleBulkAction("extend")}  className="px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100">+{bulkExtendDays}d</button>
-                <input type="number" value={bulkExtendDays} onChange={e => setBulkExtendDays(+e.target.value)} className="w-14 text-xs border rounded px-1 py-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                <button onClick={() => setBulkNotifyModal(true)} className="px-2 py-1 text-xs bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">{t.notify}</button>
-                <button onClick={clearSelect} className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">{t.clear}</button>
-              </div>
-            )}
-            {!selected.length && <button onClick={selectAll} className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded hover:bg-gray-200">{t.selectAll}</button>}
+        <div className="bg-white dark:bg-[#13131f] rounded-2xl shadow-sm border border-gray-100 dark:border-white/[0.05]">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-white/[0.05] flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-bold text-gray-800 dark:text-white">{t.allStores}
+                <span className="ml-2 text-xs font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{stores.length}</span>
+              </h2>
+            </div>
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
+              <input type="text" placeholder={t.search} value={search} onChange={e => setSearch(e.target.value)}
+                className="pl-8 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:bg-gray-800 dark:text-white w-48 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 transition"/>
+            </div>
+            <button onClick={handleExport}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 font-semibold transition">
+              📊 {t.exportCsv}
+            </button>
+            {!selected.length
+              ? <button onClick={selectAll} className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-xl hover:bg-gray-200 font-semibold transition">{t.selectAll}</button>
+              : <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800 flex-wrap">
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{selected.length} {t.selected}</span>
+                  <div className="w-px h-4 bg-blue-200 dark:bg-blue-700"/>
+                  <button onClick={() => handleBulkAction("enable")}  className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 font-semibold transition">{t.btnEnable}</button>
+                  <button onClick={() => handleBulkAction("disable")} className="px-2 py-1 text-xs bg-red-100 text-red-600 rounded-lg hover:bg-red-200 font-semibold transition">{t.btnDisable}</button>
+                  <button onClick={() => handleBulkAction("extend")}  className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 font-semibold transition">+{bulkExtendDays}d</button>
+                  <input type="number" value={bulkExtendDays} onChange={e => setBulkExtendDays(+e.target.value)} className="w-12 text-xs border border-blue-200 dark:border-blue-700 rounded-lg px-1.5 py-1 dark:bg-blue-900/30 dark:text-blue-300 outline-none text-center" />
+                  <button onClick={() => setBulkNotifyModal(true)} className="px-2 py-1 text-xs bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 font-semibold transition">{t.notify}</button>
+                  <button onClick={clearSelect} className="px-2 py-1 text-xs bg-gray-200 text-gray-500 rounded-lg hover:bg-gray-300 font-semibold transition">{t.clear}</button>
+                </div>
+            }
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-300">
-                <tr>
-                  <th className="px-3 py-3 w-8"><input type="checkbox" checked={selected.length === filtered.length && filtered.length > 0} onChange={e => e.target.checked ? selectAll() : clearSelect()} /></th>
-                  {[t.colStore, t.colOwner, t.colPlan, t.colExpires, t.colUsers, t.colProducts, t.colRevenue, t.colPrice, t.colStatus, t.colActions].map(h => <th key={h} className="px-3 py-3 text-left font-medium text-xs">{h}</th>)}
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-white/[0.05]">
+                  <th className="px-4 py-3 w-10">
+                    <input type="checkbox" className="rounded" checked={selected.length === filtered.length && filtered.length > 0} onChange={e => e.target.checked ? selectAll() : clearSelect()} />
+                  </th>
+                  {[t.colStore, t.colOwner, t.colPlan, t.colExpires, t.colUsers, t.colProducts, t.colRevenue, t.colPrice, t.colStatus].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t.colActions}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {filtered.map(store => {
                   const expiry = store.planExpiresAt ? new Date(store.planExpiresAt) : null;
                   const expired = expiry && expiry < new Date();
                   const daysLeft = expiry ? Math.ceil((expiry - new Date()) / 86400000) : null;
                   return (
-                    <tr key={store._id} className={`hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors ${selected.includes(store._id) ? "bg-blue-50 dark:bg-blue-900/10" : ""}`}>
-                      <td className="px-3 py-2"><input type="checkbox" checked={selected.includes(store._id)} onChange={() => toggleSelect(store._id)} /></td>
-                      <td className="px-3 py-2 font-medium text-gray-800 dark:text-white">
-                        {store.name}
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span className="text-xs text-gray-400">{store.slug}</span>
-                          {store.storeType === "cafe" && <span className="px-1 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">☕ Café</span>}
-                          {store.storeType === "both" && <span className="px-1 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400">🏪 Both</span>}
-                        </div>
-                        {store.internalNotes && <div className="text-xs text-yellow-600 truncate max-w-[100px]">📝 {store.internalNotes}</div>}
+                    <tr key={store._id} className={`group transition-colors ${selected.includes(store._id) ? "bg-blue-50 dark:bg-blue-900/10" : "hover:bg-gray-50/80 dark:hover:bg-gray-800/40"}`}>
+                      <td className="px-4 py-3">
+                        <input type="checkbox" className="rounded" checked={selected.includes(store._id)} onChange={() => toggleSelect(store._id)} />
                       </td>
-                      <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{store.owner?.username}</td>
-                      <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PLAN_COLORS[store.plan] || "bg-gray-100 text-gray-600"}`}>{store.plan}</span></td>
-                      <td className="px-3 py-2 text-xs">{expiry ? <span className={expired ? "text-red-500 font-medium" : daysLeft <= 7 ? "text-yellow-500" : "text-gray-600 dark:text-gray-300"}>{expired ? t.expired : `${daysLeft}d`}</span> : "—"}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{store.userCount ?? "—"}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{store.productCount ?? "—"}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">${(store.totalRevenue || 0).toFixed(2)}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{store.monthlyPrice ? `$${store.monthlyPrice}` : "—"}</td>
-                      <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${store.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{store.active ? t.statusActive : t.statusOff}</span></td>
-                      <td className="px-3 py-2">
-                        <div className="flex gap-1 flex-wrap">
-                          {[
-                            { l: t.btnView,                                    c: "gray",   f: () => openDetails(store) },
-                            { l: t.btnUsers,                                   c: "blue",   f: () => openStoreUsers(store) },
-                            { l: t.btnPlan,                                    c: "indigo", f: () => openPlanEditor(store) },
-                            { l: store.active ? t.btnDisable : t.btnEnable,   c: store.active ? "red" : "green", f: () => handleToggle(store._id) },
-                            { l: t.btnResetPw,                                 c: "yellow", f: () => { setResetTarget(store); setResetPassword(""); } },
-                            { l: t.btnLoginAs,                                 c: "purple", f: () => handleImpersonate(store) },
-                            { l: t.btnCashier,                                 c: "teal",   f: () => { openStoreUsers(store); } },
-                            { l: t.btnNotify,                                  c: "orange", f: () => setNotifyTarget(store) },
-                            { l: t.btnWelcome,                                 c: "pink",   f: () => { setWelcomeTarget(store); setWelcomeMsg(store.welcomeMessage || ""); } },
-                            { l: t.btnNotes,                                   c: "amber",  f: () => { setNotesTarget(store); setNotesText(store.internalNotes || ""); } },
-                            { l: t.btnTransfer,                                c: "orange", f: () => setTransferTarget(store) },
-                            { l: t.btnClone,                                   c: "cyan",   f: () => setCloneTarget(store) },
-                            { l: "📦 Copy Products",                            c: "emerald", f: () => { setCopyTarget(store); setCopyDestId(""); setCopyResult(null); } },
-                            { l: store.cafeEnabled ? "☕ Café ON" : "☕ Café OFF", c: store.cafeEnabled ? "amber" : "gray", f: () => handleToggleCafe(store._id) },
-                            { l: "👨‍🍳 Café Staff",                               c: "amber",  f: () => openCafeStaff(store) },
-                            { l: t.btnDelete,                                  c: "red",    f: () => setDeleteTarget(store) },
-                          ].map(btn => (
-                            <button key={btn.l} onClick={btn.f}
-                              className={`px-1.5 py-0.5 text-xs rounded bg-${btn.c}-50 text-${btn.c}-600 hover:bg-${btn.c}-100 dark:bg-${btn.c}-900/30 dark:text-${btn.c}-400 whitespace-nowrap`}>
-                              {btn.l}
+
+                      {/* Store name + slug */}
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-sm text-gray-800 dark:text-white">{store.name}</div>
+                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                          <span className="text-[10px] text-gray-400 font-mono">{store.slug}</span>
+                          {store.storeType === "cafe" && <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">☕ Café</span>}
+                          {store.storeType === "both" && <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400">🏪+☕</span>}
+                          {store.internalNotes && <span className="text-[9px] text-amber-600 dark:text-amber-400">📝 note</span>}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 text-xs font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">{store.owner?.username || "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide ${PLAN_COLORS[store.plan] || "bg-gray-100 text-gray-600"}`}>{store.plan}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold">
+                        {expiry ? (
+                          <span className={`px-2 py-1 rounded-lg ${expired ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" : daysLeft <= 7 ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" : "text-gray-500 dark:text-gray-400"}`}>
+                            {expired ? "Expired" : `${daysLeft}d`}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-center font-semibold text-gray-600 dark:text-gray-300">{store.userCount ?? "—"}</td>
+                      <td className="px-4 py-3 text-xs text-center font-semibold text-gray-600 dark:text-gray-300">{store.productCount ?? "—"}</td>
+                      <td className="px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-200">${(store.totalRevenue || 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{store.monthlyPrice ? `$${store.monthlyPrice}` : "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold ${store.active ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${store.active ? "bg-green-500" : "bg-red-500"}`}/>
+                          {store.active ? t.statusActive : t.statusOff}
+                        </span>
+                      </td>
+
+                      {/* ── Grouped actions ── */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 flex-wrap">
+
+                          {/* Group 1: Core access */}
+                          <div className="flex items-center gap-0.5">
+                            <button onClick={() => openDetails(store)}      className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition whitespace-nowrap">View</button>
+                            <button onClick={() => openStoreUsers(store)}   className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 transition whitespace-nowrap">👥 Users</button>
+                            <button onClick={() => openPlanEditor(store)}   className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 transition whitespace-nowrap">Plan</button>
+                          </div>
+
+                          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5"/>
+
+                          {/* Group 2: Account control */}
+                          <div className="flex items-center gap-0.5">
+                            <button onClick={() => handleToggle(store._id)}
+                              className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap ${store.active ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200" : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200"}`}>
+                              {store.active ? t.btnDisable : t.btnEnable}
                             </button>
-                          ))}
+                            <button onClick={() => handleImpersonate(store)} className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 transition whitespace-nowrap">Login As</button>
+                            <button onClick={() => { setResetTarget(store); setResetPassword(""); }} className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-200 transition whitespace-nowrap">Reset PW</button>
+                          </div>
+
+                          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5"/>
+
+                          {/* Group 3: Communication */}
+                          <div className="flex items-center gap-0.5">
+                            <button onClick={() => setNotifyTarget(store)}                                          className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 hover:bg-orange-200 transition whitespace-nowrap">Notify</button>
+                            <button onClick={() => { setWelcomeTarget(store); setWelcomeMsg(store.welcomeMessage || ""); }} className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400 hover:bg-pink-200 transition whitespace-nowrap">Welcome</button>
+                            <button onClick={() => { setNotesTarget(store); setNotesText(store.internalNotes || ""); }}    className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 transition whitespace-nowrap">Notes</button>
+                          </div>
+
+                          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5"/>
+
+                          {/* Group 4: Management */}
+                          <div className="flex items-center gap-0.5">
+                            <button onClick={() => setTransferTarget(store)}                                     className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-200 transition whitespace-nowrap">Transfer</button>
+                            <button onClick={() => setCloneTarget(store)}                                        className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-200 transition whitespace-nowrap">Clone</button>
+                            <button onClick={() => { setCopyTarget(store); setCopyDestId(""); setCopyResult(null); }} className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 transition whitespace-nowrap">📦 Copy</button>
+                          </div>
+
+                          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5"/>
+
+                          {/* Group 5: Café */}
+                          <div className="flex items-center gap-0.5">
+                            <button onClick={() => handleToggleCafe(store._id)}
+                              className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap ${store.cafeEnabled ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200"}`}>
+                              ☕ {store.cafeEnabled ? "Café ON" : "Café OFF"}
+                            </button>
+                            <button onClick={() => openCafeStaff(store)} className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 transition whitespace-nowrap">👨‍🍳 Staff</button>
+                          </div>
+
+                          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5"/>
+
+                          {/* Group 6: Danger */}
+                          <button onClick={() => setDeleteTarget(store)} className="px-2 py-1 rounded-lg text-[11px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 transition whitespace-nowrap">
+                            🗑 {t.btnDelete}
+                          </button>
                         </div>
                       </td>
                     </tr>
                   );
                 })}
-                {filtered.length === 0 && <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400">{t.noStoresFound}</td></tr>}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={11} className="px-4 py-14 text-center">
+                      <div className="text-3xl mb-2">🏪</div>
+                      <p className="text-sm font-semibold text-gray-400">{t.noStoresFound}</p>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -380,53 +551,99 @@ export default function SuperAdminPanel() {
 
       {/* ── ACTIVITY TAB ── */}
       {tab === t.tabActivity && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-white">{t.recentActivity}</h2>
-            <button onClick={() => getActivityFeed().then(setActivity)} className="text-xs text-blue-500 hover:underline">{t.refresh}</button>
+        <div className="bg-white dark:bg-[#13131f] rounded-2xl shadow-sm border border-gray-100 dark:border-white/[0.05]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/[0.05]">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚡</span>
+              <h2 className="text-base font-bold text-gray-800 dark:text-white">{t.recentActivity}</h2>
+            </div>
+            <button onClick={() => getActivityFeed().then(setActivity)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 font-semibold transition">
+              <RefreshCw size={11}/> {t.refresh}
+            </button>
           </div>
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-            {activity.map((item, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700">
-                <span className="text-lg">{item.type === "sale" ? "💳" : item.type === "user" ? "👤" : "🏪"}</span>
-                <div className="flex-1">
-                  <div className="text-sm text-gray-800 dark:text-white">
-                    {item.type === "sale"  && <><span className="font-medium">${item.amount?.toFixed(2)}</span> {t.saleAt} <span className="text-blue-500">{item.store}</span></>}
-                    {item.type === "user"  && <>{t.newUser} <span className="font-medium">{item.role}</span> <span className="text-blue-500">{item.username}</span> {t.at} {item.store}</>}
-                    {item.type === "store" && <>{t.newStore} <span className="font-medium">{item.name}</span> — {item.plan} plan</>}
+          <div className="divide-y divide-gray-50 dark:divide-gray-800 max-h-[65vh] overflow-y-auto">
+            {activity.map((item, i) => {
+              const typeMap = {
+                sale:  { icon: "💳", color: "bg-green-100 dark:bg-green-900/30",  text: "text-green-600 dark:text-green-400" },
+                user:  { icon: "👤", color: "bg-blue-100 dark:bg-blue-900/30",   text: "text-blue-600 dark:text-blue-400"  },
+                store: { icon: "🏪", color: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400" },
+              };
+              const style = typeMap[item.type] || typeMap.store;
+              return (
+                <div key={i} className="flex items-start gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                  <div className={`w-9 h-9 rounded-xl ${style.color} flex items-center justify-center shrink-0 text-base`}>{style.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-800 dark:text-white leading-snug">
+                      {item.type === "sale"  && <><span className="font-black text-green-600">${item.amount?.toFixed(2)}</span> <span className="text-gray-500">{t.saleAt}</span> <span className={`font-semibold ${style.text}`}>{item.store}</span></>}
+                      {item.type === "user"  && <><span className="text-gray-500">{t.newUser}</span> <span className="font-bold">{item.role}</span> <span className={`font-semibold ${style.text}`}>@{item.username}</span> <span className="text-gray-500">{t.at}</span> {item.store}</>}
+                      {item.type === "store" && <><span className="text-gray-500">{t.newStore}</span> <span className="font-bold">{item.name}</span> <span className="text-gray-400">— {item.plan}</span></>}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">{new Date(item.time).toLocaleString()}</p>
                   </div>
-                  <div className="text-xs text-gray-400">{new Date(item.time).toLocaleString()}</div>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${style.color} ${style.text} shrink-0 uppercase tracking-wide`}>{item.type}</span>
                 </div>
+              );
+            })}
+            {activity.length === 0 && (
+              <div className="text-center py-16">
+                <div className="text-4xl mb-2">⚡</div>
+                <p className="text-sm font-semibold text-gray-400">{t.noRecentActivity}</p>
               </div>
-            ))}
-            {activity.length === 0 && <div className="text-center text-gray-400 py-8">{t.noRecentActivity}</div>}
+            )}
           </div>
         </div>
       )}
 
       {/* ── AUDIT LOG TAB ── */}
       {tab === t.tabAuditLog && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-white">{t.platformAuditLog}</h2>
-            <button onClick={() => getPlatformAuditLog({ limit: 100 }).then(setAuditLogs)} className="text-xs text-blue-500 hover:underline">{t.refresh}</button>
+        <div className="bg-white dark:bg-[#13131f] rounded-2xl shadow-sm border border-gray-100 dark:border-white/[0.05]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/[0.05]">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📋</span>
+              <h2 className="text-base font-bold text-gray-800 dark:text-white">{t.platformAuditLog}</h2>
+            </div>
+            <button onClick={() => getPlatformAuditLog({ limit: 100 }).then(setAuditLogs)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 font-semibold transition">
+              <RefreshCw size={11}/> {t.refresh}
+            </button>
           </div>
-          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+          <div className="overflow-x-auto max-h-[65vh] overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-700 text-gray-500 text-xs sticky top-0">
-                <tr>{[t.auditColStore, t.auditColUser, t.auditColAction, t.auditColDesc, t.auditColTime].map(h => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-gray-50 dark:bg-gray-800/80 border-b border-gray-100 dark:border-white/[0.05]">
+                  {[t.auditColStore, t.auditColUser, t.auditColAction, t.auditColDesc, t.auditColTime].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {auditLogs.map(log => (
-                  <tr key={log._id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                    <td className="px-3 py-2 text-xs text-blue-500">{log.storeId?.name || "—"}</td>
-                    <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{log.username}</td>
-                    <td className="px-3 py-2"><span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-xs">{log.action}</span></td>
-                    <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 max-w-xs truncate">{log.description}</td>
-                    <td className="px-3 py-2 text-xs text-gray-400">{new Date(log.createdAt).toLocaleString()}</td>
-                  </tr>
-                ))}
-                {auditLogs.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">{t.noAuditLogs}</td></tr>}
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                {auditLogs.map(log => {
+                  const actionColor = log.action?.includes("delete") || log.action?.includes("DELETE") ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                    : log.action?.includes("create") || log.action?.includes("CREATE") ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : log.action?.includes("update") || log.action?.includes("UPDATE") ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                    : log.action?.includes("login") || log.action?.includes("LOGIN") ? "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+                    : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300";
+                  return (
+                    <tr key={log._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                      <td className="px-4 py-3 text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">{log.storeId?.name || "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200">@{log.username}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-block px-2 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide ${actionColor}`}>{log.action}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 max-w-xs truncate">{log.description}</td>
+                      <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+                {auditLogs.length === 0 && (
+                  <tr><td colSpan={5} className="px-4 py-14 text-center">
+                    <div className="text-3xl mb-2">📋</div>
+                    <p className="text-sm font-semibold text-gray-400">{t.noAuditLogs}</p>
+                  </td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -435,72 +652,104 @@ export default function SuperAdminPanel() {
 
       {/* ── PROFILE TAB ── */}
       {tab === t.tabProfile && (
-        <div className="space-y-4 max-w-md">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4">{t.superAdminProfile}</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">{t.usernameLabel}</label>
-                <input type="text" value={profileForm.username} onChange={e => setProfileForm(f => ({ ...f, username: e.target.value }))} className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+        <div className="grid lg:grid-cols-2 gap-5 max-w-3xl">
+
+          {/* Credentials card */}
+          <div className="bg-white dark:bg-[#13131f] rounded-2xl shadow-sm border border-gray-100 dark:border-white/[0.05]">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-white/[0.05]">
+              <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <span className="text-lg">👤</span>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">{t.newPasswordLabel}</label>
-                <input type="text" placeholder={t.newPasswordPh} value={profileForm.newPassword} onChange={e => setProfileForm(f => ({ ...f, newPassword: e.target.value }))} className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                <h2 className="text-sm font-bold text-gray-800 dark:text-white">{t.superAdminProfile}</h2>
+                <p className="text-xs text-gray-400">Credentials &amp; access</p>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">{t.usernameLabel}</label>
+                <input type="text" value={profileForm.username} onChange={e => setProfileForm(f => ({ ...f, username: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 dark:bg-gray-800 dark:text-white text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 transition"/>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">{t.newPasswordLabel}</label>
+                <input type="text" placeholder={t.newPasswordPh} value={profileForm.newPassword} onChange={e => setProfileForm(f => ({ ...f, newPassword: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 dark:bg-gray-800 dark:text-white text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 transition"/>
               </div>
 
-              {/* Max Devices */}
+              {/* Max devices */}
               <div>
-                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
                   Max Devices
-                  {profileInfo && <span className="ml-2 text-xs text-gray-400">({profileInfo.activeDevices} active)</span>}
+                  {profileInfo && <span className="ml-2 normal-case font-normal text-gray-400">({profileInfo.activeDevices} currently active)</span>}
                 </label>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
-                  <Smartphone size={15} className="text-blue-500 shrink-0"/>
-                  <span className="text-sm text-gray-600 dark:text-gray-300 flex-1">Simultaneous logins</span>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <Smartphone size={14} className="text-blue-500 shrink-0"/>
+                  <span className="text-sm text-gray-600 dark:text-gray-300 flex-1">Simultaneous logins allowed</span>
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setProfileForm(f => ({ ...f, maxDevices: Math.max(1, (f.maxDevices || 1) - 1) }))}
+                    <button type="button" onClick={() => setProfileForm(f => ({ ...f, maxDevices: Math.max(1, (f.maxDevices || 1) - 1) }))}
                       disabled={(profileForm.maxDevices || 1) <= 1}
-                      className="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center hover:bg-gray-300 disabled:opacity-30 transition">
+                      className="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-30 transition">
                       <Minus size={12}/>
                     </button>
-                    <span className="text-base font-bold w-6 text-center">{profileForm.maxDevices || 1}</span>
-                    <button
-                      type="button"
-                      onClick={() => setProfileForm(f => ({ ...f, maxDevices: Math.min(10, (f.maxDevices || 1) + 1) }))}
+                    <span className="text-base font-black w-7 text-center text-gray-800 dark:text-white">{profileForm.maxDevices || 1}</span>
+                    <button type="button" onClick={() => setProfileForm(f => ({ ...f, maxDevices: Math.min(10, (f.maxDevices || 1) + 1) }))}
                       disabled={(profileForm.maxDevices || 1) >= 10}
-                      className="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center hover:bg-gray-300 disabled:opacity-30 transition">
+                      className="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-30 transition">
                       <Plus size={12}/>
                     </button>
                   </div>
                 </div>
               </div>
 
-              <button onClick={handleProfile} className="w-full bg-blue-600 text-white rounded-xl py-2.5 font-medium hover:bg-blue-700">{t.saveProfile}</button>
+              <button onClick={handleProfile} className="w-full bg-blue-600 text-white rounded-xl py-2.5 font-bold text-sm hover:bg-blue-700 shadow shadow-blue-500/20 transition">{t.saveProfile}</button>
             </div>
           </div>
 
-          {/* Active devices list */}
-          {profileInfo?.devices?.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                <Monitor size={14} className="text-blue-500"/> Active Sessions ({profileInfo.devices.length}/{profileInfo.maxDevices})
-              </h3>
-              <div className="space-y-2">
-                {profileInfo.devices.map((d, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-100 dark:border-gray-600">
-                    <Monitor size={13} className="text-blue-500 shrink-0"/>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{d.deviceName || "Unknown device"}</p>
-                      <p className="text-xs text-gray-400">{d.deviceOS} · {d.deviceBrowser} · {timeAgo(d.lastLoginAt)}</p>
-                    </div>
-                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">Active</span>
-                  </div>
-                ))}
+          {/* Active sessions card */}
+          <div className="bg-white dark:bg-[#13131f] rounded-2xl shadow-sm border border-gray-100 dark:border-white/[0.05]">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-white/[0.05]">
+              <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <Monitor size={16} className="text-green-600 dark:text-green-400"/>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-gray-800 dark:text-white">Active Sessions</h2>
+                <p className="text-xs text-gray-400">
+                  {profileInfo ? `${profileInfo.devices?.length || 0} / ${profileInfo.maxDevices} devices` : "Loading…"}
+                </p>
               </div>
             </div>
-          )}
+            <div className="p-5 space-y-2">
+              {profileInfo?.devices?.length > 0 ? profileInfo.devices.map((d, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-blue-100 dark:hover:border-blue-800 transition">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                    <Monitor size={13} className="text-blue-500"/>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate">{d.deviceName || "Unknown device"}</p>
+                    <p className="text-xs text-gray-400">{d.deviceOS} · {d.deviceBrowser} · {timeAgo(d.lastLoginAt)}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>Active
+                    </span>
+                    <button
+                      onClick={() => handleKickOwnDevice(d.deviceId, d.deviceName)}
+                      title="Kick this session"
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-red-500 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-100 dark:border-red-800/40 transition"
+                    >
+                      <LogOut size={11}/> Kick
+                    </button>
+                  </div>
+                </div>
+              )) : (
+                <div className="text-center py-8">
+                  <Monitor size={28} className="mx-auto text-gray-300 dark:text-gray-600 mb-2"/>
+                  <p className="text-sm text-gray-400">No active sessions</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1330,6 +1579,9 @@ export default function SuperAdminPanel() {
           </div>
         </Modal>
       )}
+
+        </div>{/* end scrollable content */}
+      </div>{/* end main area */}
 
     </div>
   );

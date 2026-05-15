@@ -68,6 +68,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
 
   const [open,       setOpen]       = useState(false);
   const [isOnline,   setIsOnline]   = useState(navigator.onLine);
+  const [isMobile,   setIsMobile]   = useState(() => window.innerWidth < 640);
   const navRef                      = useRef(null);
 
   useEffect(() => {
@@ -76,6 +77,12 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     window.addEventListener("online",  up);
     window.addEventListener("offline", down);
     return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
+  }, []);
+
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
   }, []);
 
   const [editingName, setEditingName] = useState(false);
@@ -137,35 +144,128 @@ export default function DashboardLayout({ children, page, setPage, user }) {
   }, [open, menu, toggle, close, setPage]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || isMobile) return;
     const onClickOutside = (e) => { if (navRef.current && !navRef.current.contains(e.target)) close(); };
     setTimeout(() => document.addEventListener("mousedown", onClickOutside), 0);
     return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [open, close]);
+  }, [open, close, isMobile]);
 
   const activeColor = NAV_COLORS[page] || NAV_COLORS.pos;
 
-  const NavItem = ({ item, index }) => {
+  /* ── Shared panel sections ── */
+  const PanelHeader = () => (
+    <div className="flex items-center justify-between gap-3 px-4 py-3
+      border-b border-gray-200 dark:border-white/[0.10]
+      bg-gray-50 dark:bg-[#0d0d16]">
+      {/* User */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0"
+          style={{ background: activeColor.bg, boxShadow: `0 0 10px ${activeColor.glow}` }}>
+          {user?.username?.[0]?.toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-gray-800 dark:text-white truncate">{user?.username}</p>
+          <p className="text-[10px] capitalize font-semibold" style={{ color: activeColor.bg }}>{user?.role}</p>
+        </div>
+      </div>
+
+      {/* Store name (editable) */}
+      {!isSuperAdmin && (
+        <div className="flex-1 flex justify-end min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-1">
+              <input
+                ref={nameInputRef}
+                value={nameInput}
+                onChange={e => setNameInput(e.target.value)}
+                onKeyDown={e => { e.stopPropagation(); if (e.key === "Enter") saveEditName(); if (e.key === "Escape") cancelEditName(); }}
+                className="text-[11px] font-semibold bg-transparent border-b border-blue-500 outline-none text-gray-800 dark:text-white w-28"
+                placeholder="Store name…"
+              />
+              <button onClick={saveEditName} disabled={savingName} className="p-0.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition"><Check size={11}/></button>
+              <button onClick={cancelEditName} className="p-0.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded transition"><X size={11}/></button>
+            </div>
+          ) : (
+            <button onClick={startEditName} className="group flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition truncate max-w-[140px]">
+              🧾 {storeName}
+              <Pencil size={9} className="shrink-0 opacity-0 group-hover:opacity-100 transition text-blue-400"/>
+            </button>
+          )}
+        </div>
+      )}
+
+      {isSuperAdmin && (
+        <span className="text-[11px] font-semibold text-purple-400">🌐 Platform</span>
+      )}
+    </div>
+  );
+
+  const PanelUtility = () => (
+    <div className="flex items-center justify-between gap-2 px-4 py-2.5
+      border-t border-gray-200 dark:border-white/[0.10]
+      bg-gray-50 dark:bg-[#0d0d16]">
+      <div className="flex items-center gap-1.5">
+        <motion.button
+          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+          onClick={toggleTheme}
+          className="w-8 h-8 rounded-lg flex items-center justify-center
+            bg-white dark:bg-white/10 border border-gray-200 dark:border-white/[0.14]
+            text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white
+            hover:bg-gray-100 dark:hover:bg-white/[0.16] transition"
+          title="Toggle theme"
+        >
+          {theme === "dark" ? <Sun size={13} className="text-amber-400"/> : <Moon size={13}/>}
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+          onClick={toggleLang}
+          className="w-8 h-8 rounded-lg flex items-center justify-center
+            bg-white dark:bg-white/10 border border-gray-200 dark:border-white/[0.14]
+            text-[10px] font-bold text-gray-600 dark:text-gray-200
+            hover:text-gray-900 dark:hover:text-white
+            hover:bg-gray-100 dark:hover:bg-white/[0.16] transition"
+          title="Switch language"
+        >
+          {lang === "en" ? "AR" : "EN"}
+        </motion.button>
+
+        {!isSuperAdmin && <NotificationsBell />}
+      </div>
+
+      <motion.button
+        whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+        onClick={() => logout()}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+          text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300
+          bg-red-50 dark:bg-red-500/[0.12] hover:bg-red-100 dark:hover:bg-red-500/[0.22]
+          border border-red-100 dark:border-red-500/[0.20] transition"
+      >
+        <LogOut size={12}/> Logout
+      </motion.button>
+    </div>
+  );
+
+  const NavItem = ({ item, index, cols }) => {
     const Icon   = item.icon;
     const active = page === item.key;
     const color  = NAV_COLORS[item.key];
 
     return (
       <motion.button
-        key={item.key}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 8 }}
-        transition={{ delay: index * 0.03, type: "spring", stiffness: 400, damping: 28 }}
+        transition={{ delay: index * 0.025, type: "spring", stiffness: 400, damping: 28 }}
         onClick={() => { setPage(item.key); close(); }}
-        whileHover={{ scale: 1.03 }}
+        whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.97 }}
         className={`
-          w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left
+          w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left
           transition-all duration-150 relative overflow-hidden
           ${active
             ? "text-white shadow-lg"
-            : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5"
+            : "text-gray-600 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-white/[0.08]"
           }
         `}
         style={active ? {
@@ -173,32 +273,28 @@ export default function DashboardLayout({ children, page, setPage, user }) {
           boxShadow: `0 4px 14px ${color.glow}`,
         } : {}}
       >
-        {/* Icon bubble */}
         <div
           className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={{
-            background: active ? "rgba(255,255,255,0.2)" : color.bg + "22",
-          }}
+          style={{ background: active ? "rgba(255,255,255,0.22)" : color.bg + "26" }}
         >
           <Icon size={14} style={{ color: active ? "white" : color.bg }} />
         </div>
 
-        {/* Label */}
         <span className="text-xs font-semibold truncate flex-1">
           {NAV_LABELS[item.key]}
         </span>
 
-        {/* Keyboard shortcut */}
-        <span className={`text-[10px] font-mono shrink-0 ${active ? "text-white/60" : "text-gray-300 dark:text-gray-600"}`}>
-          {index + 1}
-        </span>
+        {!isMobile && (
+          <span className={`text-[10px] font-mono shrink-0 ${active ? "text-white/60" : "text-gray-400 dark:text-gray-500"}`}>
+            {index + 1}
+          </span>
+        )}
 
-        {/* Active pulse */}
         {active && (
           <motion.div
             className="absolute inset-0 rounded-xl pointer-events-none"
             style={{ background: color.bg }}
-            animate={{ opacity: [0.15, 0, 0.15] }}
+            animate={{ opacity: [0.12, 0, 0.12] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
         )}
@@ -206,139 +302,98 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     );
   };
 
+  /* ── DESKTOP PANEL ── */
+  const DesktopPanel = () => (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.92, y: 16 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.92, y: 16 }}
+      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+      className="absolute bottom-16 left-0 w-[420px]
+        bg-white dark:bg-[#13131f]
+        backdrop-blur-xl rounded-2xl overflow-hidden
+        border border-gray-200 dark:border-white/[0.10]"
+      style={{ boxShadow: "0 24px 64px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)" }}
+    >
+      <PanelHeader />
+
+      <div className="p-3 grid grid-cols-2 gap-1.5">
+        {menu.map((item, i) => (
+          <NavItem key={item.key} item={item} index={i} />
+        ))}
+      </div>
+
+      <PanelUtility />
+
+      <div className="px-4 py-2 border-t border-gray-100 dark:border-white/[0.07]">
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center">
+          <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/[0.10] font-mono text-[9px] text-gray-600 dark:text-gray-300">S</kbd>
+          {" "}or{" "}
+          <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/[0.10] font-mono text-[9px] text-gray-600 dark:text-gray-300">`</kbd>
+          {" "}toggle · {" "}
+          <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/[0.10] font-mono text-[9px] text-gray-600 dark:text-gray-300">1–{menu.length}</kbd>
+          {" "}jump · {" "}
+          <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/[0.10] font-mono text-[9px] text-gray-600 dark:text-gray-300">Esc</kbd>
+          {" "}close
+        </p>
+      </div>
+    </motion.div>
+  );
+
+  /* ── MOBILE PANEL (bottom sheet) ── */
+  const MobilePanel = () => (
+    <>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+        onClick={close}
+      />
+
+      {/* Sheet */}
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 350, damping: 35 }}
+        className="fixed bottom-0 left-0 right-0 z-50
+          bg-white dark:bg-[#13131f]
+          rounded-t-3xl overflow-hidden
+          border-t border-l border-r border-gray-200 dark:border-white/[0.10]"
+        style={{ maxHeight: "88vh", boxShadow: "0 -8px 40px rgba(0,0,0,0.35)" }}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-white/20"/>
+        </div>
+
+        <PanelHeader />
+
+        {/* Nav grid — 3 columns on mobile for compact layout */}
+        <div className="p-3 overflow-y-auto grid grid-cols-3 gap-1.5" style={{ maxHeight: "calc(88vh - 160px)" }}>
+          {menu.map((item, i) => (
+            <NavItem key={item.key} item={item} index={i} />
+          ))}
+        </div>
+
+        <PanelUtility />
+      </motion.div>
+    </>
+  );
+
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-neutral-950 text-gray-900 dark:text-white overflow-hidden">
-
 
       {/* ── FLOATING NAV ── */}
       <div ref={navRef} className="fixed bottom-5 left-5 z-50">
 
         <AnimatePresence>
-          {open && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 16 }}
-              transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              className="absolute bottom-16 left-0 w-[420px]
-                bg-white/95 dark:bg-[#1a1a1a]/95
-                backdrop-blur-xl
-                rounded-2xl shadow-2xl
-                border border-gray-100 dark:border-white/8
-                overflow-hidden"
-              style={{ boxShadow: "0 24px 64px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)" }}
-            >
-              {/* Header: user + store */}
-              <div className="flex items-center justify-between gap-3 px-4 py-3
-                border-b border-gray-100 dark:border-white/8
-                bg-gray-50/80 dark:bg-white/3">
-
-                {/* User */}
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                    style={{ background: activeColor.bg }}>
-                    {user?.username?.[0]?.toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-gray-800 dark:text-white truncate">{user?.username}</p>
-                    <p className="text-[10px] capitalize text-blue-500">{user?.role}</p>
-                  </div>
-                </div>
-
-                {/* Store name (editable) */}
-                {!isSuperAdmin && (
-                  <div className="flex-1 flex justify-end min-w-0">
-                    {editingName ? (
-                      <div className="flex items-center gap-1">
-                        <input
-                          ref={nameInputRef}
-                          value={nameInput}
-                          onChange={e => setNameInput(e.target.value)}
-                          onKeyDown={e => { e.stopPropagation(); if (e.key === "Enter") saveEditName(); if (e.key === "Escape") cancelEditName(); }}
-                          className="text-[11px] font-semibold bg-transparent border-b border-blue-500 outline-none text-gray-800 dark:text-white w-28"
-                          placeholder="Store name…"
-                        />
-                        <button onClick={saveEditName} disabled={savingName} className="p-0.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition"><Check size={11}/></button>
-                        <button onClick={cancelEditName} className="p-0.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"><X size={11}/></button>
-                      </div>
-                    ) : (
-                      <button onClick={startEditName} className="group flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition truncate max-w-[140px]">
-                        🧾 {storeName}
-                        <Pencil size={9} className="shrink-0 opacity-0 group-hover:opacity-100 transition text-blue-400"/>
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {isSuperAdmin && (
-                  <span className="text-[11px] font-semibold text-purple-500">🌐 Platform</span>
-                )}
-              </div>
-
-              {/* Main nav grid */}
-              <div className="p-3 grid grid-cols-2 gap-1.5">
-                {menu.map((item, i) => (
-                  <NavItem key={item.key} item={item} index={i} />
-                ))}
-              </div>
-
-              {/* Utility row */}
-              <div className="flex items-center justify-between gap-2 px-4 py-2.5
-                border-t border-gray-100 dark:border-white/8
-                bg-gray-50/80 dark:bg-white/3">
-
-                <div className="flex items-center gap-1.5">
-                  {/* Theme */}
-                  <motion.button
-                    whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                    onClick={toggleTheme}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center
-                      bg-white dark:bg-white/8 border border-gray-100 dark:border-white/10
-                      text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
-                    title="Toggle theme"
-                  >
-                    {theme === "dark" ? <Sun size={13} className="text-amber-400"/> : <Moon size={13}/>}
-                  </motion.button>
-
-                  {/* Language */}
-                  <motion.button
-                    whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                    onClick={toggleLang}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center
-                      bg-white dark:bg-white/8 border border-gray-100 dark:border-white/10
-                      text-[10px] font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
-                    title="Switch language"
-                  >
-                    {lang === "en" ? "AR" : "EN"}
-                  </motion.button>
-
-                  {/* Notifications */}
-                  {!isSuperAdmin && <NotificationsBell />}
-                </div>
-
-                {/* Logout */}
-                <motion.button
-                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => logout()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                    text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20
-                    hover:bg-red-100 dark:hover:bg-red-900/30 transition"
-                >
-                  <LogOut size={12}/> Logout
-                </motion.button>
-              </div>
-
-              {/* Keyboard hint */}
-              <div className="px-4 py-2 border-t border-gray-50 dark:border-white/5">
-                <p className="text-[10px] text-gray-300 dark:text-gray-600 text-center">
-                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">S</kbd> or <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">`</kbd> toggle · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">1–{menu.length}</kbd> jump · <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-white/8 font-mono text-[9px]">Esc</kbd> close
-                </p>
-              </div>
-            </motion.div>
-          )}
+          {open && !isMobile && <DesktopPanel />}
         </AnimatePresence>
 
-        {/* ── TRIGGER BUTTON ── */}
+        {/* Trigger button */}
         <motion.button
           onClick={toggle}
           whileHover={{ scale: 1.12 }}
@@ -370,7 +425,6 @@ export default function DashboardLayout({ children, page, setPage, user }) {
             )}
           </motion.div>
 
-          {/* Pulse ring */}
           {!open && (
             <motion.div
               className="absolute inset-0 rounded-full pointer-events-none"
@@ -381,6 +435,11 @@ export default function DashboardLayout({ children, page, setPage, user }) {
           )}
         </motion.button>
       </div>
+
+      {/* Mobile bottom sheet rendered via portal-like approach */}
+      <AnimatePresence>
+        {open && isMobile && <MobilePanel />}
+      </AnimatePresence>
 
       {/* ── MAIN CONTENT ── */}
       <main className={`flex-1 overflow-hidden ${!isPOS ? "overflow-y-auto p-6 pb-10" : ""} ${!isOnline ? "pt-9" : ""}`}>
