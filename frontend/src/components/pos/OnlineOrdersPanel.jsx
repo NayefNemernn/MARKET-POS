@@ -13,6 +13,14 @@ const STATUS_LABEL = {
   rejected:         { label: "Rejected",        color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
 };
 
+/* dot color + whether to pulse per status */
+const STATUS_DOT = {
+  pending:          { dot: "#facc15", pulse: true  },
+  accepted:         { dot: "#60a5fa", pulse: false },
+  out_for_delivery: { dot: "#a78bfa", pulse: false },
+  pending_payment:  { dot: "#fb923c", pulse: false },
+};
+
 export default function OnlineOrdersPanel({ storeId, userRole, onLoadToCart }) {
   const [open,     setOpen]    = useState(false);
   const [orders,   setOrders]  = useState([]);
@@ -153,12 +161,28 @@ export default function OnlineOrdersPanel({ storeId, userRole, onLoadToCart }) {
           className={`
             bg-orange-500 hover:bg-orange-600 text-white
             px-2 py-4 rounded-l-2xl shadow-xl transition-all
-            flex flex-col items-center gap-1.5
+            flex flex-col items-center gap-2
             ${badge > 0 ? "ring-2 ring-orange-300 ring-offset-1" : ""}
           `}
           title="Online Orders"
         >
           <Truck size={18} />
+
+          {/* Status dots — one per active status that has ≥1 order */}
+          {Object.entries(STATUS_DOT).map(([status, cfg]) => {
+            const count = orders.filter(o => o.status === status).length;
+            if (!count) return null;
+            return (
+              <div key={status} className="flex items-center gap-1">
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${cfg.pulse ? "animate-pulse" : ""}`}
+                  style={{ background: cfg.dot, boxShadow: `0 0 6px ${cfg.dot}` }}
+                />
+                <span className="text-[10px] font-bold leading-none">{count}</span>
+              </div>
+            );
+          })}
+
           <span className="text-[9px] font-semibold opacity-80 [writing-mode:vertical-rl] rotate-180 tracking-widest">
             ORDERS
           </span>
