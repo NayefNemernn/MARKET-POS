@@ -3,28 +3,54 @@ import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 import { useCurrency } from "../../context/CurrencyContext";
 import VoiceButton from "../common/VoiceButton";
 
-// ── Brand logo auto-detect ────────────────────────────────────────────────────
+// ── Brand logo / product image auto-detect ───────────────────────────────────
 async function findBrandLogo(name) {
-  const query = name.trim().split(/\s+/).slice(0, 3).join(" ");
-  if (query.length < 2) return null;
+  // Strip sizes/units in English and Arabic
+  const brand = name
+    .replace(/\b\d+\s*(ml|l|g|kg|oz|lb|cl|pack|pcs|x\s*\d+)\b/gi, "")
+    .replace(/[٠-٩\d]+\s*(مل|لتر|غرام|كغ|جرام|علبة|حبة)/g, "")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .join(" ");
+  if (brand.length < 2) return null;
 
-  // Use Clearbit autocomplete to find the real company + logo URL
-  const controller = new AbortController();
-  const tid = setTimeout(() => controller.abort(), 5000);
-  try {
-    const res = await fetch(
-      `https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(query)}`,
-      { signal: controller.signal }
-    );
-    clearTimeout(tid);
-    if (res.ok) {
-      const companies = await res.json();
-      if (Array.isArray(companies) && companies.length > 0 && companies[0].logo) {
-        return companies[0].logo; // trust the response — don't re-check the URL
+  const isArabic = /[؀-ۿ]/.test(brand);
+  // Arabic first for Arabic names; English first otherwise
+  const langs = isArabic ? ["ar", "en"] : ["en", "ar"];
+
+  for (const lang of langs) {
+    const abort = new AbortController();
+    const tid = setTimeout(() => abort.abort(), 5000);
+    try {
+      // Use MediaWiki Action API: fuzzy search + image in one request, CORS via origin=*
+      const params = new URLSearchParams({
+        action:      "query",
+        generator:   "search",
+        gsrsearch:   brand,
+        gsrlimit:    "1",
+        prop:        "pageimages",
+        piprop:      "thumbnail",
+        pithumbsize: "300",
+        format:      "json",
+        origin:      "*",
+      });
+      const res = await fetch(
+        `https://${lang}.wikipedia.org/w/api.php?${params}`,
+        { signal: abort.signal }
+      );
+      clearTimeout(tid);
+      if (res.ok) {
+        const data = await res.json();
+        const pages = data.query?.pages;
+        if (pages) {
+          const img = Object.values(pages)[0]?.thumbnail?.source;
+          if (img) return img;
+        }
       }
+    } catch {
+      clearTimeout(tid);
     }
-  } catch {
-    clearTimeout(tid);
   }
 
   return null;
@@ -391,7 +417,11 @@ export default function ProductForm({
           dark:shadow-[inset_4px_4px_8px_#050505,inset_-4px_-4px_8px_#1a1a1a]
           flex items-center justify-center
         ">
-          <img src={preview} className="h-40 object-contain rounded-xl" />
+          <img
+            src={preview}
+            className="h-40 object-contain rounded-xl"
+            onError={() => { setPreview(""); setImage(null); }}
+          />
           <button
             type="button"
             onClick={() => { setPreview(""); setImage(null); }}

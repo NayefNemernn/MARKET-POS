@@ -669,3 +669,75 @@ export const deleteCafeStaffByAdmin = async (req, res) => {
     res.json({ message: "Deleted" });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
+
+/* ─────────────────────────────────────────────
+   COPY PRODUCTS & CATEGORIES TO ANOTHER STORE
+   POST /api/superadmin/stores/:id/copy-products
+   Body: { targetStoreId }
+───────────────────────────────────────────── */
+export const copyProductsToStore = async (req, res) => {
+  try {
+    const { targetStoreId } = req.body;
+    if (!targetStoreId) return res.status(400).json({ message: "targetStoreId is required" });
+
+    const [srcStore, tgtStore] = await Promise.all([
+      Store.findById(req.params.id),
+      Store.findById(targetStoreId),
+    ]);
+    if (!srcStore) return res.status(404).json({ message: "Source store not found" });
+    if (!tgtStore) return res.status(404).json({ message: "Target store not found" });
+    if (String(srcStore._id) === String(tgtStore._id))
+      return res.status(400).json({ message: "Source and target stores must be different" });
+
+    // ── 1. Copy categories, reuse existing by name ──────────────
+    const srcCats = await Category.find({ storeId: srcStore._id }).lean();
+    const tgtCats = await Category.find({ storeId: tgtStore._id }).lean();
+    const tgtCatMap = new Map(tgtCats.map(c => [c.name.toLowerCase(), c._id]));
+
+    const catIdMap = new Map(); // srcCatId → tgtCatId
+    let categoriesCopied = 0;
+
+    for (const cat of srcCats) {
+      const key = cat.name.toLowerCase();
+      if (tgtCatMap.has(key)) {
+        catIdMap.set(String(cat._id), tgtCatMap.get(key));
+      } else {
+        const newCat = await Category.create({ name: cat.name, storeId: tgtStore._id });
+        catIdMap.set(String(cat._id), newCat._id);
+        tgtCatMap.set(key, newCat._id);
+        categoriesCopied++;
+      }
+    }
+
+    // ── 2. Copy products, skip duplicates by barcode ────────────
+    const srcProducts = await Product.find({ storeId: srcStore._id }).lean();
+    const existingBarcodes = new Set(
+      (await Product.find({ storeId: tgtStore._id }).select("barcode").lean()).map(p => p.barcode)
+    );
+
+    let productsCopied = 0;
+    let skipped = 0;
+    const toInsert = [];
+
+    for (const p of srcProducts) {
+      if (existingBarcodes.has(p.barcode)) { skipped++; continue; }
+      const { _id, storeId, createdAt, updatedAt, __v, ...fields } = p;
+      toInsert.push({
+        ...fields,
+        storeId: tgtStore._id,
+        category: p.category ? (catIdMap.get(String(p.category)) ?? null) : null,
+      });
+      existingBarcodes.add(p.barcode); // prevent duplicates within the batch
+      productsCopied++;
+    }
+
+    if (toInsert.length) await Product.insertMany(toInsert, { ordered: false });
+
+    res.json({
+      message: `Copied ${productsCopied} products and ${categoriesCopied} categories to "${tgtStore.name}"`,
+      productsCopied,
+      categoriesCopied,
+      skipped,
+    });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};

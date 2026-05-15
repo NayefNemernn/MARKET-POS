@@ -13,6 +13,7 @@ import {
   changeStoreUserPassword, getStoreGlobalStats, getStoreUserSales,
   clearStoreUserSales, clearStoreUserProducts,
   getCafeStaff, createCafeStaffByAdmin, updateCafeStaffByAdmin, deleteCafeStaffByAdmin,
+  copyProductsToStore,
 } from "../controllers/superadmin.controller.js";
 
 const router = express.Router();
@@ -48,6 +49,7 @@ router.put("/stores/:id/notes",              updateStoreNotes);
 router.put("/stores/:id/welcome",            setWelcomeMessage);
 router.post("/stores/:id/transfer",          transferOwner);
 router.post("/stores/:id/clone",             cloneStore);
+router.post("/stores/:id/copy-products",     copyProductsToStore);
 
 // Store users management (superadmin only)
 router.get("/stores/:id/users",                              getStoreUsers);

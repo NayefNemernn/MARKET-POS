@@ -11,6 +11,7 @@ import {
   changeStoreUserPW, getStoreUserSales, clearStoreUserSales, clearStoreUserProducts,
   getSuperAdminProfile,
   getCafeStaffList, createCafeStaffMember, updateCafeStaffMember, deleteCafeStaffMember,
+  copyProductsToStore,
 } from "../api/superadmin.api";
 import { useAuth } from "../context/AuthContext";
 import { useSuperAdminTranslation } from "../hooks/useSuperAdminTranslation";
@@ -68,6 +69,10 @@ export default function SuperAdminPanel() {
   const [detailLoading,  setDetailLoading]  = useState(false);
   const [cloneTarget,    setCloneTarget]    = useState(null);
   const [cloneForm,      setCloneForm]      = useState({ newStoreName: "", newUsername: "", newPassword: "" });
+  const [copyTarget,     setCopyTarget]     = useState(null);
+  const [copyDestId,     setCopyDestId]     = useState("");
+  const [copyResult,     setCopyResult]     = useState(null);
+  const [copyLoading,    setCopyLoading]    = useState(false);
   const [transferTarget, setTransferTarget] = useState(null);
   const [transferForm,   setTransferForm]   = useState({ newUsername: "", newPassword: "" });
   const [welcomeTarget,  setWelcomeTarget]  = useState(null);
@@ -132,6 +137,20 @@ export default function SuperAdminPanel() {
   const handleImpersonate = async (store) => { try { const d = await impersonateStore(store._id); toast.success(`Logged in as ${d.user.username}`); login(d); } catch { toast.error("Failed"); } };
   const handleNotify      = async () => { if (!notifyForm.message.trim()) return toast.error("Enter message"); try { await sendNotification(notifyTarget._id, notifyForm); toast.success("Sent"); setNotifyTarget(null); setNotifyForm({ message: "", type: "info" }); } catch { toast.error("Failed"); } };
   const handleClone       = async () => { try { await cloneStore(cloneTarget._id, cloneForm); toast.success("Cloned"); setCloneTarget(null); setCloneForm({ newStoreName: "", newUsername: "", newPassword: "" }); loadData(); } catch (e) { toast.error(e.response?.data?.message || "Failed"); } };
+  const handleCopyProducts = async () => {
+    if (!copyDestId) return toast.error("Please select a destination store");
+    setCopyLoading(true);
+    setCopyResult(null);
+    try {
+      const res = await copyProductsToStore(copyTarget._id, copyDestId);
+      setCopyResult(res);
+      toast.success(res.message);
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Copy failed");
+    } finally {
+      setCopyLoading(false);
+    }
+  };
   const handleTransfer    = async () => { try { await transferOwner(transferTarget._id, transferForm); toast.success("Transferred"); setTransferTarget(null); setTransferForm({ newUsername: "", newPassword: "" }); loadData(); } catch (e) { toast.error(e.response?.data?.message || "Failed"); } };
   const handleWelcome     = async () => { try { await setWelcomeMessage(welcomeTarget._id, { welcomeMessage: welcomeMsg }); toast.success("Saved"); setWelcomeTarget(null); } catch { toast.error("Failed"); } };
   const handleNotes       = async () => { try { await updateStoreNotes(notesTarget._id, { notes: notesText }); toast.success("Saved"); setNotesTarget(null); } catch { toast.error("Failed"); } };
@@ -337,6 +356,7 @@ export default function SuperAdminPanel() {
                             { l: t.btnNotes,                                   c: "amber",  f: () => { setNotesTarget(store); setNotesText(store.internalNotes || ""); } },
                             { l: t.btnTransfer,                                c: "orange", f: () => setTransferTarget(store) },
                             { l: t.btnClone,                                   c: "cyan",   f: () => setCloneTarget(store) },
+                            { l: "📦 Copy Products",                            c: "emerald", f: () => { setCopyTarget(store); setCopyDestId(""); setCopyResult(null); } },
                             { l: store.cafeEnabled ? "☕ Café ON" : "☕ Café OFF", c: store.cafeEnabled ? "amber" : "gray", f: () => handleToggleCafe(store._id) },
                             { l: "👨‍🍳 Café Staff",                               c: "amber",  f: () => openCafeStaff(store) },
                             { l: t.btnDelete,                                  c: "red",    f: () => setDeleteTarget(store) },
@@ -864,6 +884,54 @@ export default function SuperAdminPanel() {
             <div className="flex gap-3">
               <button onClick={handleClone} className="flex-1 bg-cyan-600 text-white rounded-xl py-2.5 font-medium hover:bg-cyan-700">{t.btnCloneStore}</button>
               <button onClick={() => setCloneTarget(null)} className="flex-1 bg-gray-100 text-gray-700 rounded-xl py-2.5 font-medium dark:bg-gray-700 dark:text-gray-300">{t.cancel}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Copy Products */}
+      {copyTarget && (
+        <Modal title={`📦 Copy Products — ${copyTarget.name}`} onClose={() => { setCopyTarget(null); setCopyResult(null); }}>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              Copy all products and categories from <strong>{copyTarget.name}</strong> to another existing store.
+              Products with duplicate barcodes in the destination will be skipped.
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">Destination Store</label>
+              <select
+                value={copyDestId}
+                onChange={e => { setCopyDestId(e.target.value); setCopyResult(null); }}
+                className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="">— Select a store —</option>
+                {stores.filter(s => String(s._id) !== String(copyTarget._id)).map(s => (
+                  <option key={s._id} value={s._id}>{s.name} ({s.owner?.username})</option>
+                ))}
+              </select>
+            </div>
+
+            {copyResult && (
+              <div className="rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 p-4 space-y-1">
+                <p className="text-sm font-semibold text-green-700 dark:text-green-300">✅ Done!</p>
+                <p className="text-sm text-green-600 dark:text-green-400">Products copied: <strong>{copyResult.productsCopied}</strong></p>
+                <p className="text-sm text-green-600 dark:text-green-400">Categories copied: <strong>{copyResult.categoriesCopied}</strong></p>
+                {copyResult.skipped > 0 && (
+                  <p className="text-sm text-amber-600 dark:text-amber-400">Skipped (duplicate barcode): <strong>{copyResult.skipped}</strong></p>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleCopyProducts}
+                disabled={!copyDestId || copyLoading}
+                className="flex-1 bg-emerald-600 text-white rounded-xl py-2.5 font-medium hover:bg-emerald-700 disabled:opacity-40"
+              >
+                {copyLoading ? "Copying…" : "Copy Products & Categories"}
+              </button>
+              <button onClick={() => { setCopyTarget(null); setCopyResult(null); }} className="flex-1 bg-gray-100 text-gray-700 rounded-xl py-2.5 font-medium dark:bg-gray-700 dark:text-gray-300">Close</button>
             </div>
           </div>
         </Modal>
