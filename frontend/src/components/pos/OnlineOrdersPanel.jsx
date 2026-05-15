@@ -55,6 +55,10 @@ export default function OnlineOrdersPanel({ storeId, userRole, onLoadToCart }) {
 
     const onNewOrder = (order) => {
       setBadge(b => b + 1);
+      toast("🛵 New online order!", {
+        duration: 6000,
+        style: { background: "#f97316", color: "white", fontWeight: "bold" },
+      });
       setOrders(prev => {
         const exists = prev.find(o => o._id === order._id);
         if (exists) return prev;
@@ -143,22 +147,36 @@ export default function OnlineOrdersPanel({ storeId, userRole, onLoadToCart }) {
   return (
     <>
       {/* Toggle button — fixed to right edge */}
-      <button
-        onClick={() => { setOpen(true); setBadge(0); }}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-40
-          bg-orange-500 hover:bg-orange-600 text-white
-          px-2 py-4 rounded-l-2xl shadow-xl transition-all
-          flex flex-col items-center gap-1.5"
-        title="Online Orders"
-      >
-        <Truck size={18} />
+      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40">
+        <button
+          onClick={() => { setOpen(true); setBadge(0); }}
+          className={`
+            bg-orange-500 hover:bg-orange-600 text-white
+            px-2 py-4 rounded-l-2xl shadow-xl transition-all
+            flex flex-col items-center gap-1.5
+            ${badge > 0 ? "ring-2 ring-orange-300 ring-offset-1" : ""}
+          `}
+          title="Online Orders"
+        >
+          <Truck size={18} />
+          <span className="text-[9px] font-semibold opacity-80 [writing-mode:vertical-rl] rotate-180 tracking-widest">
+            ORDERS
+          </span>
+        </button>
+
+        {/* Notification badge */}
         {badge > 0 && (
-          <span className="min-w-[20px] h-5 px-1 rounded-full bg-white text-orange-600
-            text-[10px] font-bold flex items-center justify-center">
-            {badge}
+          <span className="absolute -top-2 left-1
+            min-w-[22px] h-[22px] px-1 rounded-full
+            bg-red-500 text-white text-[11px] font-black
+            flex items-center justify-center
+            ring-2 ring-white dark:ring-neutral-950
+            shadow-lg shadow-red-500/50
+            animate-bounce pointer-events-none">
+            {badge > 99 ? "99+" : badge}
           </span>
         )}
-      </button>
+      </div>
 
       {/* Overlay */}
       {open && (
