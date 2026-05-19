@@ -7,6 +7,7 @@ import {
   bulkNotify, bulkAction, transferOwner, cloneStore,
   exportStores, getPlatformAuditLog, updateStoreNotes,
   setWelcomeMessage, getActivityFeed, updateSuperAdminProfile, getSuperAdminProfile,
+  getSuperAdminTelegramChatId,
   getPlatformStats, createSuperAdmin,
   getStoreUsers, createStoreUser, updateStoreUser,
   deleteStoreUser, forceLogoutStoreUser, forceLogoutStoreDevice,
@@ -31,6 +32,7 @@ router.get("/export",                        exportStores);
 router.get("/profile",                       getSuperAdminProfile);
 router.put("/profile",                       updateSuperAdminProfile);
 router.post("/profile/kick-device",          kickSuperAdminDevice);
+router.get("/profile/telegram-chat-id",      getSuperAdminTelegramChatId);
 
 router.get("/stores",                        getAllStores);
 router.post("/stores",                       createStore);

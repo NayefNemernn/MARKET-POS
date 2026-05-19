@@ -17,10 +17,18 @@ router.delete("/users/:id",  isAdmin, removeCashier);
 // Update online store settings
 router.patch("/online-settings", isAdmin, async (req, res) => {
   try {
-    const { isOnlineStoreActive, deliveryFee, minimumOrder, deliveryTimeMin, deliveryTimeMax, pointsEnabled, pointsPerUnit, telegramBotToken, deliveryDrivers } = req.body;
+    const {
+      isOnlineStoreActive, deliveryFee, minimumOrder, deliveryTimeMin, deliveryTimeMax,
+      pointsEnabled, pointsPerUnit, telegramBotToken, deliveryDrivers,
+      deliveryPhone, adminTelegramChatId,
+    } = req.body;
     const store = await Store.findByIdAndUpdate(
       req.storeId,
-      { $set: { isOnlineStoreActive, deliveryFee, minimumOrder, deliveryTimeMin, deliveryTimeMax, pointsEnabled, pointsPerUnit, telegramBotToken, deliveryDrivers } },
+      { $set: {
+        isOnlineStoreActive, deliveryFee, minimumOrder, deliveryTimeMin, deliveryTimeMax,
+        pointsEnabled, pointsPerUnit, telegramBotToken, deliveryDrivers,
+        deliveryPhone, adminTelegramChatId,
+      }},
       { new: true }
     );
     if (!store) return res.status(404).json({ message: "Store not found" });

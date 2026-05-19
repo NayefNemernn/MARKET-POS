@@ -37,6 +37,10 @@ const userSchema = new mongoose.Schema(
     // ── Status ────────────────────────────────────────────────
     active: { type: Boolean, default: true },
 
+    // ── SuperAdmin platform Telegram (for website trial alerts) ─
+    platformTelegramBotToken: { type: String, default: "" },
+    platformAdminChatId:      { type: String, default: "" },
+
     // ── Multi-device support ──────────────────────────────────
     maxDevices: { type: Number, default: 1, min: 1, max: 10 },
     devices:    { type: [deviceSchema], default: [] },

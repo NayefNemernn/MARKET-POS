@@ -576,21 +576,23 @@ export const getActivityFeed = async (req, res) => {
 ───────────────────────────────────────────── */
 export const getSuperAdminProfile = async (req, res) => {
   try {
-    const admin = await User.findById(req.user._id).select("username maxDevices devices createdAt");
+    const admin = await User.findById(req.user._id).select("username maxDevices devices createdAt platformTelegramBotToken platformAdminChatId");
     if (!admin) return res.status(404).json({ message: "User not found" });
     res.json({
-      username:     admin.username,
-      maxDevices:   admin.maxDevices || 1,
-      activeDevices: admin.devices?.length || 0,
-      devices:      admin.devices || [],
-      createdAt:    admin.createdAt,
+      username:                 admin.username,
+      maxDevices:               admin.maxDevices || 1,
+      activeDevices:            admin.devices?.length || 0,
+      devices:                  admin.devices || [],
+      createdAt:                admin.createdAt,
+      platformTelegramBotToken: admin.platformTelegramBotToken || "",
+      platformAdminChatId:      admin.platformAdminChatId || "",
     });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 export const updateSuperAdminProfile = async (req, res) => {
   try {
-    const { username, newPassword, maxDevices } = req.body;
+    const { username, newPassword, maxDevices, platformTelegramBotToken, platformAdminChatId } = req.body;
     const admin = await User.findById(req.user._id);
     if (!admin) return res.status(404).json({ message: "User not found" });
     if (username && username !== admin.username) {
@@ -600,8 +602,21 @@ export const updateSuperAdminProfile = async (req, res) => {
     }
     if (newPassword) admin.password = newPassword;
     if (maxDevices !== undefined) admin.maxDevices = Math.min(Math.max(parseInt(maxDevices) || 1, 1), 10);
+    if (platformTelegramBotToken !== undefined) admin.platformTelegramBotToken = platformTelegramBotToken;
+    if (platformAdminChatId      !== undefined) admin.platformAdminChatId      = platformAdminChatId;
     await admin.save();
     res.json({ message: "Profile updated", username: admin.username, maxDevices: admin.maxDevices });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+export const getSuperAdminTelegramChatId = async (req, res) => {
+  try {
+    const admin = await User.findById(req.user._id).select("platformTelegramBotToken");
+    if (!admin?.platformTelegramBotToken) return res.status(400).json({ message: "Bot token not set yet" });
+    const { getRecentChatId } = await import("../services/telegram.service.js");
+    const result = await getRecentChatId(admin.platformTelegramBotToken);
+    if (!result) return res.status(404).json({ message: "No messages received yet. Send any message to the bot first." });
+    res.json(result);
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 

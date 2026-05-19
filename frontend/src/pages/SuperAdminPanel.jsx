@@ -9,7 +9,7 @@ import {
   getStoreUsers, getStoreGlobalStats, createStoreUser, updateStoreUser,
   deleteStoreUser, forceLogoutStoreUser, forceLogoutStoreDevice,
   changeStoreUserPW, getStoreUserSales, clearStoreUserSales, clearStoreUserProducts,
-  getSuperAdminProfile, kickSuperAdminDevice,
+  getSuperAdminProfile, kickSuperAdminDevice, getSuperAdminTelegramChatId,
   getCafeStaffList, createCafeStaffMember, updateCafeStaffMember, deleteCafeStaffMember,
   copyProductsToStore,
 } from "../api/superadmin.api";
@@ -82,7 +82,9 @@ export default function SuperAdminPanel() {
   const [bulkNotifyModal,  setBulkNotifyModal]  = useState(false);
   const [bulkNotifyForm,   setBulkNotifyForm]   = useState({ message: "", type: "info" });
   const [bulkExtendDays,   setBulkExtendDays]   = useState(30);
-  const [profileForm,      setProfileForm]      = useState({ username: user?.username || "", newPassword: "", maxDevices: 1 });
+  const [profileForm,      setProfileForm]      = useState({ username: user?.username || "", newPassword: "", maxDevices: 1, platformTelegramBotToken: "", platformAdminChatId: "" });
+  const [fetchingTgChatId, setFetchingTgChatId] = useState(false);
+  const [savingTelegram,   setSavingTelegram]   = useState(false);
   const [profileInfo,      setProfileInfo]      = useState(null);
   const [activity,         setActivity]         = useState([]);
   const [auditLogs,        setAuditLogs]        = useState([]);
@@ -122,7 +124,7 @@ export default function SuperAdminPanel() {
   useEffect(() => {
     if (tab === t.tabActivity)  getActivityFeed().then(setActivity).catch(() => toast.error("Failed"));
     if (tab === t.tabAuditLog)  getPlatformAuditLog({ limit: 100 }).then(setAuditLogs).catch(() => toast.error("Failed"));
-    if (tab === t.tabProfile)   getSuperAdminProfile().then(info => { setProfileInfo(info); setProfileForm(f => ({ ...f, username: info.username, maxDevices: info.maxDevices || 1 })); }).catch(() => {});
+    if (tab === t.tabProfile)   getSuperAdminProfile().then(info => { setProfileInfo(info); setProfileForm(f => ({ ...f, username: info.username, maxDevices: info.maxDevices || 1, platformTelegramBotToken: info.platformTelegramBotToken || "", platformAdminChatId: info.platformAdminChatId || "" })); }).catch(() => {});
   }, [tab]);
 
   /* ── Store handlers ── */
@@ -158,6 +160,25 @@ export default function SuperAdminPanel() {
   const handleBulkAction  = async (action) => { if (!selected.length) return toast.error("Select stores first"); try { const r = await bulkAction({ storeIds: selected, action, days: bulkExtendDays }); toast.success(r.message); setSelected([]); loadData(); } catch { toast.error("Failed"); } };
   const handleExport      = async () => { try { const data = await exportStores(); const csv = [Object.keys(data[0]).join(","), ...data.map(r => Object.values(r).join(","))].join("\n"); const a = document.createElement("a"); a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv); a.download = "stores.csv"; a.click(); toast.success("Exported"); } catch { toast.error("Failed"); } };
   const handleProfile     = async () => { try { const r = await updateSuperAdminProfile(profileForm); toast.success(r.message); setProfileInfo(p => p ? { ...p, maxDevices: r.maxDevices || profileForm.maxDevices } : p); } catch (e) { toast.error(e.response?.data?.message || "Failed"); } };
+
+  const handleSaveTelegram = async () => {
+    setSavingTelegram(true);
+    try {
+      await updateSuperAdminProfile({ platformTelegramBotToken: profileForm.platformTelegramBotToken, platformAdminChatId: profileForm.platformAdminChatId });
+      toast.success("Telegram settings saved");
+    } catch (e) { toast.error(e.response?.data?.message || "Failed"); }
+    finally { setSavingTelegram(false); }
+  };
+
+  const handleGetTelegramChatId = async () => {
+    setFetchingTgChatId(true);
+    try {
+      const res = await getSuperAdminTelegramChatId();
+      setProfileForm(f => ({ ...f, platformAdminChatId: String(res.id) }));
+      toast.success(`Got Chat ID: ${res.id} (${res.name})`);
+    } catch (e) { toast.error(e.response?.data?.message || "Send a message to the bot first"); }
+    finally { setFetchingTgChatId(false); }
+  };
   const handleKickOwnDevice = async (deviceId, name) => {
     if (!window.confirm(`Kick session "${name || "Unknown device"}"?`)) return;
     try {
@@ -703,6 +724,58 @@ export default function SuperAdminPanel() {
               </div>
 
               <button onClick={handleProfile} className="w-full bg-blue-600 text-white rounded-xl py-2.5 font-bold text-sm hover:bg-blue-700 shadow shadow-blue-500/20 transition">{t.saveProfile}</button>
+            </div>
+          </div>
+
+          {/* Telegram Notifications card */}
+          <div className="bg-white dark:bg-[#13131f] rounded-2xl shadow-sm border border-gray-100 dark:border-white/[0.05]">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-white/[0.05]">
+              <div className="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                <span className="text-lg">✈️</span>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-gray-800 dark:text-white">Telegram Notifications</h2>
+                <p className="text-xs text-gray-400">Get alerted on new free trial registrations</p>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Bot Token (from @BotFather)</label>
+                <input
+                  type="text"
+                  placeholder="1234567890:AAFxxxxx"
+                  value={profileForm.platformTelegramBotToken}
+                  onChange={e => setProfileForm(f => ({ ...f, platformTelegramBotToken: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 dark:bg-gray-800 dark:text-white text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 transition font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Your Chat ID</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="123456789"
+                    value={profileForm.platformAdminChatId}
+                    onChange={e => setProfileForm(f => ({ ...f, platformAdminChatId: e.target.value }))}
+                    className="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 dark:bg-gray-800 dark:text-white text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 transition font-mono"
+                  />
+                  <button
+                    onClick={handleGetTelegramChatId}
+                    disabled={fetchingTgChatId || !profileForm.platformTelegramBotToken}
+                    className="px-3 py-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition whitespace-nowrap"
+                  >
+                    {fetchingTgChatId ? "..." : "Get My ID"}
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1.5">Open Telegram → send any message to the bot → click "Get My ID"</p>
+              </div>
+              <button
+                onClick={handleSaveTelegram}
+                disabled={savingTelegram}
+                className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white rounded-xl py-2.5 font-bold text-sm transition"
+              >
+                {savingTelegram ? "Saving..." : "Save Telegram Settings"}
+              </button>
             </div>
           </div>
 

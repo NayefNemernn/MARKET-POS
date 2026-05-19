@@ -5,7 +5,7 @@ let io = null;
 export const initSocket = (httpServer) => {
   const corsOrigins = process.env.SOCKET_CORS_ORIGIN
     ? process.env.SOCKET_CORS_ORIGIN.split(",").map(s => s.trim())
-    : ["http://localhost:5173", "http://localhost:5174"];
+    : ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176"];
 
   io = new Server(httpServer, {
     cors: {

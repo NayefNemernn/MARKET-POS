@@ -157,7 +157,7 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
   const { toLBP, formatLBP, formatUSD, exchangeRate } = useCurrency();
   const { storeName, taxRate, store }   = useAuth();
   const STORE_FRONTEND_URL = import.meta.env.VITE_STORE_URL || "http://localhost:5174";
-  const storeUrl      = store?.slug && store?.isOnlineStoreActive ? `${STORE_FRONTEND_URL}/store/${store.slug}` : null;
+  const storeUrl      = store?.slug ? `${STORE_FRONTEND_URL}/store/${store.slug}` : null;
   const deliveryPhone = store?.deliveryPhone || null;
 
   // Delivery mode: pre-fill

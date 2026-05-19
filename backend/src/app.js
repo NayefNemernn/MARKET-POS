@@ -36,6 +36,8 @@ const ALLOWED_ORIGINS = [
   process.env.CLIENT_URL,
   "http://localhost:5173",
   "http://localhost:5174",
+  "http://localhost:5175",
+  "http://localhost:5176",
   "http://localhost:3000",
 ].filter(Boolean);
 
@@ -78,6 +80,40 @@ app.use("/api/batches",       batchRoutes);
 app.use("/api/ai",            aiInsightsRoutes);
 app.use("/api/cafe",          cafeRoutes);
 app.use("/api/cafe/public/:slug", cafePublicRoutes);
+
+/* Public demo-request endpoint — called from the nexora marketing website */
+app.post("/api/demo-request", async (req, res) => {
+  try {
+    const { name, business, email, phone } = req.body;
+    if (!name || !email) return res.status(400).json({ message: "name and email are required" });
+
+    const User = (await import("./models/User.js")).default;
+    const { sendMessage } = await import("./services/telegram.service.js");
+
+    const superAdmin = await User.findOne({ role: "superadmin" })
+      .select("platformTelegramBotToken platformAdminChatId");
+
+    const botToken = superAdmin?.platformTelegramBotToken || process.env.PLATFORM_TELEGRAM_BOT_TOKEN;
+    const chatId   = superAdmin?.platformAdminChatId;
+
+    if (botToken && chatId) {
+      const text =
+        `🆕 <b>New Free Trial Request</b>\n\n` +
+        `👤 <b>Name:</b> ${name}\n` +
+        `🏪 <b>Business:</b> ${business || "—"}\n` +
+        `📧 <b>Email:</b> ${email}\n` +
+        `📱 <b>WhatsApp:</b> ${phone || "—"}\n\n` +
+        `⏳ <b>Trial period:</b> 3 days\n` +
+        `🔗 Create account: https://bcs.nexora-bcs.com/register`;
+      await sendMessage(botToken, chatId, text);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[demo-request]", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 /* Public trivia endpoint (no auth) */
 app.get("/api/cafe/trivia/public/:slug", async (req, res) => {

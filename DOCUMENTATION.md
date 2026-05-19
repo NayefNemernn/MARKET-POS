@@ -1,5 +1,5 @@
 # MARKET-POS — Complete Product Documentation
-### Version 2.0 | Client Presentation Guide
+### Version 2.1 | Client Presentation Guide
 
 ---
 
@@ -26,9 +26,11 @@
    - 4.15 [Multi-Store SuperAdmin Panel](#415-multi-store-superadmin-panel)
    - 4.16 [Security & Audit Log](#416-security--audit-log)
    - 4.17 [Telegram Delivery Notifications](#417-telegram-delivery-notifications)
+   - 4.18 [Nexora Marketing Website & Free Trial Flow](#418-nexora-marketing-website--free-trial-flow)
 5. [Demo Walkthrough — Step by Step](#5-demo-walkthrough--step-by-step)
 6. [Subscription Plans & Pricing](#6-subscription-plans--pricing)
 7. [Technical Stack & Deployment](#7-technical-stack--deployment)
+8. [What's New — Version 2.1](#8-whats-new--version-21-may-2026)
 
 ---
 
@@ -162,6 +164,15 @@ The checkout screen is the heartbeat of the system. It is designed to be fast �
 - **Void sale** — manager PIN required, full stock is restocked automatically
 - **Return items** — partial or full return on any past sale with stock restock and refund tracking
 
+**Branded POS Header:**
+The top bar of the POS screen shows the Nexora BCS logo and a **compact LBP/USD exchange rate display** that the cashier can tap to update the rate inline — no need to navigate away.
+
+**Product Grid Pagination:**
+Products are displayed 40 per page. Navigation arrows appear at the bottom of the grid so the screen stays fast even for stores with hundreds of products.
+
+**Real-Time Online Order Injection:**
+When the admin accepts an online order in the Online Orders panel, the order cart is pushed **instantly** to the cashier's POS screen via WebSocket — no page refresh, no manual re-entry. The cashier sees the items appear live and processes the delivery sale immediately.
+
 **Offline Mode:**
 The POS uses an IndexedDB offline cache. If internet is lost, the cashier can continue selling. When connectivity returns, all sales sync automatically.
 
@@ -188,6 +199,7 @@ The POS uses an IndexedDB offline cache. If internet is lost, the cashier can co
 - Products are auto-disabled when their expiry date passes
 - Low-stock warning (products with ≤5 units shown on dashboard)
 - Variant support: one product SKU, multiple sellable options, each tracked independently
+- **Barcode auto-fill on unknown scan:** if a cashier scans a barcode not found in inventory, the system opens the Add Product form with the barcode field pre-filled — the staff member just adds the name and price to register it immediately
 
 ---
 
@@ -452,6 +464,18 @@ Turn any store into an online shop in one click.
   - Payment method
   - Total amount
 
+**Delivery Contact Phone on Receipts:**
+Configure a phone number in Store Settings → Online Store → "Delivery Contact Number". This number is printed on all delivery receipts so customers can call about their order.
+
+**QR Code on Receipts:**
+Every printed receipt for a store with an active online storefront automatically includes a QR code linking to the store's online shop — a passive promotion to every customer who receives a receipt.
+
+**Online Orders Notification Badge:**
+The "Online Orders" toggle in the POS sidebar shows a live badge with the count of pending orders. When a new order arrives, a toast notification pops up with the order number so the cashier never misses an incoming order — even if they are on a different screen.
+
+**Live Order Status Dots:**
+Alongside the badge count, color-coded status dots show at a glance how many orders are in each stage (pending, accepted, out for delivery, delivered) — no need to open the panel to check the queue.
+
 **Per-Product Online Visibility:**
 Each product has an "Available Online" toggle. You can sell items in-store that are not listed online, and vice versa.
 
@@ -614,6 +638,9 @@ The SuperAdmin can log in as any store's admin with a single click for support o
 - Creates admin user and/or café manager automatically
 - Auto-generates a unique URL slug for the online storefront
 
+**Copy Products Between Stores:**
+Copy all products (with categories, prices, and settings) from one store to another in one click — ideal for onboarding a new franchise branch.
+
 **Store Cloning:**
 Clone an existing store's structure (categories, settings) into a new store — ideal for franchise clients.
 
@@ -647,6 +674,15 @@ Every action in the system is recorded. Nothing is ever invisible.
 **Void PIN:**
 A store can set a manager PIN. Any sale void requires the PIN — preventing cashiers from voiding sales without authorization.
 
+**Self-Session Management (SuperAdmin):**
+The SuperAdmin can view all their own active sessions and kick any single device directly from the Profile tab — useful when logging in from a public machine.
+
+**Dark Mode:**
+The entire dashboard UI supports a dark/light mode toggle available directly in the sidebar navigation bar, persisting per user.
+
+**Mobile Bottom Sheet Navigation:**
+On small screens, the sidebar collapses into a bottom sheet drawer that slides up from the bottom of the screen — making the full admin panel usable on a phone without pinching or zooming.
+
 ---
 
 ### 4.17 Telegram Delivery Notifications
@@ -656,7 +692,53 @@ When an online order is dispatched:
 2. The message contains: customer name, full delivery address, ordered items, total, and payment method
 3. Driver confirms delivery from their phone
 
-Setup: Go to Store Settings → Delivery tab → Enter your Telegram Bot Token and each driver's Chat ID.
+**Driver Setup:** Go to Store Settings → Online Store → Telegram section → enter your Bot Token → have each driver send a message to the bot → click "Get ID" to auto-fill their Chat ID.
+
+**Platform Admin Alerts (SuperAdmin):**
+The SuperAdmin receives a Telegram notification whenever a new Free Trial is registered from the marketing website. Setup: SuperAdmin → Profile → Telegram Notifications → enter Bot Token → click "Get My ID" → Save. No configuration on the server is needed after this — it is stored in the database.
+
+---
+
+---
+
+### 4.18 Nexora Marketing Website & Free Trial Flow
+
+A full public-facing marketing website at **nexora-bcs.com** serves as the sales and onboarding front door for the platform.
+
+**Website Sections:**
+- **Hero** — animated typewriter cycling through business types (Supermarket, Café, Restaurant, Pharmacy, Boutique) with live counters (businesses, products managed, revenue processed)
+- **Solutions** — three cards explaining Market POS, Café Suite, and Online Store
+- **Features** — grid showcasing AI Insights, real-time sync, offline mode, multi-language, and more
+- **How It Works** — 3-step illustrated guide (Create Account → Set Up Store → Go Live)
+- **Pricing** — four plans with comparison details
+- **Contact** — footer with links and support channels
+
+**Free Trial Registration Flow:**
+
+1. Visitor clicks **Start Free Trial** on the Pricing section
+2. A modal opens — no redirect — collecting:
+   - Full Name
+   - Business Name
+   - Email Address
+   - WhatsApp Number
+3. On submit, the backend receives the form and sends a **Telegram notification to the SuperAdmin** with all registration details
+4. The SuperAdmin creates a demo account on `bcs.nexora-bcs.com` and provides credentials to the client
+5. The demo account is active for **3 days**
+6. After 3 days, the client receives a follow-up via WhatsApp and Telegram asking for feedback and to contact support to upgrade to a paid plan
+
+**Pricing Plans (as shown on the website):**
+
+| Plan | Price | Online Store | Notes |
+|---|---|---|---|
+| Free Trial | Free | ❌ | 3 days, demo only |
+| Basic | $150 / mo | ❌ | Full POS + Café, no online storefront |
+| Pro | $250 / mo | ✅ | Everything including Online Store & Delivery |
+| Enterprise | Custom | ✅ | Chains, franchises, custom integrations |
+
+**Technical notes:**
+- The website is a standalone React + Vite + Tailwind app deployed separately on Railway
+- Form submissions POST to `api.nexora-bcs.com/api/demo-request` — no secrets are exposed in the browser
+- The SuperAdmin's Telegram bot token and chat ID are stored securely in the database
 
 ---
 
@@ -730,20 +812,22 @@ Setup: Go to Store Settings → Delivery tab → Enter your Telegram Bot Token a
 
 ## 6. Subscription Plans & Pricing
 
-Plans are managed and priced by you (the SuperAdmin). The system enforces limits automatically.
+| Plan | Price | Users | Products | Online Store | Notes |
+|---|---|---|---|---|---|
+| Free Trial | Free | 2 | 100 | ❌ | 3-day demo, no credit card |
+| Basic | $150 / mo | 10 | 1,000 | ❌ | Full POS + Café suite |
+| Pro | $250 / mo | Unlimited | 5,000 | ✅ | Full system + Online Store & Delivery |
+| Enterprise | Custom | Unlimited | Unlimited | ✅ | Multi-branch, custom integrations, SLA, on-site setup |
 
-| Plan | Users | Products | Features |
-|---|---|---|---|
-| Trial | 2 | 100 | All features, 14 days |
-| Basic | 5 | 500 | All features |
-| Pro | 20 | 2,000 | All features |
-| Enterprise | 100 | Unlimited | All features + priority support |
+**Key distinction — Basic vs Pro:**
+The Online Store & Delivery module (public storefront, customer ordering, Telegram driver dispatch) is a **Pro-only feature**. Basic plan clients get everything else: full POS, Café suite, AI insights, inventory, reports, and multi-user access.
 
-**Module Pricing (optional add-ons you can charge for):**
-- Café Module: enabled/disabled per store in SuperAdmin
-- Online Store: enabled/disabled per store in SuperAdmin
+**Module gates (SuperAdmin controls):**
+- Café Module: enabled/disabled per store
+- Online Store: enabled/disabled per store
+- Both can be toggled independently regardless of plan — giving the SuperAdmin full control for upsell conversations
 
-**Monthly price** is set per store in the SuperAdmin panel and tracked for billing reference.
+**Monthly price** is set per store in the SuperAdmin panel and tracked for billing reference. Lebanese businesses may pay in LBP at the current exchange rate.
 
 ---
 
@@ -755,14 +839,15 @@ Plans are managed and priced by you (the SuperAdmin). The system enforces limits
 Backend (Node.js + Express)
 ├── MongoDB (data store, fully cloud-hosted)
 ├── Supabase (product image storage)
-├── Socket.io (real-time: floor map, KDS, order inject)
+├── Socket.io (real-time: floor map, KDS, order inject, cashier alert)
 ├── Google Gemini AI (offer & reorder AI engine)
-├── Telegram Bot API (delivery notifications)
+├── Telegram Bot API (delivery notifications + free trial admin alerts)
 └── JWT + device session auth
 
 Frontend POS (React + Vite + Tailwind CSS)
 ├── Deployed on Vercel
 ├── IndexedDB offline cache (idb-keyval)
+├── Dark mode + mobile bottom sheet navigation
 └── Real-time socket client
 
 Online Store Frontend (React + Vite + Zustand)
@@ -773,18 +858,25 @@ Café App (React + Vite — standalone)
 ├── Staff app + Customer QR app in one deploy
 ├── Deployed on Railway or Vercel
 └── Canvas-based scratch card game
+
+Marketing Website (React + Vite + Tailwind CSS)
+├── Public landing page at nexora-bcs.com
+├── Deployed on Railway
+├── Free Trial registration modal → notifies SuperAdmin via Telegram
+└── No secrets in browser — all notifications go through the backend API
 ```
 
 ### Deployment Options
 
-| Component | Platform |
-|---|---|
-| Backend API | Railway |
-| Main POS Frontend | Vercel |
-| Online Store Frontend | Vercel |
-| Café App | Railway |
-| Database | MongoDB Atlas |
-| Image Storage | Supabase |
+| Component | Platform | URL |
+|---|---|---|
+| Backend API | Railway | api.nexora-bcs.com |
+| Main POS Frontend | Vercel/Railway | bcs.nexora-bcs.com |
+| Online Store Frontend | Vercel/Railway | store.nexora-bcs.com |
+| Café App | Railway | cafe.nexora-bcs.com |
+| Marketing Website | Railway | nexora-bcs.com |
+| Database | MongoDB Atlas | — |
+| Image Storage | Supabase | — |
 
 ### Language & Localization
 - Arabic and English interface
@@ -794,6 +886,34 @@ Café App (React + Vite — standalone)
 
 ---
 
+---
+
+## 8. What's New — Version 2.1 (May 2026)
+
+| # | Feature | Section |
+|---|---|---|
+| 1 | **Real-time order injection** — accepted online orders appear on the cashier's POS instantly via WebSocket | 4.1, 4.12 |
+| 2 | **QR code on receipts** — every printed receipt links to the online storefront | 4.12 |
+| 3 | **Delivery phone on receipts** — configurable contact number for delivery inquiries | 4.12 |
+| 4 | **Online Orders notification badge** — live pending count + toast alert for new orders | 4.12 |
+| 5 | **Live order status dots** — per-status counts visible on the POS sidebar without opening the panel | 4.12 |
+| 6 | **BCS branded POS header** with compact LBP/USD exchange bar — editable inline | 4.1 |
+| 7 | **POS product grid pagination** — 40 products per page for faster rendering | 4.1 |
+| 8 | **Barcode auto-fill on unknown scan** — opens Add Product with the barcode pre-filled | 4.2 |
+| 9 | **LBP input shortcuts** — type 30 to get 30,000 ل.ل; ×1000 shorthand in cash input at checkout | 4.1 |
+| 10 | **Dark mode toggle** in sidebar navigation | 4.16 |
+| 11 | **Mobile bottom sheet navigation** for full admin access on phones | 4.16 |
+| 12 | **SuperAdmin UI/UX overhaul** — full visual redesign of the platform management panel | 4.15 |
+| 13 | **Copy products between stores** — SuperAdmin can replicate a store's full catalog to another | 4.15 |
+| 14 | **Kick own session** — SuperAdmin can remove their own devices from the Profile tab | 4.16 |
+| 15 | **Auto-dismiss welcome banner** — fades out after 2 minutes automatically | 4.15 |
+| 16 | **Nexora marketing website** — full public landing page at nexora-bcs.com | 4.18 |
+| 17 | **Free Trial registration modal** — 3-day demo request form with Telegram alert to SuperAdmin | 4.18 |
+| 18 | **Platform Telegram notifications** — SuperAdmin receives alerts for new trial registrations | 4.17, 4.18 |
+| 19 | **Updated pricing** — Basic $150/mo (no Online Store), Pro $250/mo (with Online Store), Trial reduced to 3 days | 6 |
+
+---
+
 *For questions, demos, or sales inquiries, contact the development team.*
 
-*Documentation covers MARKET-POS platform as of May 2026.*
+*Documentation covers MARKET-POS platform as of May 2026 — Version 2.1.*

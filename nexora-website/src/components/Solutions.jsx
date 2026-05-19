@@ -61,7 +61,7 @@ export default function Solutions() {
 
   return (
     <section id="solutions" className="py-16 sm:py-20 lg:py-28 relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
 
         <div className="text-center mb-16 reveal">
           <div className="inline-flex items-center gap-2 glass px-4 py-1.5 rounded-full mb-5">

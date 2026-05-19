@@ -56,7 +56,7 @@ function Stats() {
 
   return (
     <section className="py-12 sm:py-16 border-y border-white/6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-white/6 rounded-2xl overflow-hidden">
           {items.map((s, i) => (
             <div key={i} className="bg-dark flex flex-col items-center justify-center py-8 sm:py-10 text-center hover:bg-white/3 transition-colors">
@@ -99,7 +99,7 @@ function HowItWorks() {
   return (
     <section className="py-16 sm:py-20 lg:py-28 relative">
       <div className="orb absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-brand/8 pointer-events-none" />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 relative">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 relative">
         <div className="text-center mb-16 reveal">
           <div className="inline-flex items-center gap-2 glass px-4 py-1.5 rounded-full mb-5">
             <span className="text-xs font-semibold text-brand uppercase tracking-widest">How It Works</span>
@@ -139,7 +139,7 @@ function HowItWorks() {
 function CTA() {
   return (
     <section className="py-16 sm:py-24 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto reveal">
+      <div className="max-w-[1440px] mx-auto reveal">
         <div className="gradient-border rounded-3xl p-px">
           <div className="bg-dark-card rounded-3xl p-6 sm:p-12 text-center relative overflow-hidden">
             <div className="orb absolute top-0 right-0 w-64 h-64 bg-brand/15" />

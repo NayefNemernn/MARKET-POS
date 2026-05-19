@@ -1,37 +1,41 @@
+import { useState } from 'react'
+import TrialModal from './TrialModal'
+
 const plans = [
   {
-    name: 'Trial',
+    name: 'Free Trial',
     price: 'Free',
-    period: '14 days',
-    desc: 'Try everything, no credit card.',
+    period: '3 days',
+    desc: 'Full demo access. No credit card required.',
     color: 'text-gray-300',
     border: 'border-white/10',
     btn: 'btn-ghost',
-    features: ['2 users', '100 products', 'Basic POS', 'Email support'],
+    features: ['2 users', '100 products', 'Basic POS', 'WhatsApp support'],
     popular: false,
+    isTrial: true,
   },
   {
     name: 'Basic',
-    price: '$9',
+    price: '$150',
     period: 'per month',
-    desc: 'For small shops and solo owners.',
+    desc: 'For small to medium businesses. No online store.',
     color: 'text-sky-400',
     border: 'border-sky-500/20',
     btn: 'btn-ghost',
-    features: ['5 users', '500 products', 'Full POS', 'Barcode & receipts', 'Basic reports', 'Chat support'],
+    features: ['10 users', '1,000 products', 'Full POS', 'Barcode & receipts', 'Reports & analytics', 'Café suite', 'Chat support'],
     popular: false,
   },
   {
     name: 'Pro',
-    price: '$29',
+    price: '$250',
     period: 'per month',
-    desc: 'For growing businesses that need everything.',
+    desc: 'For growing businesses — full system with Online Store.',
     color: 'text-brand',
     border: 'border-brand/30',
     btn: 'btn-primary',
     features: [
-      '20 users', '2,000 products', 'Full POS + Café Suite',
-      'Online Store', 'AI insights', 'Multi-currency',
+      'Unlimited users', '5,000 products', 'Full POS + Café Suite',
+      'Online Store & Delivery', 'AI insights', 'Multi-currency',
       'Offline mode', 'Priority support',
     ],
     popular: true,
@@ -56,11 +60,13 @@ const plans = [
 ]
 
 export default function Pricing() {
+  const [showTrial, setShowTrial] = useState(false)
+
   return (
     <section id="pricing" className="py-16 sm:py-20 lg:py-28 relative overflow-hidden">
       <div className="orb absolute bottom-0 right-0 w-[500px] h-[500px] bg-brand/10 pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 relative">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 relative">
         <div className="text-center mb-16 reveal">
           <div className="inline-flex items-center gap-2 glass px-4 py-1.5 rounded-full mb-5">
             <span className="text-xs font-semibold text-brand uppercase tracking-widest">Pricing</span>
@@ -109,14 +115,23 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              <a
-                href={p.name === 'Enterprise' ? '#contact' : 'https://bcs.nexora-bcs.com/register'}
-                target={p.name !== 'Enterprise' ? '_blank' : undefined}
-                rel="noreferrer"
-                className={`${p.btn} block w-full py-2.5 rounded-xl text-sm font-bold text-white text-center`}
-              >
-                {p.name === 'Enterprise' ? 'Contact Sales' : p.name === 'Trial' ? 'Start Free Trial' : 'Get Started'}
-              </a>
+              {p.isTrial ? (
+                <button
+                  onClick={() => setShowTrial(true)}
+                  className={`${p.btn} block w-full py-2.5 rounded-xl text-sm font-bold text-white text-center cursor-pointer`}
+                >
+                  Start Free Trial
+                </button>
+              ) : (
+                <a
+                  href={p.name === 'Enterprise' ? '#contact' : 'https://bcs.nexora-bcs.com/register'}
+                  target={p.name !== 'Enterprise' ? '_blank' : undefined}
+                  rel="noreferrer"
+                  className={`${p.btn} block w-full py-2.5 rounded-xl text-sm font-bold text-white text-center`}
+                >
+                  {p.name === 'Enterprise' ? 'Contact Sales' : 'Get Started'}
+                </a>
+              )}
             </div>
           ))}
         </div>
@@ -126,6 +141,8 @@ export default function Pricing() {
           No hidden fees. Cancel anytime.
         </p>
       </div>
+
+      {showTrial && <TrialModal onClose={() => setShowTrial(false)} />}
     </section>
   )
 }

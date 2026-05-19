@@ -85,7 +85,7 @@ export default function Features() {
   return (
     <section id="features" className="py-16 sm:py-20 lg:py-28 relative">
       <div className="orb absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-indigo-600/8 pointer-events-none" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 relative">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 relative">
 
         <div className="text-center mb-16 reveal">
           <div className="inline-flex items-center gap-2 glass px-4 py-1.5 rounded-full mb-5">

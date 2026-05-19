@@ -58,7 +58,8 @@ const storeSchema = new mongoose.Schema(
     deliveryPhone: { type: String, default: "" },
 
     // ── Telegram delivery notifications ───────────────────────
-    telegramBotToken: { type: String, default: "" },
+    telegramBotToken:    { type: String, default: "" },
+    adminTelegramChatId: { type: String, default: "" },
     deliveryDrivers:  {
       type: [{ name: { type: String, default: "" }, chatId: { type: String, default: "" } }],
       default: [],

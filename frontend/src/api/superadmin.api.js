@@ -4,9 +4,10 @@ export const getPlatformStats       = ()           => api.get("/superadmin/stats
 export const getActivityFeed        = ()           => api.get("/superadmin/activity").then(r => r.data);
 export const getPlatformAuditLog    = (params)     => api.get("/superadmin/audit", { params }).then(r => r.data);
 export const exportStores           = ()           => api.get("/superadmin/export").then(r => r.data);
-export const getSuperAdminProfile    = ()           => api.get("/superadmin/profile").then(r => r.data);
-export const updateSuperAdminProfile = (data)      => api.put("/superadmin/profile", data).then(r => r.data);
-export const kickSuperAdminDevice    = (deviceId)  => api.post("/superadmin/profile/kick-device", { deviceId }).then(r => r.data);
+export const getSuperAdminProfile         = ()          => api.get("/superadmin/profile").then(r => r.data);
+export const updateSuperAdminProfile      = (data)     => api.put("/superadmin/profile", data).then(r => r.data);
+export const kickSuperAdminDevice         = (deviceId) => api.post("/superadmin/profile/kick-device", { deviceId }).then(r => r.data);
+export const getSuperAdminTelegramChatId  = ()          => api.get("/superadmin/profile/telegram-chat-id").then(r => r.data);
 
 export const getAllStores            = ()           => api.get("/superadmin/stores").then(r => r.data);
 export const createStore            = (data)       => api.post("/superadmin/stores", data).then(r => r.data);
