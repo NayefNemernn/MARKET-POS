@@ -72,7 +72,7 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [image,   setImage]   = useState(null);
   const [preview, setPreview] = useState("");
-  const [form,    setForm]    = useState({ name: "", price: "", cost: "", stock: "", category: "" });
+  const [form,    setForm]    = useState({ name: "", price: "", cost: "", stock: "", category: "", expiryDate: "", expiryAlertDays: 180 });
   const [barcode,  setBarcode]  = useState("");
   const [barcodeFormat, setBarcodeFormat] = useState("CODE128");
 
@@ -314,6 +314,7 @@ export default function Products() {
         price: +form.price || 0, cost: +form.cost || 0, stock: +form.stock || 0,
         category: catObj?._id || null,
         expiryDate: form.expiryDate || null,
+        expiryAlertDays: form.expiryAlertDays ?? 180,
       };
       await queueMutation("create_product", "/api/products", "POST", payload);
       const fakeProduct = {
@@ -325,7 +326,7 @@ export default function Products() {
       setProducts(updated);
       await cacheProducts(updated);
       toast.success("📴 Product saved — will sync when connected");
-      setForm({ name: "", price: "", cost: "", stock: "", category: "", expiryDate: "" });
+      setForm({ name: "", price: "", cost: "", stock: "", category: "", expiryDate: "", expiryAlertDays: 180 });
       setBarcode(""); setPreview(""); setImage(null);
       return;
     }
@@ -345,12 +346,13 @@ export default function Products() {
     data.append("stock",    form.stock  || 0);
     data.append("category", categoryId || "");
     if (form.expiryDate) data.append("expiryDate", form.expiryDate);
+    data.append("expiryAlertDays", String(Number(form.expiryAlertDays) || 180));
     if (image)           data.append("image", image);
 
     try {
       await createProduct(data);
       toast.success(t.productCreated);
-      setForm({ name: "", price: "", cost: "", stock: "", category: "", expiryDate: "" });
+      setForm({ name: "", price: "", cost: "", stock: "", category: "", expiryDate: "", expiryAlertDays: 180 });
       setBarcode(""); setPreview(""); setImage(null);
       refresh();
     } catch (err) {

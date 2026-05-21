@@ -185,6 +185,7 @@ export default function ProductEditPanel({
         ));
       }
       if (editingProduct.expiryDate) data.append("expiryDate", editingProduct.expiryDate);
+      data.append("expiryAlertDays", String(Number(editingProduct.expiryAlertDays) || 180));
       if (editImage) data.append("image", editImage);
 
       const updated = await updateProduct(editingProduct._id, data);
@@ -415,6 +416,25 @@ export default function ProductEditPanel({
                   const msg   = days < 0 ? t.expired || "Expired!" : days === 0 ? t.expiresToday || "Expires today!" : `${t.expiresIn || "Expires in"} ${days} ${t.days || "days"}`;
                   return <p className={`text-xs mt-1 font-medium ${color}`}>{msg}</p>;
                 })()}
+              </div>
+
+              {/* ── Expiry alert threshold ── */}
+              <div>
+                <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                  <Calendar size={11}/> Alert before expiry
+                </label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="number" min="1" max="3650"
+                    value={editingProduct.expiryAlertDays ?? 180}
+                    onChange={e => setEditingProduct({ ...editingProduct, expiryAlertDays: e.target.value === "" ? "" : Number(e.target.value) })}
+                    className={inp + " flex-1"}
+                  />
+                  <span className="text-xs text-gray-400 shrink-0">days before</span>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  {(() => { const d = Number(editingProduct.expiryAlertDays) || 180; return `Alert in reports ${d} days before expiry${d >= 30 && d % 30 === 0 ? ` (${d / 30} months)` : ""}`; })()}
+                </p>
               </div>
 
               {/* ── Barcode ── */}

@@ -27,6 +27,9 @@ const productSchema = new mongoose.Schema(
     hasVariants: { type: Boolean, default: false },
     variants:    { type: [variantSchema], default: [] },
 
+    // ── Expiry alert threshold ────────────────────────────────
+    expiryAlertDays: { type: Number, default: 180 }, // alert in reports this many days before expiry
+
     // ── VAT ───────────────────────────────────────────────────
     vatExempt: { type: Boolean, default: false }, // true = no VAT applied (e.g. basic food, medicine)
 

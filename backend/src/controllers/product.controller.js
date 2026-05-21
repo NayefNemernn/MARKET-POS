@@ -48,10 +48,11 @@ export const getAlerts = async (req, res) => {
       .map(p => {
         const exp = new Date(p.expiryDate);
         const daysLeft = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-        return { ...p, daysLeft };
+        const alertDays = p.expiryAlertDays ?? 180;
+        return { ...p, daysLeft, alertDays };
       })
-      .filter(p => p.daysLeft <= 30)
-      .map(p => ({ _id: p._id, name: p.name, image: p.image, stock: p.stock, category: p.category?.name || "", price: p.price, expiryDate: p.expiryDate, daysLeft: p.daysLeft, expired: p.daysLeft < 0 }))
+      .filter(p => p.daysLeft <= p.alertDays)
+      .map(p => ({ _id: p._id, name: p.name, image: p.image, stock: p.stock, category: p.category?.name || "", price: p.price, expiryDate: p.expiryDate, daysLeft: p.daysLeft, expired: p.daysLeft < 0, expiryAlertDays: p.expiryAlertDays ?? 180 }))
       .sort((a, b) => a.daysLeft - b.daysLeft);
 
     res.json({ lowStock, expiring });
@@ -137,7 +138,7 @@ export const createProduct = async (req, res) => {
       return res.status(403).json({ message: `Product limit (${store.maxProducts}) reached. Upgrade your plan.` });
     }
 
-    const { name, barcode, price, cost, stock, category, expiryDate } = req.body;
+    const { name, barcode, price, cost, stock, category, expiryDate, expiryAlertDays } = req.body;
     let imageUrl = "";
 
     if (req.file) {
@@ -152,6 +153,7 @@ export const createProduct = async (req, res) => {
     const product = await Product.create({
       name, barcode, price, cost: cost || 0, stock,
       category, expiryDate: expiryDate || null,
+      expiryAlertDays: expiryAlertDays ? Number(expiryAlertDays) : 180,
       image:   imageUrl,
       storeId: req.storeId,
     });
@@ -178,6 +180,9 @@ export const updateProduct = async (req, res) => {
     }
     if (typeof updateData.variants === "string") {
       try { updateData.variants = JSON.parse(updateData.variants); } catch {}
+    }
+    if (updateData.expiryAlertDays !== undefined) {
+      updateData.expiryAlertDays = Number(updateData.expiryAlertDays);
     }
 
     if (req.file) {

@@ -384,6 +384,28 @@ export default function ProductForm({
           })()}
         </div>
 
+        {/* === EXPIRY ALERT THRESHOLD === */}
+        <div>
+          <label className={labelClass}>
+            Alert before expiry
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min="1"
+              max="3650"
+              placeholder="180"
+              value={form.expiryAlertDays ?? 180}
+              onChange={e => setForm({ ...form, expiryAlertDays: e.target.value === "" ? "" : Number(e.target.value) })}
+              className={inputClass}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">days</span>
+          </div>
+          <p className="text-xs mt-1 text-gray-400">
+            {(() => { const d = Number(form.expiryAlertDays) || 180; return `Show in reports ${d} days before expiry${d >= 30 && d % 30 === 0 ? ` (${d / 30} months)` : ""}`; })()}
+          </p>
+        </div>
+
       </div>
 
       {/* Logo search indicator */}
