@@ -71,11 +71,10 @@ export default function ProductForm({
   const t = useProductsTranslation();
   const { exchangeRate, formatLBP, toLBP, formatUSD } = useCurrency();
 
-  // Which currency the user is typing the price in
+  // Shared currency for BOTH price and cost — one toggle controls both
   const [priceCurrency, setPriceCurrency] = useState("usd"); // "usd" | "lbp"
-
-  // The raw value typed into the price field
-  const [priceInput, setPriceInput] = useState(form.price || "");
+  const [priceInput,    setPriceInput]    = useState(form.price || "");
+  const [costInput,     setCostInput]     = useState(form.cost || "");
 
   // Sync price display when form.price is set externally (e.g. AI fill or form reset).
   // We track whether the last form.price change came from the user typing so we
@@ -137,37 +136,50 @@ export default function ProductForm({
     }
   }, [form.price]);
 
+  // Sync cost input when reset externally (form cleared, AI fill, etc.)
+  // Sync cost input on external reset (form cleared, AI fill, etc.)
+  const prevFormCost = useRef(form.cost);
+  const skipCostEffect = useRef(false);
+  useEffect(() => {
+    if (skipCostEffect.current) { skipCostEffect.current = false; prevFormCost.current = form.cost; return; }
+    if (form.cost !== prevFormCost.current) {
+      setCostInput(form.cost !== "" ? String(form.cost) : "");
+      prevFormCost.current = form.cost;
+    }
+  }, [form.cost]);
+
   // When price input changes, convert and store USD in form (backend always gets USD)
   const handlePriceChange = (raw) => {
     setPriceInput(raw);
+    skipEffect.current = true;
     const num = parseFloat(raw);
-    skipEffect.current = true; // tell the effect this change came from typing
-    if (isNaN(num) || raw === "") {
-      setForm({ ...form, price: "" });
-      return;
-    }
-    if (priceCurrency === "lbp") {
-      // User types in thousands (30 → 30,000 LBP) → convert to USD for storage
-      setForm({ ...form, price: ((num * 1000) / exchangeRate).toFixed(4) });
-    } else {
-      setForm({ ...form, price: raw });
-    }
+    if (isNaN(num) || raw === "") { setForm({ ...form, price: "" }); return; }
+    setForm({ ...form, price: priceCurrency === "lbp" ? ((num * 1000) / exchangeRate).toFixed(4) : raw });
   };
 
-  // When currency toggle switches, convert the displayed value
+  // When currency toggle switches, convert BOTH price and cost displays
   const switchCurrency = (to) => {
     if (to === priceCurrency) return;
-    const current = parseFloat(priceInput);
-    if (!isNaN(current) && current > 0) {
-      if (to === "lbp") {
-        // USD → LBP thousands shorthand (divide actual LBP by 1000)
-        setPriceInput(Math.round((current * exchangeRate) / 1000).toString());
-      } else {
-        // LBP thousands shorthand → USD (multiply by 1000 first)
-        setPriceInput(((current * 1000) / exchangeRate).toFixed(2));
-      }
+    const p = parseFloat(priceInput);
+    const c = parseFloat(costInput);
+    if (to === "lbp") {
+      if (!isNaN(p) && p > 0) setPriceInput(Math.round((p * exchangeRate) / 1000).toString());
+      if (!isNaN(c) && c > 0) setCostInput(Math.round((c * exchangeRate) / 1000).toString());
+    } else {
+      const cleanUSD = (n) => parseFloat(parseFloat(n).toFixed(4)).toString();
+      if (!isNaN(p) && p > 0) setPriceInput(cleanUSD((p * 1000) / exchangeRate));
+      if (!isNaN(c) && c > 0) setCostInput(cleanUSD((c * 1000) / exchangeRate));
     }
     setPriceCurrency(to);
+  };
+
+  // Cost change handler — uses same priceCurrency (shared toggle)
+  const handleCostChange = (raw) => {
+    setCostInput(raw);
+    skipCostEffect.current = true;
+    const num = parseFloat(raw);
+    if (isNaN(num) || raw === "") { setForm({ ...form, cost: "" }); return; }
+    setForm({ ...form, cost: priceCurrency === "lbp" ? ((num * 1000) / exchangeRate).toFixed(4) : raw });
   };
 
   // Computed preview of the other currency
@@ -205,15 +217,6 @@ export default function ProductForm({
       value: form.name,
       onChange: (v) => setForm({ ...form, name: v }),
       voiceFilter: (t) => t,
-    },
-    {
-      key: "cost",
-      label: t.cost || "Cost Price ($)",
-      placeholder: "0.00",
-      type: "number",
-      value: form.cost,
-      onChange: (v) => setForm({ ...form, cost: v }),
-      voiceFilter: (t) => t.replace(/[^0-9.]/g, ""),
     },
     {
       key: "stock",
@@ -337,6 +340,37 @@ export default function ProductForm({
           {preview_val && (
             <p className={`text-xs mt-1.5 px-1 font-medium ${priceCurrency === "usd" ? "text-amber-500" : "text-green-500"}`}>
               {preview_val}
+            </p>
+          )}
+        </div>
+
+        {/* === COST FIELD — follows same currency as price (no separate toggle) === */}
+        <div className="sm:col-span-2 xl:col-span-1">
+          <label className={labelClass}>{t.cost || "Cost Price"}</label>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none ${priceCurrency === "usd" ? "text-green-500" : "text-amber-500"}`}>
+                {priceCurrency === "usd" ? "$" : "ل"}
+              </span>
+              <input
+                type="number"
+                placeholder={priceCurrency === "usd" ? "0.00" : "0"}
+                value={costInput}
+                onChange={(e) => handleCostChange(e.target.value)}
+                className={inputClass + (priceCurrency === "lbp" ? " pl-7 pr-12" : " pl-7")}
+              />
+              {priceCurrency === "lbp" && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 font-bold text-xs pointer-events-none select-none">,000</span>
+              )}
+            </div>
+            <VoiceButton onResult={(text) => { const n = text.replace(/[^0-9.]/g,""); if(n) handleCostChange(n); }} color="green"/>
+          </div>
+          {costInput && parseFloat(costInput) > 0 && (
+            <p className={`text-xs mt-1.5 px-1 font-medium ${priceCurrency === "usd" ? "text-amber-500" : "text-green-500"}`}>
+              {priceCurrency === "usd"
+                ? `≈ ${formatLBP(parseFloat(costInput) * exchangeRate)}`
+                : `${formatLBP(parseFloat(costInput) * 1000)} ≈ $${((parseFloat(costInput) * 1000) / exchangeRate).toFixed(4)}`
+              }
             </p>
           )}
         </div>

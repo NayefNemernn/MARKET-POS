@@ -6,6 +6,7 @@ import JsBarcode from "jsbarcode";
 import imageCompression from "browser-image-compression";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useProductsTranslation } from "../../hooks/useProductsTranslation";
+import { useCurrency } from "../../context/CurrencyContext";
 import { getProductStats } from "../../api/product.api";
 import ImageCropModal from "./ImageCropModal";
 import CameraCapture from "./CameraCapture";
@@ -23,8 +24,9 @@ export default function ProductEditPanel({
   editPreview,
   setEditPreview,
 }) {
-  const t          = useProductsTranslation();
-  const barcodeRef = useRef(null);
+  const t                              = useProductsTranslation();
+  const { exchangeRate, formatLBP }   = useCurrency();
+  const barcodeRef                    = useRef(null);
 
   const [saving,        setSaving]        = useState(false);
   const [stats,         setStats]         = useState(null);
@@ -33,6 +35,52 @@ export default function ProductEditPanel({
   const [cropSrc,       setCropSrc]       = useState(null);
   const [compressing,   setCompressing]   = useState(false);
   const [showCamera,    setShowCamera]    = useState(false);
+
+  // Shared currency mode for BOTH price and cost fields
+  const [fieldCurrency, setFieldCurrency] = useState("usd"); // "usd" | "lbp"
+  const [priceRaw,      setPriceRaw]      = useState("");
+  const [costRaw,       setCostRaw]       = useState("");
+
+  // Remove trailing zeros from a USD number string (2.0000 → "2", 3.0056 → "3.0056")
+  const cleanUSD = (n) => parseFloat(parseFloat(n).toFixed(4)).toString();
+
+  // Init both raw inputs when a different product is opened
+  useEffect(() => {
+    if (editingProduct?._id) {
+      setFieldCurrency("usd");
+      setPriceRaw(editingProduct.price ? cleanUSD(editingProduct.price) : "");
+      setCostRaw(editingProduct.cost  ? cleanUSD(editingProduct.cost)  : "");
+    }
+  }, [editingProduct?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Switch both fields together
+  const switchFieldCurrency = (to) => {
+    if (to === fieldCurrency) return;
+    const p = parseFloat(priceRaw);
+    const c = parseFloat(costRaw);
+    if (to === "lbp") {
+      if (!isNaN(p) && p > 0) setPriceRaw(Math.round((p * exchangeRate) / 1000).toString());
+      if (!isNaN(c) && c > 0) setCostRaw(Math.round((c * exchangeRate) / 1000).toString());
+    } else {
+      if (!isNaN(p) && p > 0) setPriceRaw(cleanUSD((p * 1000) / exchangeRate));
+      if (!isNaN(c) && c > 0) setCostRaw(cleanUSD((c * 1000) / exchangeRate));
+    }
+    setFieldCurrency(to);
+  };
+
+  const handlePriceChange = (raw) => {
+    setPriceRaw(raw);
+    const num = parseFloat(raw);
+    const usd = isNaN(num) || raw === "" ? 0 : fieldCurrency === "lbp" ? (num * 1000) / exchangeRate : num;
+    setEditingProduct(p => ({ ...p, price: usd }));
+  };
+
+  const handleCostChange = (raw) => {
+    setCostRaw(raw);
+    const num = parseFloat(raw);
+    const usd = isNaN(num) || raw === "" ? 0 : fieldCurrency === "lbp" ? (num * 1000) / exchangeRate : num;
+    setEditingProduct(p => ({ ...p, cost: usd }));
+  };
 
   /* Load stats when product changes */
   useEffect(() => {
@@ -346,37 +394,109 @@ export default function ProductEditPanel({
                 </div>
               </div>
 
-              {/* ── Price + Cost ── */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.price} ($)</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <input type="number" min="0" step="0.01" value={editingProduct.price}
-                      onChange={e => setEditingProduct({ ...editingProduct, price: Number(e.target.value) })}
-                      className={inp + " flex-1"}/>
-                    <VoiceButton onResult={text => { const n = text.replace(/[^0-9.]/g,""); if(n) setEditingProduct({ ...editingProduct, price: Number(n) }); }} color="green"/>
-                  </div>
+              {/* ── Price + Cost (shared currency toggle) ── */}
+              <div className="space-y-3">
+
+                {/* Currency toggle — one toggle controls both fields */}
+                <div className="flex gap-1 p-1 bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
+                  {[["usd", "$ USD"], ["lbp", "ل.ل LBP"]].map(([val, label]) => (
+                    <button key={val} type="button"
+                      onClick={() => switchFieldCurrency(val)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        fieldCurrency === val
+                          ? val === "usd"
+                            ? "bg-green-500 text-white shadow-[0_2px_8px_rgba(34,197,94,0.4)]"
+                            : "bg-amber-500 text-white shadow-[0_2px_8px_rgba(245,158,11,0.4)]"
+                          : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                      }`}
+                    >{label}</button>
+                  ))}
                 </div>
+
+                {/* Price */}
                 <div>
-                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.cost || "Cost"} ($)</label>
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.price}</label>
                   <div className="flex items-center gap-2 mt-1">
-                    <input type="number" min="0" step="0.01" value={editingProduct.cost || ""} placeholder="0.00"
-                      onChange={e => setEditingProduct({ ...editingProduct, cost: Number(e.target.value) })}
-                      className={inp + " flex-1"}/>
-                    <VoiceButton onResult={text => { const n = text.replace(/[^0-9.]/g,""); if(n) setEditingProduct({ ...editingProduct, cost: Number(n) }); }} color="green"/>
+                    <div className="relative flex-1">
+                      <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${fieldCurrency === "lbp" ? "text-amber-500" : "text-green-500"}`}>
+                        {fieldCurrency === "lbp" ? "ل" : "$"}
+                      </span>
+                      <input type="number" min="0" step={fieldCurrency === "lbp" ? "1" : "0.0001"}
+                        value={priceRaw}
+                        onChange={e => handlePriceChange(e.target.value)}
+                        className={inp + " pl-6" + (fieldCurrency === "lbp" ? " pr-12" : "")}/>
+                      {fieldCurrency === "lbp" && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 font-bold text-xs pointer-events-none select-none">,000</span>
+                      )}
+                    </div>
+                    <VoiceButton onResult={text => { const n = text.replace(/[^0-9.]/g,""); if(n) handlePriceChange(n); }} color="green"/>
                   </div>
+                  {fieldCurrency === "lbp" && priceRaw && parseFloat(priceRaw) > 0 && (
+                    <p className="text-[10px] text-amber-500 mt-1">
+                      = {(parseFloat(priceRaw) * 1000).toLocaleString("en-US")} ل.ل
+                    </p>
+                  )}
+                </div>
+
+                {/* Cost */}
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.cost || "Cost"}</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="relative flex-1">
+                      <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${fieldCurrency === "lbp" ? "text-amber-500" : "text-green-500"}`}>
+                        {fieldCurrency === "lbp" ? "ل" : "$"}
+                      </span>
+                      <input type="number" min="0" step={fieldCurrency === "lbp" ? "1" : "0.0001"}
+                        placeholder="0"
+                        value={costRaw}
+                        onChange={e => handleCostChange(e.target.value)}
+                        className={inp + " pl-6" + (fieldCurrency === "lbp" ? " pr-12" : "")}/>
+                      {fieldCurrency === "lbp" && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 font-bold text-xs pointer-events-none select-none">,000</span>
+                      )}
+                    </div>
+                    <VoiceButton onResult={text => { const n = text.replace(/[^0-9.]/g,""); if(n) handleCostChange(n); }} color="green"/>
+                  </div>
+                  {fieldCurrency === "lbp" && costRaw && parseFloat(costRaw) > 0 && (
+                    <p className="text-[10px] text-amber-500 mt-1">
+                      = {(parseFloat(costRaw) * 1000).toLocaleString("en-US")} ل.ل
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* ── Margin pill ── */}
-              {editingProduct.price > 0 && editingProduct.cost > 0 && (() => {
-                const margin = ((editingProduct.price - editingProduct.cost) / editingProduct.price * 100);
-                const profit = editingProduct.price - editingProduct.cost;
-                const color  = margin >= 20 ? "text-green-600 dark:text-green-400" : margin >= 5 ? "text-amber-500" : "text-red-500";
+              {/* ── Margin + currency converter ── */}
+              {editingProduct.price > 0 && (() => {
+                const priceUSD = editingProduct.price;
+                const costUSD  = editingProduct.cost || 0;
+                const profit   = priceUSD - costUSD;
+                const margin   = priceUSD > 0 ? (profit / priceUSD) * 100 : 0;
+                const color    = margin >= 20 ? "text-green-600 dark:text-green-400" : margin >= 5 ? "text-amber-500" : "text-red-500";
                 return (
-                  <div className={`text-xs px-3 py-2 rounded-xl bg-gray-50 dark:bg-[#1c1c1c] border border-gray-100 dark:border-white/8 flex justify-between ${color}`}>
-                    <span>{t.margin} <b>{margin.toFixed(1)}%</b></span>
-                    <span>{t.profitUnit} <b>${profit.toFixed(2)}</b></span>
+                  <div className="rounded-xl bg-gray-50 dark:bg-[#1c1c1c] border border-gray-100 dark:border-white/8 overflow-hidden">
+                    {costUSD > 0 && (
+                      <div className={`flex justify-between text-xs px-3 py-2 border-b border-gray-100 dark:border-white/5 ${color}`}>
+                        <span>{t.margin} <b>{margin.toFixed(1)}%</b></span>
+                        <span>{t.profitUnit} <b>${cleanUSD(profit)}</b></span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-3 divide-x divide-gray-100 dark:divide-white/5">
+                      {[
+                        { label: "Price",  usd: priceUSD, lbp: priceUSD * exchangeRate },
+                        { label: "Cost",   usd: costUSD,  lbp: costUSD  * exchangeRate },
+                        { label: "Profit", usd: profit,   lbp: profit   * exchangeRate, colored: true },
+                      ].map(({ label, usd, lbp, colored }) => (
+                        <div key={label} className="px-2.5 py-2">
+                          <p className="text-[10px] text-gray-400 mb-0.5">{label}</p>
+                          <p className={`text-[11px] font-semibold ${colored ? color : "text-gray-700 dark:text-gray-300"}`}>
+                            ${cleanUSD(usd)}
+                          </p>
+                          <p className={`text-[10px] ${colored ? color : "text-amber-500"} opacity-90`}>
+                            {formatLBP(lbp)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}
