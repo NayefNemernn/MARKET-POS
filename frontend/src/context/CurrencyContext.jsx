@@ -36,7 +36,7 @@ export const CurrencyProvider = ({ children }) => {
 
   // Format LBP with thousands separator
   const formatLBP = (amount) => {
-    return parseInt(amount).toLocaleString("en-US") + " ل.ل";
+    return Math.round(parseFloat(amount)).toLocaleString("en-US") + " ل.ل";
   };
 
   // Format USD

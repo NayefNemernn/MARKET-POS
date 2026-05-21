@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Minus, Printer, Tag, Package, TrendingUp, Save, RefreshCw, DollarSign, ShoppingCart, Calendar, Layers, Trash2, Loader2, Camera, Globe } from "lucide-react";
+import { X, Plus, Minus, Printer, Tag, Package, TrendingUp, Save, RefreshCw, DollarSign, ShoppingCart, Calendar, Layers, Trash2, Loader2, Camera, Globe, Calculator } from "lucide-react";
 import VoiceButton from "../common/VoiceButton";
 import { toast } from "sonner";
 import JsBarcode from "jsbarcode";
@@ -41,8 +41,32 @@ export default function ProductEditPanel({
   const [priceRaw,      setPriceRaw]      = useState("");
   const [costRaw,       setCostRaw]       = useState("");
 
-  // Remove trailing zeros from a USD number string (2.0000 → "2", 3.0056 → "3.0056")
-  const cleanUSD = (n) => parseFloat(parseFloat(n).toFixed(4)).toString();
+  // ── Box unit-cost calculator ─────────────────────────────────────────────
+  const [showCalc, setShowCalc] = useState(false);
+  const [boxCost,  setBoxCost]  = useState("");
+  const [boxUnits, setBoxUnits] = useState("");
+
+  const calcUnitCost = () => {
+    const c = parseFloat(boxCost);
+    const u = parseFloat(boxUnits);
+    if (!c || !u || u <= 0) return null;
+    // Result is in the active display currency (same units the user typed)
+    return fieldCurrency === "lbp"
+      ? Math.round(c / u)
+      : +(c / u).toFixed(2);
+  };
+
+  const applyCalcCost = () => {
+    const unit = calcUnitCost();
+    if (!unit) return;
+    // Pass display-currency value directly — handleCostChange converts to USD
+    handleCostChange(unit.toString());
+    setShowCalc(false);
+    setBoxCost(""); setBoxUnits("");
+  };
+
+  // Format USD for display: max 2 decimal places, strip trailing zeros (1.50 → "1.5", 0.34 → "0.34")
+  const cleanUSD = (n) => parseFloat(parseFloat(n).toFixed(2)).toString();
 
   // Init both raw inputs when a different product is opened
   useEffect(() => {
@@ -440,8 +464,22 @@ export default function ProductEditPanel({
 
                 {/* Cost */}
                 <div>
-                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.cost || "Cost"}</label>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t.cost || "Cost"}</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowCalc(v => !v)}
+                      title="Box / unit calculator"
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold transition
+                        ${showCalc
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-200 dark:bg-white/10 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                        }`}
+                    >
+                      <Calculator size={10}/> Calc
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${fieldCurrency === "lbp" ? "text-amber-500" : "text-green-500"}`}>
                         {fieldCurrency === "lbp" ? "ل" : "$"}
@@ -461,6 +499,62 @@ export default function ProductEditPanel({
                     <p className="text-[10px] text-amber-500 mt-1">
                       = {(parseFloat(costRaw) * 1000).toLocaleString("en-US")} ل.ل
                     </p>
+                  )}
+
+                  {/* ── Box calculator ── */}
+                  {showCalc && (
+                    <div className="mt-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 space-y-2">
+                      <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Box Calculator</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <p className="text-[10px] text-gray-500 mb-1">
+                            Box total cost ({fieldCurrency === "lbp" ? "ل.ل ,000" : "$"})
+                          </p>
+                          <div className="relative">
+                            <span className={`absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${fieldCurrency === "lbp" ? "text-amber-500" : "text-green-500"}`}>
+                              {fieldCurrency === "lbp" ? "ل" : "$"}
+                            </span>
+                            <input
+                              type="number" min="0" step={fieldCurrency === "lbp" ? "1" : "0.01"}
+                              placeholder={fieldCurrency === "lbp" ? "18" : "18.00"}
+                              value={boxCost}
+                              onChange={e => setBoxCost(e.target.value)}
+                              className={`w-full pl-6 py-1.5 rounded-lg text-xs bg-white dark:bg-[#1c1c1c] border border-blue-200 dark:border-blue-500/30 outline-none focus:border-blue-400 transition${fieldCurrency === "lbp" ? " pr-8" : ""}`}
+                            />
+                            {fieldCurrency === "lbp" && (
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-400 font-bold text-[10px] pointer-events-none">,000</span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-gray-400 font-bold text-base pt-4">÷</span>
+                        <div className="flex-1">
+                          <p className="text-[10px] text-gray-500 mb-1">Units per box</p>
+                          <input
+                            type="number" min="1" step="1" placeholder="24"
+                            value={boxUnits}
+                            onChange={e => setBoxUnits(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg text-xs bg-white dark:bg-[#1c1c1c] border border-blue-200 dark:border-blue-500/30 outline-none focus:border-blue-400 transition"
+                          />
+                        </div>
+                      </div>
+                      {calcUnitCost() !== null && (
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                            {fieldCurrency === "lbp"
+                              ? `= ${calcUnitCost().toLocaleString()},000 ل.ل / unit`
+                              : `= $${calcUnitCost()} / unit`
+                            }
+                          </span>
+                          <button
+                            type="button"
+                            onClick={applyCalcCost}
+                            className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

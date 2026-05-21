@@ -12,7 +12,8 @@ import { useCurrency }   from "../context/CurrencyContext";
 import ExchangeRateBar   from "../components/ExchangeRateBar";
 import VoiceButton       from "../components/common/VoiceButton";
 import { connectSocket } from "../lib/socket";
-import { Truck, X as XIcon, PauseCircle } from "lucide-react";
+import { Truck, X as XIcon, PauseCircle, LockOpen } from "lucide-react";
+import { openCashDrawer, connectCashDrawer, cashDrawerSupported } from "../lib/cashDrawer";
 import OnlineOrdersPanel from "../components/pos/OnlineOrdersPanel";
 import {
   cacheProducts, getCachedProducts,
@@ -90,6 +91,25 @@ export default function POS({ setPage }) {
 
   const discardHeld = (heldId) => {
     setHeldCarts(prev => prev.filter(h => h.id !== heldId));
+  };
+
+  const handleOpenDrawer = async () => {
+    const result = await openCashDrawer();
+    if (result.ok) {
+      toast.success("Cash drawer opened");
+    } else if (result.reason === "unsupported") {
+      toast.error("Cash drawer not supported in this browser (use Chrome/Edge)");
+    } else if (result.reason === "not_connected") {
+      const connected = await connectCashDrawer();
+      if (connected) {
+        const retry = await openCashDrawer();
+        if (retry.ok) toast.success("Cash drawer connected & opened");
+      } else {
+        toast.error("Could not connect to cash drawer");
+      }
+    } else {
+      toast.error("Failed to open cash drawer");
+    }
   };
 
   /* ── load products ── */
@@ -210,11 +230,11 @@ export default function POS({ setPage }) {
     if (displayCurrency === "usd")
       return <span className="text-green-500 dark:text-green-400 font-bold text-sm tabular-nums">{formatUSD(price)}</span>;
     if (displayCurrency === "lbp")
-      return <span className="text-amber-500 dark:text-amber-400 font-bold text-xs tabular-nums">{formatLBP(toLBP(price))}</span>;
+      return <span className="text-amber-500 dark:text-amber-400 font-bold text-sm tabular-nums">{formatLBP(toLBP(price))}</span>;
     return (
       <div className="flex flex-col leading-tight">
         <span className="text-green-500 dark:text-green-400 font-bold text-sm tabular-nums">{formatUSD(price)}</span>
-        <span className="text-amber-500 dark:text-amber-400 font-semibold text-[10px] tabular-nums">{formatLBP(toLBP(price))}</span>
+        <span className="text-amber-500 dark:text-amber-400 font-semibold text-sm tabular-nums">{formatLBP(toLBP(price))}</span>
       </div>
     );
   };
@@ -253,6 +273,16 @@ export default function POS({ setPage }) {
         <div className="flex-1 flex justify-end">
           <ExchangeRateBar compact />
         </div>
+
+        {/* Cash Drawer button */}
+        <button
+          onClick={handleOpenDrawer}
+          title="Open cash drawer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+            bg-white/10 hover:bg-emerald-500/80 text-white/80 hover:text-white
+            transition shrink-0">
+          <LockOpen size={11}/> Drawer
+        </button>
 
         {/* Return button */}
         <button
@@ -633,6 +663,7 @@ export default function POS({ setPage }) {
         <CheckoutModal
           cart={cart}
           total={total}
+          clearCart={clearCart}
           close={() => setOpenCheckout(false)}
           deliveryOrder={isDeliveryMode ? deliveryOrder : null}
           onDeliveryCheckoutDone={() => { setIsDeliveryMode(false); setDeliveryOrder(null); }}

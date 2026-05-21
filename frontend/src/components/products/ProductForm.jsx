@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 import { useCurrency } from "../../context/CurrencyContext";
 import VoiceButton from "../common/VoiceButton";
+import { Calculator } from "lucide-react";
 
 // ── Brand logo / product image auto-detect ───────────────────────────────────
 async function findBrandLogo(name) {
@@ -136,6 +137,30 @@ export default function ProductForm({
     }
   }, [form.price]);
 
+  // ── Box unit-cost calculator ─────────────────────────────────────────────
+  const [showCalc,  setShowCalc]  = useState(false);
+  const [boxCost,   setBoxCost]   = useState("");
+  const [boxUnits,  setBoxUnits]  = useState("");
+
+  const calcUnitCost = () => {
+    const c = parseFloat(boxCost);
+    const u = parseFloat(boxUnits);
+    if (!c || !u || u <= 0) return null;
+    // Result is in the active display currency (same units the user typed)
+    return priceCurrency === "lbp"
+      ? Math.round(c / u)
+      : +(c / u).toFixed(2);
+  };
+
+  const applyCalcCost = () => {
+    const unit = calcUnitCost();
+    if (!unit) return;
+    // Pass display-currency value directly — handleCostChange converts to USD
+    handleCostChange(unit.toString());
+    setShowCalc(false);
+    setBoxCost(""); setBoxUnits("");
+  };
+
   // Sync cost input when reset externally (form cleared, AI fill, etc.)
   // Sync cost input on external reset (form cleared, AI fill, etc.)
   const prevFormCost = useRef(form.cost);
@@ -154,7 +179,7 @@ export default function ProductForm({
     skipEffect.current = true;
     const num = parseFloat(raw);
     if (isNaN(num) || raw === "") { setForm({ ...form, price: "" }); return; }
-    setForm({ ...form, price: priceCurrency === "lbp" ? ((num * 1000) / exchangeRate).toFixed(4) : raw });
+    setForm({ ...form, price: priceCurrency === "lbp" ? String((num * 1000) / exchangeRate) : raw });
   };
 
   // When currency toggle switches, convert BOTH price and cost displays
@@ -166,9 +191,9 @@ export default function ProductForm({
       if (!isNaN(p) && p > 0) setPriceInput(Math.round((p * exchangeRate) / 1000).toString());
       if (!isNaN(c) && c > 0) setCostInput(Math.round((c * exchangeRate) / 1000).toString());
     } else {
-      const cleanUSD = (n) => parseFloat(parseFloat(n).toFixed(4)).toString();
-      if (!isNaN(p) && p > 0) setPriceInput(cleanUSD((p * 1000) / exchangeRate));
-      if (!isNaN(c) && c > 0) setCostInput(cleanUSD((c * 1000) / exchangeRate));
+      const toUSD2 = (n) => parseFloat(((n * 1000) / exchangeRate).toFixed(2)).toString();
+      if (!isNaN(p) && p > 0) setPriceInput(toUSD2(p));
+      if (!isNaN(c) && c > 0) setCostInput(toUSD2(c));
     }
     setPriceCurrency(to);
   };
@@ -179,7 +204,7 @@ export default function ProductForm({
     skipCostEffect.current = true;
     const num = parseFloat(raw);
     if (isNaN(num) || raw === "") { setForm({ ...form, cost: "" }); return; }
-    setForm({ ...form, cost: priceCurrency === "lbp" ? ((num * 1000) / exchangeRate).toFixed(4) : raw });
+    setForm({ ...form, cost: priceCurrency === "lbp" ? String((num * 1000) / exchangeRate) : raw });
   };
 
   // Computed preview of the other currency
@@ -346,7 +371,21 @@ export default function ProductForm({
 
         {/* === COST FIELD — follows same currency as price (no separate toggle) === */}
         <div className="sm:col-span-2 xl:col-span-1">
-          <label className={labelClass}>{t.cost || "Cost Price"}</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className={labelClass + " mb-0"}>{t.cost || "Cost Price"}</label>
+            <button
+              type="button"
+              onClick={() => setShowCalc(v => !v)}
+              title="Box / unit calculator"
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold transition
+                ${showCalc
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 dark:bg-white/10 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                }`}
+            >
+              <Calculator size={11}/> Calc
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none ${priceCurrency === "usd" ? "text-green-500" : "text-amber-500"}`}>
@@ -369,9 +408,65 @@ export default function ProductForm({
             <p className={`text-xs mt-1.5 px-1 font-medium ${priceCurrency === "usd" ? "text-amber-500" : "text-green-500"}`}>
               {priceCurrency === "usd"
                 ? `≈ ${formatLBP(parseFloat(costInput) * exchangeRate)}`
-                : `${formatLBP(parseFloat(costInput) * 1000)} ≈ $${((parseFloat(costInput) * 1000) / exchangeRate).toFixed(4)}`
+                : `${formatLBP(parseFloat(costInput) * 1000)} ≈ $${((parseFloat(costInput) * 1000) / exchangeRate).toFixed(2)}`
               }
             </p>
+          )}
+
+          {/* ── Box calculator ── */}
+          {showCalc && (
+            <div className="mt-2 p-3 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 space-y-2">
+              <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Box Calculator</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <p className="text-[10px] text-gray-500 mb-1">
+                    Box total cost ({priceCurrency === "lbp" ? "ل.ل ,000" : "$"})
+                  </p>
+                  <div className="relative">
+                    <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${priceCurrency === "lbp" ? "text-amber-500" : "text-green-500"}`}>
+                      {priceCurrency === "lbp" ? "ل" : "$"}
+                    </span>
+                    <input
+                      type="number" min="0" step={priceCurrency === "lbp" ? "1" : "0.01"}
+                      placeholder={priceCurrency === "lbp" ? "18" : "18.00"}
+                      value={boxCost}
+                      onChange={e => setBoxCost(e.target.value)}
+                      className={`w-full pl-7 py-2 rounded-xl text-sm bg-white dark:bg-[#1c1c1c] border border-blue-200 dark:border-blue-500/30 outline-none focus:border-blue-400 transition${priceCurrency === "lbp" ? " pr-10" : ""}`}
+                    />
+                    {priceCurrency === "lbp" && (
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-amber-400 font-bold text-xs pointer-events-none">,000</span>
+                    )}
+                  </div>
+                </div>
+                <span className="text-gray-400 font-bold text-lg pt-4">÷</span>
+                <div className="flex-1">
+                  <p className="text-[10px] text-gray-500 mb-1">Units per box</p>
+                  <input
+                    type="number" min="1" step="1" placeholder="24"
+                    value={boxUnits}
+                    onChange={e => setBoxUnits(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-[#1c1c1c] border border-blue-200 dark:border-blue-500/30 outline-none focus:border-blue-400 transition"
+                  />
+                </div>
+              </div>
+              {calcUnitCost() !== null && (
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                    {priceCurrency === "lbp"
+                      ? `= ${calcUnitCost().toLocaleString()},000 ل.ل / unit`
+                      : `= $${calcUnitCost()} / unit`
+                    }
+                  </span>
+                  <button
+                    type="button"
+                    onClick={applyCalcCost}
+                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
 

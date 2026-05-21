@@ -2,13 +2,13 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { createSale } from "../api/sale.api";
 import { createHoldSale } from "../api/holdSale.api";
 import { getCustomers, createCustomer } from "../api/customer.api";
-import { useCart } from "../hooks/useCart";
 import { useTranslation } from "../hooks/useTranslation";
 import { useCurrency } from "../context/CurrencyContext";
 import { useAuth } from "../context/AuthContext";
 import VoiceButton from "./common/VoiceButton";
 import useOfflineSales from "../hooks/useOfflineSales";
 import toast from "react-hot-toast";
+import { openCashDrawer } from "../lib/cashDrawer";
 import QRCode from "qrcode";
 import {
   X, Banknote, CreditCard, Clock, User, Phone,
@@ -150,8 +150,7 @@ async function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, c
 /* ════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ════════════════════════════════════════════════════════════ */
-export default function CheckoutModal({ cart, total, close, deliveryOrder = null, onDeliveryCheckoutDone }) {
-  const { clearCart }   = useCart();
+export default function CheckoutModal({ cart, total, close, clearCart, deliveryOrder = null, onDeliveryCheckoutDone }) {
   const { t }           = useTranslation();
   const { saveOffline } = useOfflineSales();
   const { toLBP, formatLBP, formatUSD, exchangeRate } = useCurrency();
@@ -349,6 +348,10 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
         };
         clearCart();
       }
+      // Auto-open cash drawer for cash payments
+      if (method === "cash" || method === "split") {
+        openCashDrawer();
+      }
       setReceipt(saleResult);
     } catch (err) {
       toast.error(err.response?.data?.message || t.checkoutFailed);
@@ -406,7 +409,7 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
                 <span>Total</span>
                 <div className="text-right">
                   <div>{formatUSD(receipt.total)}</div>
-                  <div className="text-xs font-normal text-amber-500">{formatLBP(toLBP(receipt.total))}</div>
+                  <div className="text-amber-500">{formatLBP(toLBP(receipt.total))}</div>
                 </div>
               </div>
               {change > 0 && (
@@ -414,7 +417,7 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
                   <span>Change</span>
                   <div className="text-right">
                     <div>{formatUSD(change)}</div>
-                    <div className="text-xs font-normal">{formatLBP(toLBP(change))}</div>
+                    <div>{formatLBP(toLBP(change))}</div>
                   </div>
                 </div>
               )}
@@ -495,26 +498,30 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
 
           {/* ── Total card ── */}
           <div className="bg-blue-600 text-white rounded-2xl p-4">
-            <p className="text-blue-200 text-xs mb-1">Total Amount</p>
-            <div className="flex items-end gap-3">
-              <p className="text-3xl font-black">{formatUSD(finalTotal)}</p>
-              {(discountAmount > 0 || vatAmount > 0) && (
-                <p className="text-blue-300 text-sm line-through mb-1">{formatUSD(total)}</p>
-              )}
+            <p className="text-blue-200 text-xs mb-2">Total Amount</p>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-end gap-2">
+                <p className="text-3xl font-black">{formatUSD(finalTotal)}</p>
+                {(discountAmount > 0 || vatAmount > 0) && (
+                  <p className="text-blue-300 text-sm line-through mb-1">{formatUSD(total)}</p>
+                )}
+              </div>
+              <p className="text-3xl font-black tabular-nums">{formatLBP(toLBP(finalTotal))}</p>
             </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="bg-white/20 rounded-full px-2.5 py-0.5 text-xs">{formatLBP(toLBP(finalTotal))}</span>
-              {discountAmount > 0 && (
-                <span className="bg-amber-400/30 text-amber-200 rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                  −{formatUSD(discountAmount)} off
-                </span>
-              )}
-              {vatAmount > 0 && (
-                <span className="bg-white/20 text-blue-100 rounded-full px-2.5 py-0.5 text-xs">
-                  VAT {taxRate}%: +{formatUSD(vatAmount)}
-                </span>
-              )}
-            </div>
+            {(discountAmount > 0 || vatAmount > 0) && (
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {discountAmount > 0 && (
+                  <span className="bg-amber-400/30 text-amber-200 rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                    −{formatUSD(discountAmount)} off
+                  </span>
+                )}
+                {vatAmount > 0 && (
+                  <span className="bg-white/20 text-blue-100 rounded-full px-2.5 py-0.5 text-xs">
+                    VAT {taxRate}%: +{formatUSD(vatAmount)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── Discount toggle ── */}
@@ -634,7 +641,7 @@ export default function CheckoutModal({ cart, total, close, deliveryOrder = null
                 </div>
                 <div className="text-right">
                   <div className={`font-bold text-base ${change > 0 ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>{formatUSD(change)}</div>
-                  {change > 0 && <div className="text-xs text-amber-500">{formatLBP(toLBP(change))}</div>}
+                  {change > 0 && <div className="font-bold text-base text-amber-500">{formatLBP(toLBP(change))}</div>}
                 </div>
               </div>
               {/* Quick amounts */}

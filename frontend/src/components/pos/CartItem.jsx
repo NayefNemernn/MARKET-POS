@@ -1,4 +1,8 @@
+import { Package } from "lucide-react";
+import { useState } from "react";
+
 export default function CartItem({ item, onIncrease, onDecrease, formatUSD, formatLBP, toLBP, displayCurrency }) {
+  const [imgError, setImgError] = useState(false);
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl
       bg-gray-50 dark:bg-[#1c1c1c]
@@ -6,13 +10,17 @@ export default function CartItem({ item, onIncrease, onDecrease, formatUSD, form
       hover:border-blue-200 dark:hover:border-blue-500/20 transition-colors">
 
       {/* Thumbnail */}
-      <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-gray-100 dark:bg-[#111]">
-        <img
-          src={item.image || "/placeholder.png"}
-          alt={item.name}
-          className="w-full h-full object-cover"
-          onError={e => { e.target.src = "/placeholder.png"; }}
-        />
+      <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-gray-100 dark:bg-[#2a2a2a] flex items-center justify-center">
+        {item.image && !imgError ? (
+          <img
+            src={item.image}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <Package size={20} className="text-gray-400 dark:text-gray-500" />
+        )}
       </div>
 
       {/* Name + unit price */}
@@ -55,7 +63,7 @@ export default function CartItem({ item, onIncrease, onDecrease, formatUSD, form
           {formatUSD(item.price * item.quantity)}
         </div>
         {displayCurrency !== "usd" && (
-          <div className="text-[10px] text-amber-500 tabular-nums">
+          <div className="text-xs text-amber-500 tabular-nums">
             {formatLBP(toLBP(item.price * item.quantity))}
           </div>
         )}

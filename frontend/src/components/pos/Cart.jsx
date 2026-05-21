@@ -26,7 +26,7 @@ export default function Cart({
     return (
       <div className="text-right">
         <div className="font-bold text-green-500 tabular-nums">{formatUSD(total)}</div>
-        <div className="text-xs text-amber-500 tabular-nums">{formatLBP(toLBP(total))}</div>
+        <div className="font-bold text-amber-500 tabular-nums">{formatLBP(toLBP(total))}</div>
       </div>
     );
   };
