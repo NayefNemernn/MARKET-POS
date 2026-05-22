@@ -36,6 +36,9 @@ const productSchema = new mongoose.Schema(
     // ── Online Store ──────────────────────────────────────────
     isAvailableOnline: { type: Boolean, default: true },
 
+    // ── Warehouse stock ───────────────────────────────────────
+    warehouseStock: { type: Number, default: 0, min: 0 },
+
     // ── Multi-tenancy ─────────────────────────────────────────
     storeId: {
       type:     mongoose.Schema.Types.ObjectId,

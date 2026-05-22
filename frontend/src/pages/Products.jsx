@@ -95,8 +95,9 @@ export default function Products() {
   const [productBatches, setProductBatches] = useState([]);
   const [loadingBatches, setLoadingBatches] = useState(false);
   const [showAddBatch,   setShowAddBatch]   = useState(false);
-  const [batchForm,      setBatchForm]      = useState({ expiryDate: "", initialQty: "", costPrice: "", notes: "" });
-  const [savingBatch,    setSavingBatch]    = useState(false);
+  const [batchForm,          setBatchForm]          = useState({ expiryDate: "", initialQty: "", costPrice: "", notes: "" });
+  const [batchExpiryDisplay, setBatchExpiryDisplay] = useState("");
+  const [savingBatch,        setSavingBatch]        = useState(false);
 
   // ── Import state ──
   const [showImport,   setShowImport]   = useState(false);
@@ -447,6 +448,7 @@ export default function Products() {
     setBatchProduct(product);
     setShowAddBatch(false);
     setBatchForm({ expiryDate: "", initialQty: "", costPrice: "", notes: "" });
+    setBatchExpiryDisplay("");
     setLoadingBatches(true);
     try {
       const data = await getBatchesForProduct(product._id);
@@ -463,12 +465,18 @@ export default function Products() {
       toast.success("Batch added");
       setShowAddBatch(false);
       setBatchForm({ expiryDate: "", initialQty: "", costPrice: "", notes: "" });
+      setBatchExpiryDisplay("");
       const data = await getBatchesForProduct(batchProduct._id);
       setProductBatches(data);
       refresh();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to add batch");
     } finally { setSavingBatch(false); }
+  };
+
+  const fmtDate = (d) => {
+    const dt = new Date(d);
+    return `${String(dt.getDate()).padStart(2,"0")}/${String(dt.getMonth()+1).padStart(2,"0")}/${dt.getFullYear()}`;
   };
 
   const batchExpiryBadge = (b) => {
@@ -851,7 +859,7 @@ export default function Products() {
                       {b.remainingQty === 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500">Depleted</span>}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                      {b.expiryDate && <span>Exp: {new Date(b.expiryDate).toLocaleDateString()}</span>}
+                      {b.expiryDate && <span>Exp: {fmtDate(b.expiryDate)}</span>}
                       {b.supplierName && <span>· {b.supplierName}</span>}
                     </div>
                   </div>
@@ -877,7 +885,19 @@ export default function Products() {
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Expiry Date</label>
-                    <input type="date" value={batchForm.expiryDate} onChange={e => setBatchForm(f => ({ ...f, expiryDate: e.target.value }))}
+                    <input type="text" inputMode="numeric" placeholder="dd/mm/yyyy" maxLength={10}
+                      value={batchExpiryDisplay}
+                      onChange={e => {
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
+                        let display = digits;
+                        if (digits.length > 2) display = digits.slice(0, 2) + "/" + digits.slice(2);
+                        if (digits.length > 4) display = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+                        setBatchExpiryDisplay(display);
+                        if (digits.length === 8)
+                          setBatchForm(f => ({ ...f, expiryDate: `${digits.slice(4)}-${digits.slice(2,4)}-${digits.slice(0,2)}` }));
+                        else if (digits.length === 0)
+                          setBatchForm(f => ({ ...f, expiryDate: "" }));
+                      }}
                       className="w-full px-3 py-2 rounded-xl text-sm border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0f0f0f] outline-none focus:border-emerald-400 transition"/>
                   </div>
                   <div>

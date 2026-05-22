@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Check, Layers } from "lucide-react";
+import { Check, Layers, Trash2 } from "lucide-react";
 import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 import { getCategoryIcon } from "../../lib/categoryIcon";
 
@@ -90,20 +90,21 @@ export default function ProductCard({ product, onDelete, onEdit, onBatches, sele
             <button
               onClick={e => { e.stopPropagation(); onBatches(product); }}
               title="View batches"
-              className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-xl font-medium
+              className="flex-1 flex items-center justify-center py-1.5 rounded-xl
                 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400
                 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition"
             >
-              <Layers size={10}/> Batches
+              <Layers size={13}/>
             </button>
           )}
           <button
             onClick={e => { e.stopPropagation(); onDelete(product._id); }}
-            className="flex-1 text-xs py-1.5 rounded-xl font-medium
+            title={t.delete}
+            className="flex-1 flex items-center justify-center py-1.5 rounded-xl
               bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400
               hover:bg-red-100 dark:hover:bg-red-900/30 transition"
           >
-            {t.delete}
+            <Trash2 size={13}/>
           </button>
         </div>
       </div>

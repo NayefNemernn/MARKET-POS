@@ -185,6 +185,11 @@ export const updateProduct = async (req, res) => {
       updateData.expiryAlertDays = Number(updateData.expiryAlertDays);
     }
 
+    if (updateData.removeImage === "true") {
+      updateData.image = "";
+      delete updateData.removeImage;
+    }
+
     if (req.file) {
       const fileName = `products/${uuid()}`;
       const { error } = await supabase.storage

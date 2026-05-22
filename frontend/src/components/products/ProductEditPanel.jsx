@@ -27,19 +27,44 @@ export default function ProductEditPanel({
   const t                              = useProductsTranslation();
   const { exchangeRate, formatLBP }   = useCurrency();
   const barcodeRef                    = useRef(null);
+  const expiryPickerRef               = useRef(null);
 
-  const [saving,        setSaving]        = useState(false);
-  const [stats,         setStats]         = useState(null);
-  const [loadingStats,  setLoadingStats]  = useState(false);
-  const [barcodeFormat, setBarcodeFormat] = useState("CODE128");
-  const [cropSrc,       setCropSrc]       = useState(null);
-  const [compressing,   setCompressing]   = useState(false);
-  const [showCamera,    setShowCamera]    = useState(false);
+  const [saving,             setSaving]             = useState(false);
+  const [stats,              setStats]              = useState(null);
+  const [loadingStats,       setLoadingStats]       = useState(false);
+  const [barcodeFormat,      setBarcodeFormat]      = useState("CODE128");
+  const [cropSrc,            setCropSrc]            = useState(null);
+  const [compressing,        setCompressing]        = useState(false);
+  const [showCamera,         setShowCamera]         = useState(false);
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
 
   // Shared currency mode for BOTH price and cost fields
   const [fieldCurrency, setFieldCurrency] = useState("usd"); // "usd" | "lbp"
   const [priceRaw,      setPriceRaw]      = useState("");
   const [costRaw,       setCostRaw]       = useState("");
+
+  // ── Expiry date display (dd/mm/yyyy) ─────────────────────────────────────
+  const [expiryDisplay, setExpiryDisplay] = useState("");
+
+  const isoToDisplay = (iso) => {
+    if (!iso) return "";
+    const d = iso.slice(0, 10).split("-");
+    return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "";
+  };
+
+  const handleExpiryInput = (raw) => {
+    const digits = raw.replace(/\D/g, "").slice(0, 8);
+    let display = digits;
+    if (digits.length > 2) display = digits.slice(0, 2) + "/" + digits.slice(2);
+    if (digits.length > 4) display = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+    setExpiryDisplay(display);
+    if (digits.length === 8) {
+      const iso = `${digits.slice(4)}-${digits.slice(2, 4)}-${digits.slice(0, 2)}`;
+      setEditingProduct(p => ({ ...p, expiryDate: iso }));
+    } else if (digits.length === 0) {
+      setEditingProduct(p => ({ ...p, expiryDate: null }));
+    }
+  };
 
   // ── Box unit-cost calculator ─────────────────────────────────────────────
   const [showCalc, setShowCalc] = useState(false);
@@ -74,6 +99,8 @@ export default function ProductEditPanel({
       setFieldCurrency("usd");
       setPriceRaw(editingProduct.price ? cleanUSD(editingProduct.price) : "");
       setCostRaw(editingProduct.cost  ? cleanUSD(editingProduct.cost)  : "");
+      setRemoveExistingImage(false);
+      setExpiryDisplay(isoToDisplay(editingProduct.expiryDate?.slice(0, 10) || ""));
     }
   }, [editingProduct?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -258,6 +285,7 @@ export default function ProductEditPanel({
       }
       if (editingProduct.expiryDate) data.append("expiryDate", editingProduct.expiryDate);
       data.append("expiryAlertDays", String(Number(editingProduct.expiryAlertDays) || 180));
+      if (removeExistingImage && !editImage) data.append("removeImage", "true");
       if (editImage) data.append("image", editImage);
 
       const updated = await updateProduct(editingProduct._id, data);
@@ -385,6 +413,24 @@ export default function ProductEditPanel({
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                     <p className="text-white text-xs font-medium">{t.cropReplaceImage}</p>
                   </div>
+                )}
+                {/* Delete photo button */}
+                {!compressing && (editPreview || editingProduct.image) && (
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setEditPreview(null);
+                      setEditImage(null);
+                      setEditingProduct(p => ({ ...p, image: "" }));
+                      setRemoveExistingImage(true);
+                    }}
+                    className="absolute top-2 right-2 z-10 w-7 h-7 flex items-center justify-center rounded-lg
+                      bg-red-500 hover:bg-red-600 text-white shadow-lg transition"
+                    title="Remove photo"
+                  >
+                    <Trash2 size={13}/>
+                  </button>
                 )}
               </div>
 
@@ -619,11 +665,40 @@ export default function ProductEditPanel({
                 <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                   <Calendar size={11}/> {t.expiryDate} <span className="normal-case text-gray-300 dark:text-gray-600 font-normal">{t.optional}</span>
                 </label>
-                <input type="date"
-                  value={editingProduct.expiryDate ? editingProduct.expiryDate.slice(0, 10) : ""}
-                  onChange={e => setEditingProduct({ ...editingProduct, expiryDate: e.target.value || null })}
-                  min={new Date().toISOString().slice(0, 10)}
-                  className={inp + " mt-1"}/>
+                <div className="relative mt-1">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="dd/mm/yyyy"
+                    value={expiryDisplay}
+                    onChange={e => handleExpiryInput(e.target.value)}
+                    maxLength={10}
+                    className={inp + " pr-9"}/>
+                  <button
+                    type="button"
+                    onClick={() => expiryPickerRef.current?.showPicker?.()}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
+                  >
+                    <Calendar size={15}/>
+                  </button>
+                  <input
+                    type="date"
+                    ref={expiryPickerRef}
+                    tabIndex={-1}
+                    value={editingProduct.expiryDate ? editingProduct.expiryDate.slice(0, 10) : ""}
+                    onChange={e => {
+                      const iso = e.target.value;
+                      if (iso) {
+                        const d = iso.split("-");
+                        setExpiryDisplay(`${d[2]}/${d[1]}/${d[0]}`);
+                        setEditingProduct(p => ({ ...p, expiryDate: iso }));
+                      } else {
+                        setExpiryDisplay("");
+                        setEditingProduct(p => ({ ...p, expiryDate: null }));
+                      }
+                    }}
+                    className="absolute inset-0 opacity-0 pointer-events-none w-0"/>
+                </div>
                 {editingProduct.expiryDate && (() => {
                   const days = Math.ceil((new Date(editingProduct.expiryDate) - new Date()) / 86400000);
                   const color = days < 0 ? "text-red-500" : days <= 7 ? "text-red-500" : days <= 30 ? "text-amber-500" : "text-green-500";

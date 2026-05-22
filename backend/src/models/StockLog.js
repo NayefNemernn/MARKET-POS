@@ -10,7 +10,7 @@ const stockLogSchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["sale", "return", "manual_add", "manual_remove", "adjustment", "import"],
+      enum: ["sale", "return", "manual_add", "manual_remove", "adjustment", "import", "warehouse_in", "warehouse_transfer"],
       required: true,
     },
 

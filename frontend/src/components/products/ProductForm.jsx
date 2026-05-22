@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useProductsTranslation } from "../../hooks/useProductsTranslation";
 import { useCurrency } from "../../context/CurrencyContext";
 import VoiceButton from "../common/VoiceButton";
-import { Calculator } from "lucide-react";
+import { Calculator, Calendar } from "lucide-react";
 
 // ── Brand logo / product image auto-detect ───────────────────────────────────
 async function findBrandLogo(name) {
@@ -76,12 +76,31 @@ export default function ProductForm({
   const [priceCurrency, setPriceCurrency] = useState("usd"); // "usd" | "lbp"
   const [priceInput,    setPriceInput]    = useState(form.price || "");
   const [costInput,     setCostInput]     = useState(form.cost || "");
+  const [expiryDisplay, setExpiryDisplay] = useState(
+    form.expiryDate ? (() => { const d = form.expiryDate.split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : ""; })() : ""
+  );
+
+  const handleExpiryInput = (raw) => {
+    const digits = raw.replace(/\D/g, "").slice(0, 8);
+    let display = digits;
+    if (digits.length > 2) display = digits.slice(0, 2) + "/" + digits.slice(2);
+    if (digits.length > 4) display = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+    setExpiryDisplay(display);
+    if (digits.length === 8)
+      setForm({ ...form, expiryDate: `${digits.slice(4)}-${digits.slice(2, 4)}-${digits.slice(0, 2)}` });
+    else if (digits.length === 0)
+      setForm({ ...form, expiryDate: "" });
+  };
+
+  // Reset expiry display when parent clears the form
+  useEffect(() => { if (!form.expiryDate) setExpiryDisplay(""); }, [form.expiryDate]);
 
   // Sync price display when form.price is set externally (e.g. AI fill or form reset).
   // We track whether the last form.price change came from the user typing so we
   // never accidentally reset priceCurrency back to "usd" mid-typing.
-  const prevFormPrice = useRef(form.price);
-  const skipEffect = useRef(false);
+  const prevFormPrice    = useRef(form.price);
+  const skipEffect       = useRef(false);
+  const expiryPickerRef  = useRef(null);
 
   // ── Brand logo auto-detect ───────────────────────────────────────────────
   const [logoSearching, setLogoSearching] = useState(false);
@@ -499,13 +518,41 @@ export default function ProductForm({
           <label className={labelClass}>
             {t.expiryDate || "Expiry Date"} <span className="normal-case text-gray-300 dark:text-gray-600 font-normal">{t.optional || "(optional)"}</span>
           </label>
-          <input
-            type="date"
-            value={form.expiryDate || ""}
-            onChange={e => setForm({ ...form, expiryDate: e.target.value || "" })}
-            min={new Date().toISOString().slice(0, 10)}
-            className={inputClass}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="dd/mm/yyyy"
+              maxLength={10}
+              value={expiryDisplay}
+              onChange={e => handleExpiryInput(e.target.value)}
+              className={inputClass + " pr-9"}
+            />
+            <button
+              type="button"
+              onClick={() => expiryPickerRef.current?.showPicker?.()}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
+            >
+              <Calendar size={15}/>
+            </button>
+            <input
+              type="date"
+              ref={expiryPickerRef}
+              tabIndex={-1}
+              value={form.expiryDate || ""}
+              onChange={e => {
+                const iso = e.target.value;
+                if (iso) {
+                  const d = iso.split("-");
+                  setExpiryDisplay(`${d[2]}/${d[1]}/${d[0]}`);
+                  setForm({ ...form, expiryDate: iso });
+                } else {
+                  setExpiryDisplay("");
+                  setForm({ ...form, expiryDate: "" });
+                }
+              }}
+              className="absolute inset-0 opacity-0 pointer-events-none w-0"/>
+          </div>
           {form.expiryDate && (() => {
             const days  = Math.ceil((new Date(form.expiryDate) - new Date()) / 86400000);
             const color = days <= 7 ? "text-red-500" : days <= 30 ? "text-amber-500" : "text-green-500";
