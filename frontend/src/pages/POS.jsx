@@ -1,5 +1,5 @@
 import { useRefresh }    from "../context/RefreshContext";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getAllProducts } from "../api/product.api";
 import { getCategories } from "../api/category.api";
 import { useCart }       from "../hooks/useCart";
@@ -62,6 +62,34 @@ export default function POS({ setPage }) {
   // ── Held carts (client-side only, no stock deducted) ──────────────────────
   const [heldCarts,    setHeldCarts]    = useState([]);
   const [holdCounter,  setHoldCounter]  = useState(0);
+
+  // ── Cart resize drag ──────────────────────────────────────────────────────
+  const [cartWidth,     setCartWidth]     = useState(360);
+  const isDragging      = useRef(false);
+  const dragStartX      = useRef(0);
+  const dragStartWidth  = useRef(360);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!isDragging.current) return;
+      const delta = dragStartX.current - e.clientX;
+      setCartWidth(Math.max(260, Math.min(640, dragStartWidth.current + delta)));
+    };
+    const onUp = () => { isDragging.current = false; };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup",   onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup",   onUp);
+    };
+  }, []);
+
+  const handleResizeStart = (e) => {
+    isDragging.current    = true;
+    dragStartX.current    = e.clientX;
+    dragStartWidth.current = cartWidth;
+    e.preventDefault();
+  };
 
   const holdCart = () => {
     if (cart.length === 0) return;
@@ -313,6 +341,17 @@ export default function POS({ setPage }) {
               placeholder={t.search}
               className="flex-1 bg-transparent outline-none text-sm placeholder-gray-400"
             />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full
+                  bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400
+                  hover:bg-gray-300 dark:hover:bg-white/20 hover:text-gray-700 dark:hover:text-white
+                  transition"
+              >
+                <XIcon size={10}/>
+              </button>
+            )}
             {/* Live product count */}
             {!loading && (
               <span className="text-[11px] text-gray-400 shrink-0 hidden sm:block tabular-nums">
@@ -365,7 +404,7 @@ export default function POS({ setPage }) {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 p-1 pb-2">
+              <div className="grid gap-3 p-1 pb-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}>
                 {paginatedProducts.map(p => {
                   const qty   = cart.find(i => i.productId === p._id)?.quantity || 0;
                   const out   = p.stock === 0;
@@ -457,7 +496,7 @@ export default function POS({ setPage }) {
                         </div>
 
                         {/* +/- controls */}
-                        <div className="flex items-center justify-between mt-0.5" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center mt-0.5" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center gap-1.5">
                             <button
                               disabled={out}
@@ -483,11 +522,6 @@ export default function POS({ setPage }) {
                                 disabled:opacity-40 select-none"
                             >+</button>
                           </div>
-                          {qty > 0 && (
-                            <span className="text-[10px] text-green-500 font-bold tabular-nums">
-                              {formatUSD(p.price * qty)}
-                            </span>
-                          )}
                         </div>
                       </div>
                       </div>
@@ -548,8 +582,19 @@ export default function POS({ setPage }) {
           </div>
         </div>
 
+        {/* ── Drag handle ── */}
+        <div
+          onMouseDown={handleResizeStart}
+          className="shrink-0 w-3 flex items-center justify-center cursor-col-resize group select-none"
+          title="Drag to resize cart"
+        >
+          <div className="w-1 h-16 rounded-full bg-gray-200 dark:bg-white/10
+            group-hover:bg-blue-400 dark:group-hover:bg-blue-500
+            transition-colors duration-150"/>
+        </div>
+
         {/* ── RIGHT: Cart + Held orders ── */}
-        <div className="w-72 xl:w-80 shrink-0 flex flex-col gap-2 overflow-hidden">
+        <div style={{ width: cartWidth }} className="shrink-0 flex flex-col gap-2 overflow-hidden">
           <Cart
             cart={cart}
             increase={increase}
