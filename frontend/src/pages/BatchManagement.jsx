@@ -253,12 +253,20 @@ export default function BatchManagement() {
           </div>
         ) : (
           <div className="space-y-2">
-            {batches.map(batch => {
+            {(() => {
+              // Find the oldest active batch per product for FIFO badge
+              const fifoFirst = {};
+              batches.forEach(b => {
+                const pid = b.productId?._id || b.productId;
+                if (b.remainingQty > 0 && !fifoFirst[pid]) fifoFirst[pid] = b._id;
+              });
+              return batches.map(batch => {
               const status = expiryStatus(batch.expiryDate);
               const days   = daysUntilExpiry(batch.expiryDate);
               const pct    = batch.initialQty > 0 ? (batch.remainingQty / batch.initialQty) * 100 : 0;
               const depleted = batch.remainingQty === 0;
               const productName = batch.productId?.name || "—";
+              const isFifoFirst = fifoFirst[batch.productId?._id || batch.productId] === batch._id;
 
               return (
                 <div key={batch._id} className={`${CARD} p-4 flex flex-col sm:flex-row sm:items-center gap-4 ${depleted ? "opacity-60" : ""}`}>
@@ -267,6 +275,11 @@ export default function BatchManagement() {
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="font-bold text-gray-800 dark:text-white">{productName}</span>
                       <span className="text-xs text-gray-400 font-mono">{batch.batchNumber}</span>
+                      {isFifoFirst && (
+                        <span className="text-xs px-2 py-0.5 rounded-full border font-bold bg-violet-100 text-violet-700 border-violet-300 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-500/40">
+                          Sell First
+                        </span>
+                      )}
                       {!depleted && (
                         <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_STYLE[status]}`}>
                           {STATUS_LABEL[status]}
@@ -328,7 +341,8 @@ export default function BatchManagement() {
                   </div>
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
         )}
       </div>

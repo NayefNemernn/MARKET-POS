@@ -26,7 +26,7 @@ export const getBatches = async (req, res) => {
     let query = Batch.find(filter)
       .populate("productId",  "name barcode")
       .populate("supplierId", "name")
-      .sort({ createdAt: -1 });
+      .sort({ receivedDate: 1, createdAt: 1 });
 
     const batches = await query;
 
