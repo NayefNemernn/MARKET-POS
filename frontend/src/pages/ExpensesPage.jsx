@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
-import { DollarSign, Plus, Trash2, RefreshCw, Search, TrendingDown } from "lucide-react";
+import { DollarSign, Plus, Trash2, RefreshCw, Search, TrendingDown, CloudOff } from "lucide-react";
 import { useExpensesTranslation } from "../hooks/useExpensesTranslation";
 import useOfflineSales from "../hooks/useOfflineSales";
+import { getPendingExpenses } from "../lib/offlineDB";
 
 const CARD = "rounded-2xl bg-white dark:bg-[#141414] shadow-[6px_6px_16px_#d1d5db,-6px_-6px_16px_#ffffff] dark:shadow-[6px_6px_16px_#050505,-6px_-6px_16px_#1a1a1a]";
 const CATEGORIES = ["rent", "utilities", "salaries", "supplies", "maintenance", "marketing", "transport", "other"];
@@ -12,16 +13,23 @@ const CAT_COLORS = { rent: "bg-blue-100 text-blue-700", utilities: "bg-yellow-10
 export default function ExpensesPage() {
   const t = useExpensesTranslation();
   const { saveExpenseOffline } = useOfflineSales();
-  const [expenses, setExpenses] = useState([]);
-  const [summary,  setSummary]  = useState(null);
-  const [loading,  setLoading]  = useState(true);
+  const [expenses,        setExpenses]        = useState([]);
+  const [pendingExpenses, setPendingExpenses] = useState([]);
+  const [summary,         setSummary]         = useState(null);
+  const [loading,         setLoading]         = useState(true);
   const [search,   setSearch]   = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", amount: "", category: "other", paymentMethod: "cash", notes: "", date: new Date().toISOString().split("T")[0] });
   const [filters, setFilters] = useState({ from: "", to: "", category: "" });
 
+  const loadPending = async () => {
+    const pending = await getPendingExpenses().catch(() => []);
+    setPendingExpenses(pending);
+  };
+
   const load = async () => {
     setLoading(true);
+    await loadPending();
     try {
       const params = {};
       if (filters.from) params.from = filters.from;
@@ -34,6 +42,11 @@ export default function ExpensesPage() {
   };
 
   useEffect(() => { load(); }, [filters]);
+  /* refresh pending count when sync completes */
+  useEffect(() => {
+    window.addEventListener("offlineSynced", loadPending);
+    return () => window.removeEventListener("offlineSynced", loadPending);
+  }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -44,6 +57,7 @@ export default function ExpensesPage() {
       toast.success("📴 Expense saved — will sync when connected");
       setShowForm(false);
       setForm({ title: "", amount: "", category: "other", paymentMethod: "cash", notes: "", date: new Date().toISOString().split("T")[0] });
+      await loadPending();
       return;
     }
     try {
@@ -60,7 +74,13 @@ export default function ExpensesPage() {
     try { await api.delete(`/expenses/${id}`); toast.success(t.deleted); load(); } catch { toast.error(t.failed); }
   };
 
-  const filtered = expenses.filter(e => e.title.toLowerCase().includes(search.toLowerCase()));
+  const pendingRows = pendingExpenses.map(p => ({
+    ...p, _id: `pending-${p.id}`, _pending: true,
+  }));
+  const filtered = [
+    ...pendingRows.filter(p => p.title?.toLowerCase().includes(search.toLowerCase())),
+    ...expenses.filter(e => e.title.toLowerCase().includes(search.toLowerCase())),
+  ];
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-neutral-950 p-5">
@@ -164,15 +184,24 @@ export default function ExpensesPage() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                 {filtered.map(e => (
-                  <tr key={e._id} className="hover:bg-gray-50 dark:hover:bg-white/5">
-                    <td className="px-4 py-3 font-medium text-gray-800 dark:text-white">{e.title}</td>
+                  <tr key={e._id} className={`hover:bg-gray-50 dark:hover:bg-white/5 ${e._pending ? "opacity-70" : ""}`}>
+                    <td className="px-4 py-3 font-medium text-gray-800 dark:text-white">
+                      <div className="flex items-center gap-2">
+                        {e.title}
+                        {e._pending && (
+                          <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
+                            <CloudOff size={9}/> pending
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${CAT_COLORS[e.category] || CAT_COLORS.other}`}>{e.category}</span></td>
                     <td className="px-4 py-3 font-bold text-red-600">${e.amount?.toFixed(2)}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{e.paymentMethod}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{new Date(e.date).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{e.date ? new Date(e.date).toLocaleDateString() : "—"}</td>
                     <td className="px-4 py-3 text-xs text-gray-400 max-w-xs truncate">{e.notes || "—"}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => handleDelete(e._id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition"><Trash2 size={14}/></button>
+                      {!e._pending && <button onClick={() => handleDelete(e._id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition"><Trash2 size={14}/></button>}
                     </td>
                   </tr>
                 ))}
