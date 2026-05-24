@@ -14,19 +14,20 @@ export default function Cart({
   formatUSD,
   formatLBP,
   toLBP,
+  toLBPNice,
   displayCurrency,
 }) {
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   const renderTotal = () => {
     if (displayCurrency === "lbp")
-      return <span className="font-bold text-lg text-amber-500 tabular-nums">{formatLBP(toLBP(total))}</span>;
+      return <span className="font-bold text-lg text-amber-500 tabular-nums">{formatLBP(toLBPNice(total))}</span>;
     if (displayCurrency === "usd")
       return <span className="font-bold text-lg text-green-500 tabular-nums">{formatUSD(total)}</span>;
     return (
       <div className="text-right">
         <div className="font-bold text-green-500 tabular-nums">{formatUSD(total)}</div>
-        <div className="font-bold text-amber-500 tabular-nums">{formatLBP(toLBP(total))}</div>
+        <div className="font-bold text-amber-500 tabular-nums">{formatLBP(toLBPNice(total))}</div>
       </div>
     );
   };
@@ -34,7 +35,7 @@ export default function Cart({
   const checkoutLabel = () => {
     const base = t.checkout;
     if (cart.length === 0) return base;
-    if (displayCurrency === "lbp") return `${base} · ${formatLBP(toLBP(total))}`;
+    if (displayCurrency === "lbp") return `${base} · ${formatLBP(toLBPNice(total))}`;
     return `${base} · ${formatUSD(total)}`;
   };
 
@@ -127,6 +128,7 @@ export default function Cart({
               formatUSD={formatUSD}
               formatLBP={formatLBP}
               toLBP={toLBP}
+              toLBPNice={toLBPNice}
               displayCurrency={displayCurrency}
             />
           ))

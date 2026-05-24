@@ -153,7 +153,7 @@ async function printReceipt(sale, { toLBP, formatLBP, formatUSD, exchangeRate, c
 export default function CheckoutModal({ cart, total, close, clearCart, deliveryOrder = null, onDeliveryCheckoutDone }) {
   const { t }           = useTranslation();
   const { saveOffline } = useOfflineSales();
-  const { toLBP, formatLBP, formatUSD, exchangeRate } = useCurrency();
+  const { toLBP, toLBPNice, formatLBP, formatUSD, exchangeRate } = useCurrency();
   const { storeName, taxRate, store }   = useAuth();
   const STORE_FRONTEND_URL = import.meta.env.VITE_STORE_URL || "http://localhost:5174";
   const storeUrl      = store?.slug ? `${STORE_FRONTEND_URL}/store/${store.slug}` : null;
@@ -169,6 +169,7 @@ export default function CheckoutModal({ cart, total, close, clearCart, deliveryO
   /* ── cash amount & change ── */
   const [cashAmount, setCashAmount]       = useState("");
   const [change, setChange]               = useState(0);
+  const [shortfall, setShortfall]         = useState(0);
   const amountRef                         = useRef(null);
 
   /* ── split payment ── */
@@ -207,10 +208,12 @@ export default function CheckoutModal({ cart, total, close, clearCart, deliveryO
 
   /* ── change calc ── */
   useEffect(() => {
-    if (method !== "cash") { setChange(0); return; }
+    if (method !== "cash") { setChange(0); setShortfall(0); return; }
     const received = parseFloat(cashAmount) || 0;
     const receivedUSD = amountCurrency === "lbp" ? (received * 1000) / exchangeRate : received;
-    setChange(Math.max(receivedUSD - finalTotal, 0));
+    const diff = receivedUSD - finalTotal;
+    setChange(Math.max(diff, 0));
+    setShortfall(received > 0 ? Math.max(-diff, 0) : 0);
   }, [cashAmount, finalTotal, amountCurrency, exchangeRate, method]);
 
   /* ── auto-fill split paylater when cash entered ── */
@@ -409,7 +412,7 @@ export default function CheckoutModal({ cart, total, close, clearCart, deliveryO
                 <span>Total</span>
                 <div className="text-right">
                   <div>{formatUSD(receipt.total)}</div>
-                  <div className="text-amber-500">{formatLBP(toLBP(receipt.total))}</div>
+                  <div className="text-amber-500">{formatLBP(toLBPNice(receipt.total))}</div>
                 </div>
               </div>
               {change > 0 && (
@@ -417,7 +420,7 @@ export default function CheckoutModal({ cart, total, close, clearCart, deliveryO
                   <span>Change</span>
                   <div className="text-right">
                     <div>{formatUSD(change)}</div>
-                    <div>{formatLBP(toLBP(change))}</div>
+                    <div>{formatLBP(toLBPNice(change))}</div>
                   </div>
                 </div>
               )}
@@ -506,7 +509,7 @@ export default function CheckoutModal({ cart, total, close, clearCart, deliveryO
                   <p className="text-blue-300 text-sm line-through mb-1">{formatUSD(total)}</p>
                 )}
               </div>
-              <p className="text-3xl font-black tabular-nums">{formatLBP(toLBP(finalTotal))}</p>
+              <p className="text-3xl font-black tabular-nums">{formatLBP(toLBPNice(finalTotal))}</p>
             </div>
             {(discountAmount > 0 || vatAmount > 0) && (
               <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -604,7 +607,10 @@ export default function CheckoutModal({ cart, total, close, clearCart, deliveryO
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Received in</span>
                 <div className="flex bg-gray-100 dark:bg-[#1c1c1c] rounded-xl p-1 gap-1">
                   {[{id:"usd",label:"USD $",cls:"bg-green-600"},{id:"lbp",label:"LBP ل.ل",cls:"bg-amber-500"}].map(c => (
-                    <button key={c.id} onClick={() => setAmountCurrency(c.id)}
+                    <button key={c.id} onClick={() => {
+                      setAmountCurrency(c.id);
+                      setCashAmount("");
+                    }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${amountCurrency === c.id ? c.cls + " text-white" : "text-gray-500"}`}>
                       {c.label}
                     </button>
@@ -633,15 +639,30 @@ export default function CheckoutModal({ cart, total, close, clearCart, deliveryO
                   {formatLBP(parseFloat(cashAmount) * 1000)}  ≈  {formatUSD((parseFloat(cashAmount) * 1000) / exchangeRate)}
                 </p>
               )}
-              {/* Change display */}
-              <div className={`flex justify-between items-center rounded-xl px-4 py-3 transition-all ${change > 0 ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800" : "bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/5"}`}>
+              {/* Change / Remaining display */}
+              <div className={`flex justify-between items-center rounded-xl px-4 py-3 transition-all ${
+                shortfall > 0
+                  ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+                  : change > 0
+                    ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+                    : "bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/5"
+              }`}>
                 <div className="flex items-center gap-2">
-                  <ArrowLeftRight size={14} className={change > 0 ? "text-green-500" : "text-gray-400"}/>
-                  <span className="text-sm font-medium">Change</span>
+                  <ArrowLeftRight size={14} className={shortfall > 0 ? "text-red-500" : change > 0 ? "text-green-500" : "text-gray-400"}/>
+                  <span className="text-sm font-medium">{shortfall > 0 ? "Remaining" : "Change"}</span>
                 </div>
                 <div className="text-right">
-                  <div className={`font-bold text-base ${change > 0 ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>{formatUSD(change)}</div>
-                  {change > 0 && <div className="font-bold text-base text-amber-500">{formatLBP(toLBP(change))}</div>}
+                  {shortfall > 0 ? (
+                    <>
+                      <div className="font-bold text-base text-red-600 dark:text-red-400">{formatUSD(shortfall)}</div>
+                      <div className="font-bold text-sm text-red-400">{formatLBP(toLBPNice(shortfall))}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={`font-bold text-base ${change > 0 ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>{formatUSD(change)}</div>
+                      {change > 0 && <div className="font-bold text-base text-amber-500">{formatLBP(toLBPNice(change))}</div>}
+                    </>
+                  )}
                 </div>
               </div>
               {/* Quick amounts */}
@@ -785,7 +806,7 @@ export default function CheckoutModal({ cart, total, close, clearCart, deliveryO
 
         {/* ── Complete Sale button ── */}
         <div className="px-6 pb-6 pt-3 border-t border-gray-100 dark:border-white/5">
-          <button onClick={completeSale} disabled={loading}
+          <button onClick={completeSale} disabled={loading || shortfall > 0}
             className="w-full py-4 rounded-2xl font-bold text-white text-base transition bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(22,163,74,0.35)]">
             {loading
               ? <span className="flex items-center justify-center gap-2">

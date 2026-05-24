@@ -34,6 +34,14 @@ export const CurrencyProvider = ({ children }) => {
     return (parseFloat(usdPrice) * exchangeRate).toFixed(0);
   };
 
+  // Like toLBP but rounds to nearest 1,000 for amounts ≥ 1,000 to eliminate
+  // floating-point drift from LBP→USD→LBP round-trips (e.g. 50,120 → 50,000)
+  const toLBPNice = (usdPrice) => {
+    const lbp = parseFloat(usdPrice) * exchangeRate;
+    if (lbp >= 1000) return String(Math.round(lbp / 1000) * 1000);
+    return lbp.toFixed(0);
+  };
+
   // Format LBP with thousands separator
   const formatLBP = (amount) => {
     return Math.round(parseFloat(amount)).toLocaleString("en-US") + " ل.ل";
@@ -52,6 +60,7 @@ export const CurrencyProvider = ({ children }) => {
         displayCurrency,
         updateDisplayCurrency,
         toLBP,
+        toLBPNice,
         formatLBP,
         formatUSD,
       }}

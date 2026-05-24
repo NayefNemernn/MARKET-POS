@@ -1,7 +1,7 @@
 import { Package } from "lucide-react";
 import { useState } from "react";
 
-export default function CartItem({ item, onIncrease, onDecrease, formatUSD, formatLBP, toLBP, displayCurrency }) {
+export default function CartItem({ item, onIncrease, onDecrease, formatUSD, formatLBP, toLBP, toLBPNice, displayCurrency }) {
   const [imgError, setImgError] = useState(false);
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl
@@ -28,7 +28,7 @@ export default function CartItem({ item, onIncrease, onDecrease, formatUSD, form
         <p className="text-xs font-semibold truncate leading-tight">{item.name}</p>
         <p className="text-[10px] text-gray-400 mt-0.5">
           {displayCurrency === "lbp"
-            ? formatLBP(toLBP(item.price))
+            ? formatLBP(toLBPNice(item.price))
             : formatUSD(item.price)}
           {" "}/ unit
         </p>
@@ -64,7 +64,7 @@ export default function CartItem({ item, onIncrease, onDecrease, formatUSD, form
         </div>
         {displayCurrency !== "usd" && (
           <div className="text-xs text-amber-500 tabular-nums">
-            {formatLBP(toLBP(item.price * item.quantity))}
+            {formatLBP(toLBPNice(item.price * item.quantity))}
           </div>
         )}
       </div>

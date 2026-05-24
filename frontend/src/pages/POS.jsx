@@ -53,7 +53,7 @@ export default function POS({ setPage }) {
   const { cart, addToCart, increase, decrease, clearCart, loadCart, loadDeliveryOrder, total } = useCart();
   const { user, store: ctxStore }   = useAuth();
   const { t }      = useTranslation();
-  const { toLBP, formatLBP, formatUSD, displayCurrency } = useCurrency();
+  const { toLBP, toLBPNice, formatLBP, formatUSD, displayCurrency } = useCurrency();
 
   const [incomingOrder,  setIncomingOrder]  = useState(null);
   const [isDeliveryMode, setIsDeliveryMode] = useState(false);
@@ -608,6 +608,7 @@ export default function POS({ setPage }) {
             formatUSD={formatUSD}
             formatLBP={formatLBP}
             toLBP={toLBP}
+            toLBPNice={toLBPNice}
             displayCurrency={displayCurrency}
           />
 

@@ -60,7 +60,7 @@ export default function ProductCard({ product, onDelete, onEdit, onBatches, sele
 
       {/* PRICE */}
       <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-        ${product.price}
+        ${parseFloat(product.price).toFixed(1)}
       </p>
 
       {/* BARCODE */}
