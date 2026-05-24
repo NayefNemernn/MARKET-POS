@@ -64,10 +64,13 @@ export default function POS({ setPage }) {
   const [holdCounter,  setHoldCounter]  = useState(0);
 
   // ── Cart resize drag ──────────────────────────────────────────────────────
-  const [cartWidth,     setCartWidth]     = useState(360);
+  const [cartWidth, setCartWidth] = useState(() => {
+    const saved = parseInt(localStorage.getItem("pos_cart_width"), 10);
+    return saved && saved >= 260 && saved <= 640 ? saved : 360;
+  });
   const isDragging      = useRef(false);
   const dragStartX      = useRef(0);
-  const dragStartWidth  = useRef(360);
+  const dragStartWidth  = useRef(cartWidth);
 
   useEffect(() => {
     const onMove = (e) => {
@@ -75,7 +78,12 @@ export default function POS({ setPage }) {
       const delta = dragStartX.current - e.clientX;
       setCartWidth(Math.max(260, Math.min(640, dragStartWidth.current + delta)));
     };
-    const onUp = () => { isDragging.current = false; };
+    const onUp = () => {
+      if (isDragging.current) {
+        isDragging.current = false;
+        localStorage.setItem("pos_cart_width", dragStartWidth.current + (dragStartX.current - dragStartX.current));
+      }
+    };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup",   onUp);
     return () => {
@@ -84,9 +92,13 @@ export default function POS({ setPage }) {
     };
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem("pos_cart_width", cartWidth);
+  }, [cartWidth]);
+
   const handleResizeStart = (e) => {
-    isDragging.current    = true;
-    dragStartX.current    = e.clientX;
+    isDragging.current     = true;
+    dragStartX.current     = e.clientX;
     dragStartWidth.current = cartWidth;
     e.preventDefault();
   };
