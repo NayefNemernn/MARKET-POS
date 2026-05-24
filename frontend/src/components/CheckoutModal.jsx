@@ -264,19 +264,18 @@ export default function CheckoutModal({ cart, total, close, clearCart, deliveryO
       toast.error(t.enterCustomerName); return;
     }
 
-    /* if paylater only — use holdSale flow (online) or sale queue (offline) */
+    /* if paylater only — use holdSale flow (online) or mutation queue (offline) */
     if (method === "paylater") {
       if (!navigator.onLine) {
-        /* queue as a regular sale with paymentMethod=paylater; backend will create HoldSale on sync */
+        /* queue to /api/hold-sales so it syncs to the correct endpoint */
         const offlinePayload = {
-          items: cart.map(i => ({ productId: i.productId, quantity: i.quantity })),
-          paymentMethod: "paylater",
-          discountAmount,
           customerName: selectedCustomer?.name || customerSearch.trim() || "",
-          customerId:   selectedCustomer?._id || null,
           phone:        selectedCustomer?.phone || newPhone || "",
+          items: cart.map(i => ({ productId: i.productId, name: i.name, price: i.price, quantity: i.quantity })),
+          total: finalTotal,
         };
-        await saveOffline(offlinePayload);
+        const { queueMutation } = await import("../lib/offlineDB");
+        await queueMutation("create_hold_sale", "/api/hold-sales", "POST", offlinePayload);
         toast.success("📴 Pay Later saved — will sync when connected");
         setReceipt({
           _id: "offline-" + Date.now(),

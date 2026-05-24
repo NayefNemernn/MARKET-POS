@@ -74,6 +74,7 @@ export default function QuickReturn({ onClose, storeName }) {
   /* ── Search sales ── */
   const handleSearch = async () => {
     if (!query.trim()) return;
+    if (!navigator.onLine) { toast.error("⚠️ Returns require an internet connection"); return; }
     setLoading(true);
     try {
       // Try to find by sale ID suffix, customer name, or barcode/product name
@@ -149,6 +150,7 @@ export default function QuickReturn({ onClose, storeName }) {
 
   const submit = async () => {
     if (!hasItems) { toast.error("Select at least one item"); return; }
+    if (!navigator.onLine) { toast.error("⚠️ Returns require an internet connection"); return; }
     setLoading(true);
     try {
       const returnItems = items.filter(i => i.returnQty > 0).map(i => ({ productId: i.productId, quantity: i.returnQty }));

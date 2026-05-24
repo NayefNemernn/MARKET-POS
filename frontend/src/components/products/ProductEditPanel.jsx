@@ -262,6 +262,40 @@ export default function ProductEditPanel({
   const handleSave = async () => {
     if (!editingProduct.name) { toast.error(t.nameRequired2); return; }
     setSaving(true);
+
+    /* ── Offline: queue as mutation (image changes require connection) ── */
+    if (!navigator.onLine) {
+      if (editImage) {
+        toast.error("❌ Image changes require a connection — remove the image to save offline");
+        setSaving(false);
+        return;
+      }
+      const { queueMutation, cacheProducts, getCachedProducts } = await import("../../lib/offlineDB");
+      const offlinePayload = {
+        name:               editingProduct.name,
+        price:              editingProduct.price,
+        cost:               editingProduct.cost || 0,
+        stock:              editingProduct.stock,
+        barcode:            editingProduct.barcode,
+        hasVariants:        !!editingProduct.hasVariants,
+        isAvailableOnline:  !!editingProduct.isAvailableOnline,
+        vatExempt:          !!editingProduct.vatExempt,
+        expiryDate:         editingProduct.expiryDate || null,
+        expiryAlertDays:    Number(editingProduct.expiryAlertDays) || 180,
+        variants:           editingProduct.variants || [],
+        removeImage:        removeExistingImage && !editImage,
+      };
+      await queueMutation("update_product", `/api/products/${editingProduct._id}`, "PUT", offlinePayload);
+      const updated = { ...editingProduct, ...offlinePayload };
+      setProducts(prev => prev.map(p => p._id === editingProduct._id ? updated : p));
+      const cachedList = await getCachedProducts();
+      if (cachedList) await cacheProducts(cachedList.map(p => p._id === editingProduct._id ? { ...p, ...offlinePayload } : p));
+      setEditingProduct(null);
+      toast.success("📴 Changes saved — will sync when connected");
+      setSaving(false);
+      return;
+    }
+
     try {
       const data = new FormData();
       data.append("name",    editingProduct.name);
