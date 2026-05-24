@@ -255,7 +255,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
       <motion.button
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 8 }}
+        exit={{ opacity: 0, y: 8, pointerEvents: "none" }}
         transition={{ delay: index * 0.025, type: "spring", stiffness: 400, damping: 28 }}
         onClick={() => { setPage(item.key); close(); }}
         whileHover={{ scale: 1.02 }}
@@ -307,7 +307,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
     <motion.div
       initial={{ opacity: 0, scale: 0.92, y: 16 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.92, y: 16 }}
+      exit={{ opacity: 0, scale: 0.92, y: 16, pointerEvents: "none" }}
       transition={{ type: "spring", stiffness: 380, damping: 30 }}
       className="absolute bottom-16 left-0 w-[420px]
         bg-white dark:bg-[#13131f]
@@ -347,7 +347,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        exit={{ opacity: 0, pointerEvents: "none" }}
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
         onClick={close}
       />
