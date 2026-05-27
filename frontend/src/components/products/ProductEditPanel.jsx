@@ -23,6 +23,7 @@ export default function ProductEditPanel({
   setEditImage,
   editPreview,
   setEditPreview,
+  categories = [],
 }) {
   const t                              = useProductsTranslation();
   const { exchangeRate, formatLBP }   = useCurrency();
@@ -277,6 +278,7 @@ export default function ProductEditPanel({
         cost:               editingProduct.cost || 0,
         stock:              editingProduct.stock,
         barcode:            editingProduct.barcode,
+        category:           editingProduct.category?._id || editingProduct.category || "",
         hasVariants:        !!editingProduct.hasVariants,
         isAvailableOnline:  !!editingProduct.isAvailableOnline,
         vatExempt:          !!editingProduct.vatExempt,
@@ -298,11 +300,12 @@ export default function ProductEditPanel({
 
     try {
       const data = new FormData();
-      data.append("name",    editingProduct.name);
-      data.append("price",   String(editingProduct.price));
-      data.append("cost",    String(editingProduct.cost || 0));
-      data.append("stock",   String(editingProduct.stock));
-      data.append("barcode", editingProduct.barcode);
+      data.append("name",     editingProduct.name);
+      data.append("price",    String(editingProduct.price));
+      data.append("cost",     String(editingProduct.cost || 0));
+      data.append("stock",    String(editingProduct.stock));
+      data.append("barcode",  editingProduct.barcode);
+      data.append("category", editingProduct.category?._id || editingProduct.category || "");
       data.append("hasVariants",        String(!!editingProduct.hasVariants));
       data.append("isAvailableOnline",  String(!!editingProduct.isAvailableOnline));
       data.append("vatExempt",          String(!!editingProduct.vatExempt));
@@ -497,6 +500,26 @@ export default function ProductEditPanel({
                   <VoiceButton onResult={text => setEditingProduct({ ...editingProduct, name: text })} color="blue"/>
                 </div>
               </div>
+
+              {/* ── Category ── */}
+              {categories.length > 0 && (
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Category</label>
+                  <select
+                    value={editingProduct.category?._id || editingProduct.category || ""}
+                    onChange={e => {
+                      const cat = categories.find(c => c._id === e.target.value) || null;
+                      setEditingProduct(p => ({ ...p, category: cat }));
+                    }}
+                    className={inp + " mt-1"}
+                  >
+                    <option value="">— No category —</option>
+                    {categories.map(c => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* ── Price + Cost (shared currency toggle) ── */}
               <div className="space-y-3">

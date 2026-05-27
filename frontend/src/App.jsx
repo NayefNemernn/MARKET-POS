@@ -26,7 +26,7 @@ import OnlineOrders              from "./pages/OnlineOrders";
 import PendingPayments           from "./pages/PendingPayments";
 import BatchManagement           from "./pages/BatchManagement";
 import AIInsights                from "./pages/AIInsights";
-const ADMIN_PAGES = ["dashboard", "users", "adminpanel", "storesettings", "stock", "expenses", "discounts", "suppliers", "onlineorders", "batches", "aiinsights"];
+const ADMIN_PAGES = ["dashboard", "users", "adminpanel", "storesettings", "stock", "expenses", "discounts", "suppliers", "onlineorders", "batches", "aiinsights", "reports"];
 
 function AppInner() {
   const { user, store, planExpired, daysUntilExpiry } = useAuth();
@@ -52,7 +52,7 @@ function AppInner() {
       case "pos":           return <POS setPage={setPage} user={user} />;
       case "products":      return <Products />;
       case "categories":    return <Categories />;
-      case "reports":       return <Reports />;
+      case "reports":       return user.role === "admin" ? <Reports /> : <POS setPage={setPage} user={user} />;
       case "paylater":      return <PayLater />;
       case "customers":     return <Customers />;
       case "shift":         return <ShiftPanel />;

@@ -33,7 +33,7 @@ export default function Navbar({ user, page, setPage }) {
         <NavButton label="POS" target="pos" />
         <NavButton label="Products" target="products" />
         <NavButton label="Categories" target="categories" />
-        <NavButton label="Reports" target="reports" />
+        {isAdmin && <NavButton label="Reports" target="reports" />}
         <NavButton label="Pay Later" target="paylater" />
       </div>
 

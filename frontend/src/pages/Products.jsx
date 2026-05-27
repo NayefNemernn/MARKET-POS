@@ -820,6 +820,7 @@ export default function Products() {
         setEditImage={setImage}
         editPreview={preview}
         setEditPreview={setPreview}
+        categories={categories}
       />
 
       {/* ── BATCHES MODAL ──────────────────────────────────────────────────── */}

@@ -118,7 +118,7 @@ export default function Sidebar({ user, page, setPage, store }) {
         <Item id="products"   label="Products"      icon={Package} />
         <Item id="categories" label="Categories"    icon={Tags} />
         <Item id="customers"  label="Customers"     icon={UserCircle2} />
-        <Item id="reports"    label="Reports"       icon={BarChart3} />
+        {isAdmin && <Item id="reports"    label="Reports"       icon={BarChart3} />}
         <Item id="paylater"   label="Pay Later"     icon={CreditCard} />
       </nav>
 

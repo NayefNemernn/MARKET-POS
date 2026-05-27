@@ -110,7 +110,7 @@ export default function DashboardLayout({ children, page, setPage, user }) {
         { key: "categories",      icon: Tags,            adminOnly: false },
         { key: "customers",       icon: UserCircle2,     adminOnly: false },
         { key: "users",           icon: Users,           adminOnly: true  },
-        { key: "reports",         icon: BarChart3,       adminOnly: false },
+        { key: "reports",         icon: BarChart3,       adminOnly: true  },
         { key: "paylater",        icon: Clock,           adminOnly: false },
         { key: "shift",           icon: ClipboardList,   adminOnly: false },
         { key: "stock",           icon: TrendingDown,    adminOnly: true  },
