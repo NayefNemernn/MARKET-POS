@@ -317,10 +317,16 @@ export const getProfitLoss = async (req, res) => {
 /* ── GET SALES ───────────────────────────────────────────────── */
 export const getSales = async (req, res) => {
   try {
-    const { search, productId, limit = 100, status } = req.query;
+    const { search, productId, limit = 100, status, userId, from, to } = req.query;
     const filter = { storeId: req.storeId };
 
-    if (status) filter.status = status;
+    if (status)  filter.status = status;
+    if (userId)  filter.userId = userId;
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to)   filter.createdAt.$lte = new Date(new Date(to).setHours(23, 59, 59, 999));
+    }
 
     // Filter by productId (for barcode return lookup)
     if (productId) {

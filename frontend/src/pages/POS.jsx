@@ -15,6 +15,7 @@ import { connectSocket } from "../lib/socket";
 import { Truck, X as XIcon, PauseCircle, LockOpen } from "lucide-react";
 import { openCashDrawer, connectCashDrawer, cashDrawerSupported } from "../lib/cashDrawer";
 import OnlineOrdersPanel from "../components/pos/OnlineOrdersPanel";
+import CashierTransactionHistory from "../components/pos/CashierTransactionHistory";
 import {
   cacheProducts, getCachedProducts,
   cacheCategories, getCachedCategories,
@@ -22,7 +23,7 @@ import {
 } from "../lib/offlineDB";
 import api from "../api/axios";
 import toast             from "react-hot-toast";
-import { ShoppingBag, Search, RotateCcw } from "lucide-react";
+import { ShoppingBag, Search, RotateCcw, History } from "lucide-react";
 import QuickReturn from "../components/QuickReturn";
 
 import { getCategoryIcon } from "../lib/categoryIcon";
@@ -46,6 +47,7 @@ export default function POS({ setPage }) {
   const [search,           setSearch]           = useState("");
   const [openCheckout,     setOpenCheckout]     = useState(false);
   const [openReturn,       setOpenReturn]       = useState(false);
+  const [openHistory,      setOpenHistory]      = useState(false);
   const [loading,          setLoading]          = useState(true);
   const [flashId,          setFlashId]          = useState(null);
   const [posPage,          setPosPage]          = useState(1);
@@ -332,6 +334,17 @@ export default function POS({ setPage }) {
             transition shrink-0">
           <RotateCcw size={11}/> {t.returnBtn || "Return"}
         </button>
+
+        {/* Transaction History button (cashier only) */}
+        {user?.role !== "admin" && user?.role !== "superadmin" && (
+          <button
+            onClick={() => setOpenHistory(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+              bg-white/10 hover:bg-blue-500/80 text-white/80 hover:text-white
+              transition shrink-0">
+            <History size={11}/> History
+          </button>
+        )}
       </div>
 
       <div className="flex flex-1 overflow-hidden gap-3 px-3 pb-3">
@@ -739,6 +752,12 @@ export default function POS({ setPage }) {
         storeId={ctxStore?._id}
         userRole={user?.role}
         onLoadToCart={loadOrderToCart}
+      />
+
+      {/* ── Cashier Transaction History drawer ── */}
+      <CashierTransactionHistory
+        open={openHistory}
+        onClose={() => setOpenHistory(false)}
       />
     </div>
   );
