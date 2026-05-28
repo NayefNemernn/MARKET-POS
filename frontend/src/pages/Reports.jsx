@@ -57,6 +57,7 @@ export default function Reports() {
   const [period,    setPeriod]    = useState("week");
   const [tab,       setTab]       = useState("overview");
   const [saleTypeFilter, setSaleTypeFilter] = useState("all");
+  const [plMode,         setPlMode]         = useState("pl"); // "pl" | "earned"
   const [returnSale,  setReturnSale]  = useState(null);
   const [voidModal,   setVoidModal]   = useState(null);
   const [voidPin,     setVoidPin]     = useState("");
@@ -397,40 +398,86 @@ export default function Reports() {
         {/* ═══ P&L ═══ */}
         {tab==="profit"&&(
           <div className="space-y-5">
+            {/* mode toggle */}
+            <div className="flex gap-2">
+              {[["pl","P&L Report"],["earned","Earned from Sales"]].map(([m,label])=>(
+                <button key={m} onClick={()=>setPlMode(m)}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition ${plMode===m?"bg-purple-600 text-white":"bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {!plData?<div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"/></div>:(
               <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    {title:"Revenue",     value:formatUSD(plData.revenue),     color:"text-blue-600 dark:text-blue-400",   bg:"bg-blue-50 dark:bg-blue-900/20"  },
-                    {title:"COGS",        value:formatUSD(plData.cogs),        color:"text-red-600 dark:text-red-400",     bg:"bg-red-50 dark:bg-red-900/20"    },
-                    {title:"Gross Profit",value:formatUSD(plData.grossProfit), color:plData.grossProfit>=0?"text-green-600 dark:text-green-400":"text-red-600", bg:plData.grossProfit>=0?"bg-green-50 dark:bg-green-900/20":"bg-red-50 dark:bg-red-900/20"},
-                    {title:"Margin",      value:`${plData.grossMargin}%`,      color:"text-purple-600 dark:text-purple-400",bg:"bg-purple-50 dark:bg-purple-900/20"},
-                  ].map(k=>(
-                    <div key={k.title} className={`${CARD} p-4 ${k.bg}`}>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{k.title}</p>
-                      <p className={`text-2xl font-bold mt-1 ${k.color}`}>{k.value}</p>
+                {plMode==="pl"&&(
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {[
+                        {title:"Revenue",     value:formatUSD(plData.revenue),     color:"text-blue-600 dark:text-blue-400",   bg:"bg-blue-50 dark:bg-blue-900/20"  },
+                        {title:"COGS",        value:formatUSD(plData.cogs),        color:"text-red-600 dark:text-red-400",     bg:"bg-red-50 dark:bg-red-900/20"    },
+                        {title:"Gross Profit",value:formatUSD(plData.grossProfit), color:plData.grossProfit>=0?"text-green-600 dark:text-green-400":"text-red-600", bg:plData.grossProfit>=0?"bg-green-50 dark:bg-green-900/20":"bg-red-50 dark:bg-red-900/20"},
+                        {title:"Margin",      value:`${plData.grossMargin}%`,      color:"text-purple-600 dark:text-purple-400",bg:"bg-purple-50 dark:bg-purple-900/20"},
+                      ].map(k=>(
+                        <div key={k.title} className={`${CARD} p-4 ${k.bg}`}>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{k.title}</p>
+                          <p className={`text-2xl font-bold mt-1 ${k.color}`}>{k.value}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div className={`${CARD} p-5 space-y-2`}>
-                  {[{label:"Revenue",r:plData.revenue,s:"",c:"text-gray-700 dark:text-gray-300"},{label:"− Cost of goods",r:plData.cogs,s:"−",c:"text-red-500"},{label:"− Discounts",r:plData.discounts,s:"−",c:"text-amber-500"},{label:"− Refunds",r:plData.refunds,s:"−",c:"text-red-500"}].map(x=>(
-                    <div key={x.label} className="flex justify-between text-sm">
-                      <span className="text-gray-500 dark:text-gray-400">{x.label}</span>
-                      <span className={x.c}>{x.s}{formatUSD(x.r)}</span>
+                    <div className={`${CARD} p-5 space-y-2`}>
+                      {[{label:"Revenue",r:plData.revenue,s:"",c:"text-gray-700 dark:text-gray-300"},{label:"− Cost of goods",r:plData.cogs,s:"−",c:"text-red-500"},{label:"− Discounts",r:plData.discounts,s:"−",c:"text-amber-500"},{label:"− Refunds",r:plData.refunds,s:"−",c:"text-red-500"}].map(x=>(
+                        <div key={x.label} className="flex justify-between text-sm">
+                          <span className="text-gray-500 dark:text-gray-400">{x.label}</span>
+                          <span className={x.c}>{x.s}{formatUSD(x.r)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between border-t border-dashed border-gray-200 dark:border-white/10 pt-3">
+                        <span className="font-bold">Gross Profit</span>
+                        <span className={`text-xl font-black ${plData.grossProfit>=0?"text-green-600 dark:text-green-400":"text-red-600"}`}>{formatUSD(plData.grossProfit)}</span>
+                      </div>
                     </div>
-                  ))}
-                  <div className="flex justify-between border-t border-dashed border-gray-200 dark:border-white/10 pt-3">
-                    <span className="font-bold">Gross Profit</span>
-                    <span className={`text-xl font-black ${plData.grossProfit>=0?"text-green-600 dark:text-green-400":"text-red-600"}`}>{formatUSD(plData.grossProfit)}</span>
-                  </div>
-                </div>
+                  </>
+                )}
+
+                {plMode==="earned"&&(()=>{
+                  const earnedTotal = plData.productBreakdown.reduce((s,p)=>s+p.profit, 0);
+                  const earnedPositive = plData.productBreakdown.filter(p=>p.profit>0).reduce((s,p)=>s+p.profit, 0);
+                  return(
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className={`${CARD} p-4 bg-emerald-50 dark:bg-emerald-900/20`}>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Total Earned from Sales</p>
+                          <p className={`text-2xl font-bold mt-1 ${earnedTotal>=0?"text-emerald-600 dark:text-emerald-400":"text-red-500"}`}>{formatUSD(earnedTotal)}</p>
+                          <p className="text-xs text-gray-400 mt-1">SUM of (price − cost) × qty per product</p>
+                        </div>
+                        <div className={`${CARD} p-4 bg-green-50 dark:bg-green-900/20`}>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Earned (profitable items only)</p>
+                          <p className="text-2xl font-bold mt-1 text-green-600 dark:text-green-400">{formatUSD(earnedPositive)}</p>
+                          <p className="text-xs text-gray-400 mt-1">Products where price &gt; cost</p>
+                        </div>
+                        <div className={`${CARD} p-4 bg-blue-50 dark:bg-blue-900/20`}>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Revenue (money collected)</p>
+                          <p className="text-2xl font-bold mt-1 text-blue-600 dark:text-blue-400">{formatUSD(plData.revenue)}</p>
+                          <p className="text-xs text-gray-400 mt-1">Total charged to customers</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* product table — shown in both modes */}
                 <div className={`${CARD} overflow-hidden`}>
-                  <div className="px-5 py-4 border-b border-gray-100 dark:border-white/5 font-semibold text-sm">Product profitability</div>
+                  <div className="px-5 py-4 border-b border-gray-100 dark:border-white/5 font-semibold text-sm">
+                    {plMode==="earned" ? "Earned per product (price − cost) × qty" : "Product profitability"}
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 dark:bg-[#1c1c1c] text-xs text-gray-400"><tr>
                         <th className="px-5 py-3 text-left">Product</th><th className="px-3 py-3 text-center">Sold</th>
-                        <th className="px-3 py-3 text-right">Revenue</th><th className="px-3 py-3 text-right">Profit</th><th className="px-3 py-3 text-right">Margin</th>
+                        <th className="px-3 py-3 text-right">Revenue</th>
+                        <th className="px-3 py-3 text-right">{plMode==="earned"?"Earned":"Profit"}</th>
+                        <th className="px-3 py-3 text-right">Margin</th>
                       </tr></thead>
                       <tbody className="divide-y divide-gray-50 dark:divide-white/5">
                         {plData.productBreakdown.slice(0,15).map(p=>(
@@ -438,7 +485,7 @@ export default function Reports() {
                             <td className="px-5 py-3 font-medium truncate max-w-[160px]">{p.name}</td>
                             <td className="px-3 py-3 text-center text-gray-500">{p.quantity}</td>
                             <td className="px-3 py-3 text-right text-blue-600 dark:text-blue-400">{formatUSD(p.revenue)}</td>
-                            <td className={`px-3 py-3 text-right font-semibold ${p.profit>=0?"text-green-600 dark:text-green-400":"text-red-500"}`}>{formatUSD(p.profit)}</td>
+                            <td className={`px-3 py-3 text-right font-semibold ${p.profit>=0?"text-emerald-600 dark:text-emerald-400":"text-red-500"}`}>{formatUSD(p.profit)}</td>
                             <td className="px-3 py-3 text-right text-purple-600 dark:text-purple-400">{p.margin}%</td>
                           </tr>
                         ))}
@@ -457,6 +504,8 @@ export default function Reports() {
             : saleTypeFilter==="delivery"  ? filteredSales.filter(s=>s.saleType==="delivery")
             : filteredSales.filter(s=>!s.saleType||s.saleType==="in_store");
           const txTotal = txSales.reduce((s,x)=>s+x.total,0);
+          const saleProfit = sale => sale.items.reduce((s,i)=>s+(i.price-(i.cost||0))*i.quantity, 0);
+          const txTotalProfit = txSales.reduce((s,x)=>s+saleProfit(x),0);
           return (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -480,6 +529,7 @@ export default function Reports() {
                         <th className="px-5 py-3 text-left">{t.date}</th>
                         <th className="px-4 py-3 text-left">{t.items}</th>
                         <th className="px-4 py-3 text-right">{t.total}</th>
+                        <th className="px-4 py-3 text-right">Profit</th>
                         <th className="px-4 py-3 text-center">{t.payment}</th>
                         <th className="px-4 py-3 text-center">Type</th>
                         <th className="px-4 py-3 text-center">Status</th>
@@ -500,6 +550,9 @@ export default function Reports() {
                             <td className="px-4 py-3 text-right font-semibold">
                               <div className="text-green-600 dark:text-green-400">${sale.total.toFixed(2)}</div>
                               {(sale.totalRefunded||0)>0&&<div className="text-xs text-red-500">−${sale.totalRefunded.toFixed(2)}</div>}
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold">
+                              {(()=>{const p=saleProfit(sale);return<div className={p>=0?"text-emerald-600 dark:text-emerald-400":"text-red-500"}>${p.toFixed(2)}</div>;})()}
                             </td>
                             <td className="px-4 py-3 text-center">
                               <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${METHOD_COLOR[sale.paymentMethod]||"bg-gray-100 text-gray-600"}`}>
@@ -534,6 +587,7 @@ export default function Reports() {
                         <tr>
                           <td className="px-5 py-3 font-semibold text-xs text-gray-500" colSpan={2}>{txSales.length} {t.transactionsDesc}</td>
                           <td className="px-4 py-3 text-right font-bold text-green-600">${txTotal.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right font-bold text-emerald-600">${txTotalProfit.toFixed(2)}</td>
                           <td colSpan={4}/>
                         </tr>
                       </tfoot>
