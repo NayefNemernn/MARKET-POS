@@ -26,23 +26,24 @@ export const getDashboardStats = async (req, res) => {
         ? { $month: "$createdAt" }
         : { $dayOfMonth: "$createdAt" };
 
+    const netSales = { $subtract: ["$total", { $ifNull: ["$totalRefunded", 0] }] };
     const [today, week, month, year, payLater, totalProducts, totalCustomers,
            lowStockProducts, recentSales, salesChart, topProducts] = await Promise.all([
       Sale.aggregate([
-        { $match: { storeId, createdAt: { $gte: todayStart } } },
-        { $group: { _id: null, sales: { $sum: "$total" }, count: { $sum: 1 } } },
+        { $match: { storeId, status: { $ne: "voided" }, createdAt: { $gte: todayStart } } },
+        { $group: { _id: null, sales: { $sum: netSales }, count: { $sum: 1 } } },
       ]),
       Sale.aggregate([
-        { $match: { storeId, createdAt: { $gte: weekAgo } } },
-        { $group: { _id: null, sales: { $sum: "$total" }, count: { $sum: 1 } } },
+        { $match: { storeId, status: { $ne: "voided" }, createdAt: { $gte: weekAgo } } },
+        { $group: { _id: null, sales: { $sum: netSales }, count: { $sum: 1 } } },
       ]),
       Sale.aggregate([
-        { $match: { storeId, createdAt: { $gte: monthStart } } },
-        { $group: { _id: null, sales: { $sum: "$total" }, count: { $sum: 1 } } },
+        { $match: { storeId, status: { $ne: "voided" }, createdAt: { $gte: monthStart } } },
+        { $group: { _id: null, sales: { $sum: netSales }, count: { $sum: 1 } } },
       ]),
       Sale.aggregate([
-        { $match: { storeId, createdAt: { $gte: yearStart } } },
-        { $group: { _id: null, sales: { $sum: "$total" }, count: { $sum: 1 } } },
+        { $match: { storeId, status: { $ne: "voided" }, createdAt: { $gte: yearStart } } },
+        { $group: { _id: null, sales: { $sum: netSales }, count: { $sum: 1 } } },
       ]),
       HoldSale.aggregate([
         { $match: { storeId } },
@@ -53,8 +54,8 @@ export const getDashboardStats = async (req, res) => {
       Product.find({ storeId, stock: { $lte: 5 } }).select("name stock").limit(5),
       Sale.find({ storeId }).sort({ createdAt: -1 }).limit(5).select("total customerName createdAt"),
       Sale.aggregate([
-        { $match: { storeId, createdAt: { $gte: periodStart } } },
-        { $group: { _id: chartGroup, sales: { $sum: "$total" } } },
+        { $match: { storeId, status: { $ne: "voided" }, createdAt: { $gte: periodStart } } },
+        { $group: { _id: chartGroup, sales: { $sum: netSales } } },
         { $sort: { _id: 1 } },
       ]),
       Sale.aggregate([

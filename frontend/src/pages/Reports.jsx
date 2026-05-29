@@ -58,6 +58,13 @@ export default function Reports() {
   const [tab,       setTab]       = useState("overview");
   const [saleTypeFilter, setSaleTypeFilter] = useState("all");
   const [plMode,         setPlMode]         = useState("pl"); // "pl" | "earned"
+  const [showAllProducts, setShowAllProducts] = useState(false);
+  const [txSort,      setTxSort]      = useState("newest");
+  const [txPayment,   setTxPayment]   = useState("all");
+  const [txStatus,    setTxStatus]    = useState("all");
+  const [txSearch,    setTxSearch]    = useState("");
+  const [txMinAmt,    setTxMinAmt]    = useState("");
+  const [txMaxAmt,    setTxMaxAmt]    = useState("");
   const [returnSale,  setReturnSale]  = useState(null);
   const [voidModal,   setVoidModal]   = useState(null);
   const [voidPin,     setVoidPin]     = useState("");
@@ -66,13 +73,19 @@ export default function Reports() {
 
   const load = useCallback(async () => {
     try {
+      const now = new Date();
+      let from;
+      if (period === "day") from = now.toISOString().split("T")[0];
+      else if (period === "week") from = new Date(Date.now() - 7*86400000).toISOString().split("T")[0];
+      else if (period === "month") from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      else from = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
       const [sRes, hRes, aRes] = await Promise.all([
-        api.get("/sales"), api.get("/hold-sales"), api.get("/products/alerts"),
+        api.get("/sales", { params: { from, limit: 0 } }), api.get("/hold-sales"), api.get("/products/alerts"),
       ]);
       setSales(sRes.data); setHoldSales(hRes.data); setAlerts(aRes.data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, []);
+  }, [period]);
 
   useEffect(() => { load(); }, [tick, load]);
 
@@ -98,27 +111,24 @@ export default function Reports() {
   }, [tab, loadPL, loadAudit]);
 
   /* ── filter ── */
-  const filteredSales = useMemo(() => {
-    const now = new Date();
-    let cutoff = new Date();
-    if (period === "day") { cutoff.setHours(0,0,0,0); }
-    else if (period === "week") { cutoff.setDate(cutoff.getDate() - 7); }
-    else if (period === "month") { cutoff = new Date(now.getFullYear(), now.getMonth(), 1); }
-    else { cutoff = new Date(now.getFullYear(), 0, 1); } // year
-    return sales.filter(s => new Date(s.createdAt) >= cutoff);
-  }, [sales, period]);
+  // backend already returns the period's data; keep client filter only to match exact boundary
+  const filteredSales = useMemo(() => sales, [sales]);
+
+  // net amount for a single sale: strip voided, subtract any refunds
+  const netAmount = s => s.status === "voided" ? 0 : s.total - (s.totalRefunded || 0);
+  const activeSales = useMemo(() => filteredSales.filter(s => s.status !== "voided"), [filteredSales]);
 
   /* ── KPIs ── */
-  const totalRevenue       = useMemo(() => filteredSales.reduce((s,x) => s+x.total, 0), [filteredSales]);
-  const cashRevenue        = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="cash").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const cardRevenue        = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="card").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const payLaterTotal      = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="paylater").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const splitTotal         = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="split").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const bankTransferTotal  = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="bank_transfer").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const codTotal           = useMemo(() => filteredSales.filter(s=>s.paymentMethod==="cash_on_delivery").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const inStoreTotal       = useMemo(() => filteredSales.filter(s=>!s.saleType||s.saleType==="in_store").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const deliveryTotal      = useMemo(() => filteredSales.filter(s=>s.saleType==="delivery").reduce((s,x)=>s+x.total,0), [filteredSales]);
-  const avgSale       = filteredSales.length ? totalRevenue/filteredSales.length : 0;
+  const totalRevenue      = useMemo(() => activeSales.reduce((s,x) => s + netAmount(x), 0), [activeSales]);
+  const cashRevenue       = useMemo(() => activeSales.filter(s=>s.paymentMethod==="cash").reduce((s,x)=>s+netAmount(x),0), [activeSales]);
+  const cardRevenue       = useMemo(() => activeSales.filter(s=>s.paymentMethod==="card").reduce((s,x)=>s+netAmount(x),0), [activeSales]);
+  const payLaterTotal     = useMemo(() => activeSales.filter(s=>s.paymentMethod==="paylater").reduce((s,x)=>s+netAmount(x),0), [activeSales]);
+  const splitTotal        = useMemo(() => activeSales.filter(s=>s.paymentMethod==="split").reduce((s,x)=>s+netAmount(x),0), [activeSales]);
+  const bankTransferTotal = useMemo(() => activeSales.filter(s=>s.paymentMethod==="bank_transfer").reduce((s,x)=>s+netAmount(x),0), [activeSales]);
+  const codTotal          = useMemo(() => activeSales.filter(s=>s.paymentMethod==="cash_on_delivery").reduce((s,x)=>s+netAmount(x),0), [activeSales]);
+  const inStoreTotal      = useMemo(() => activeSales.filter(s=>!s.saleType||s.saleType==="in_store").reduce((s,x)=>s+netAmount(x),0), [activeSales]);
+  const deliveryTotal     = useMemo(() => activeSales.filter(s=>s.saleType==="delivery").reduce((s,x)=>s+netAmount(x),0), [activeSales]);
+  const avgSale      = activeSales.length ? totalRevenue / activeSales.length : 0;
   const outstandingCredit = useMemo(() => holdSales.reduce((s,h)=>s+(h.balance||0),0), [holdSales]);
   const totalCreditGiven  = useMemo(() => holdSales.reduce((s,h)=>s+(h.total||0),0),   [holdSales]);
   const totalCreditPaid   = useMemo(() => holdSales.reduce((s,h)=>s+(h.paid||0),0),    [holdSales]);
@@ -126,21 +136,21 @@ export default function Reports() {
   /* ── charts ── */
   const revenueChart = useMemo(() => {
     const map = {};
-    filteredSales.forEach(s => {
+    activeSales.forEach(s => {
       const d = new Date(s.createdAt);
       let key;
       if (period === "day") key = `${d.getHours()}:00`;
       else if (period === "year") key = d.toLocaleDateString(isAr?"ar-SA":"en-US",{month:"short",year:"2-digit"});
       else key = d.toLocaleDateString(isAr?"ar-SA":"en-US",{weekday:"short",month:"short",day:"numeric"});
       if (!map[key]) map[key] = { label:key, revenue:0, count:0 };
-      map[key].revenue += s.total; map[key].count += 1;
+      map[key].revenue += netAmount(s); map[key].count += 1;
     });
     return Object.values(map);
-  }, [filteredSales, period, isAr]);
+  }, [activeSales, period, isAr]);
 
   const paymentBreakdown = useMemo(() => {
     const map = {cash:0,card:0,paylater:0,split:0,bank_transfer:0,cash_on_delivery:0};
-    filteredSales.forEach(s => { map[s.paymentMethod]=(map[s.paymentMethod]||0)+s.total; });
+    activeSales.forEach(s => { map[s.paymentMethod]=(map[s.paymentMethod]||0)+netAmount(s); });
     return [
       {key:"cash",             name:t.cash||"Cash",              value:+map.cash.toFixed(2)             },
       {key:"card",             name:t.card||"Card",              value:+map.card.toFixed(2)             },
@@ -153,37 +163,37 @@ export default function Reports() {
 
   const topProducts = useMemo(() => {
     const map = {};
-    filteredSales.forEach(s => s.items.forEach(item => {
+    activeSales.forEach(s => s.items.forEach(item => {
       const name = item.name||"Unknown";
       if (!map[name]) map[name]={name,qty:0,revenue:0};
       map[name].qty += item.quantity;
       map[name].revenue += item.subtotal||item.price*item.quantity;
     }));
     return Object.values(map).sort((a,b)=>b.qty-a.qty).slice(0,8);
-  }, [filteredSales]);
+  }, [activeSales]);
 
   const hourlyData = useMemo(() => {
     const map = {};
-    filteredSales.forEach(s => {
+    activeSales.forEach(s => {
       const h = new Date(s.createdAt).getHours();
       const key = `${String(h).padStart(2,"0")}:00`;
       if (!map[key]) map[key]={hour:key,sales:0,count:0};
-      map[key].sales += s.total; map[key].count += 1;
+      map[key].sales += netAmount(s); map[key].count += 1;
     });
     return Object.values(map).sort((a,b)=>a.hour.localeCompare(b.hour));
-  }, [filteredSales]);
+  }, [activeSales]);
 
   const cashierPerf = useMemo(() => {
     const map = {};
-    filteredSales.forEach(s => {
+    activeSales.forEach(s => {
       const name = s.userId?.username||"Unknown";
       if (!map[name]) map[name]={name,orders:0,revenue:0,refunds:0};
       map[name].orders++;
-      map[name].revenue += s.total;
+      map[name].revenue += s.total - (s.totalRefunded||0);
       map[name].refunds += s.totalRefunded||0;
     });
     return Object.values(map).sort((a,b)=>b.revenue-a.revenue);
-  }, [filteredSales]);
+  }, [activeSales]);
 
   const exportCSV = () => {
     const rows = [
@@ -276,7 +286,7 @@ export default function Reports() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 {label:t.totalRevenue,value:`$${totalRevenue.toFixed(2)}`,icon:<DollarSign size={18}/>,  color:"text-green-600 dark:text-green-400",   bg:"bg-green-50 dark:bg-green-900/20"  },
-                {label:t.totalSales,  value:filteredSales.length,          icon:<ShoppingCart size={18}/>,color:"text-blue-600 dark:text-blue-400",     bg:"bg-blue-50 dark:bg-blue-900/20"   },
+                {label:t.totalSales,  value:activeSales.length,             icon:<ShoppingCart size={18}/>,color:"text-blue-600 dark:text-blue-400",     bg:"bg-blue-50 dark:bg-blue-900/20"   },
                 {label:t.averageSale, value:`$${avgSale.toFixed(2)}`,      icon:<TrendingUp size={18}/>,  color:"text-purple-600 dark:text-purple-400", bg:"bg-purple-50 dark:bg-purple-900/20"},
                 {label:t.outstanding, value:`$${outstandingCredit.toFixed(2)}`,icon:<AlertCircle size={18}/>,color:"text-red-600 dark:text-red-400",   bg:"bg-red-50 dark:bg-red-900/20"     },
               ].map(({label,value,icon,color,bg})=>(
@@ -478,32 +488,48 @@ export default function Reports() {
                 })()}
 
                 {/* product table — shown in both modes */}
-                <div className={`${CARD} overflow-hidden`}>
-                  <div className="px-5 py-4 border-b border-gray-100 dark:border-white/5 font-semibold text-sm">
-                    {plMode==="earned" ? "Earned per product (price − cost) × qty" : "Product profitability"}
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 dark:bg-[#1c1c1c] text-xs text-gray-400"><tr>
-                        <th className="px-5 py-3 text-left">Product</th><th className="px-3 py-3 text-center">Sold</th>
-                        <th className="px-3 py-3 text-right">Revenue</th>
-                        <th className="px-3 py-3 text-right">{plMode==="earned"?"Earned":"Profit"}</th>
-                        <th className="px-3 py-3 text-right">Margin</th>
-                      </tr></thead>
-                      <tbody className="divide-y divide-gray-50 dark:divide-white/5">
-                        {plData.productBreakdown.slice(0,15).map(p=>(
-                          <tr key={p.name} className="hover:bg-gray-50 dark:hover:bg-white/5">
-                            <td className="px-5 py-3 font-medium truncate max-w-[160px]">{p.name}</td>
-                            <td className="px-3 py-3 text-center text-gray-500">{p.quantity}</td>
-                            <td className="px-3 py-3 text-right text-blue-600 dark:text-blue-400">{formatUSD(p.revenue)}</td>
-                            <td className={`px-3 py-3 text-right font-semibold ${p.profit>=0?"text-emerald-600 dark:text-emerald-400":"text-red-500"}`}>{formatUSD(p.profit)}</td>
-                            <td className="px-3 py-3 text-right text-purple-600 dark:text-purple-400">{p.margin}%</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                {(()=>{
+                  const rows = showAllProducts ? plData.productBreakdown : plData.productBreakdown.slice(0,15);
+                  const hidden = plData.productBreakdown.length - 15;
+                  return(
+                    <div className={`${CARD} overflow-hidden`}>
+                      <div className="px-5 py-4 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
+                        <span className="font-semibold text-sm">{plMode==="earned" ? "Earned per product (price − cost) × qty" : "Product profitability"}</span>
+                        <span className="text-xs text-gray-400">{plData.productBreakdown.length} products</span>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 dark:bg-[#1c1c1c] text-xs text-gray-400"><tr>
+                            <th className="px-5 py-3 text-left">Product</th>
+                            <th className="px-3 py-3 text-center">Sold</th>
+                            <th className="px-3 py-3 text-right">Revenue</th>
+                            <th className="px-3 py-3 text-right">{plMode==="earned"?"Earned":"Profit"}</th>
+                            <th className="px-3 py-3 text-right">Margin</th>
+                          </tr></thead>
+                          <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                            {rows.map((p,i)=>(
+                              <tr key={p.name+i} className="hover:bg-gray-50 dark:hover:bg-white/5">
+                                <td className="px-5 py-3 font-medium truncate max-w-[160px]">{p.name}</td>
+                                <td className="px-3 py-3 text-center text-gray-500">{p.quantity}</td>
+                                <td className="px-3 py-3 text-right text-blue-600 dark:text-blue-400">{formatUSD(p.revenue)}</td>
+                                <td className={`px-3 py-3 text-right font-semibold ${p.profit>=0?"text-emerald-600 dark:text-emerald-400":"text-red-500"}`}>{formatUSD(p.profit)}</td>
+                                <td className="px-3 py-3 text-right text-purple-600 dark:text-purple-400">{p.margin}%</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {plData.productBreakdown.length > 15 && (
+                        <div className="px-5 py-3 border-t border-gray-100 dark:border-white/5 text-center">
+                          <button onClick={()=>setShowAllProducts(v=>!v)}
+                            className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline">
+                            {showAllProducts ? "Show less" : `Show all ${plData.productBreakdown.length} products (${hidden} more)`}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </>
             )}
           </div>
@@ -511,27 +537,95 @@ export default function Reports() {
 
         {/* ═══ TRANSACTIONS ═══ */}
         {tab==="transactions"&&(()=>{
-          const txSales = saleTypeFilter==="all" ? filteredSales
-            : saleTypeFilter==="delivery"  ? filteredSales.filter(s=>s.saleType==="delivery")
-            : filteredSales.filter(s=>!s.saleType||s.saleType==="in_store");
-          const txTotal = txSales.reduce((s,x)=>s+x.total,0);
           const saleProfit = sale => sale.items.reduce((s,i)=>s+(i.price-(i.cost||0))*i.quantity, 0);
+
+          // apply all filters
+          let txSales = saleTypeFilter==="delivery" ? filteredSales.filter(s=>s.saleType==="delivery")
+            : saleTypeFilter==="in_store" ? filteredSales.filter(s=>!s.saleType||s.saleType==="in_store")
+            : filteredSales;
+
+          if (txPayment!=="all") txSales = txSales.filter(s=>s.paymentMethod===txPayment);
+          if (txStatus!=="all")  txSales = txSales.filter(s=>s.status===txStatus);
+          if (txMinAmt!=="")     txSales = txSales.filter(s=>s.total>=parseFloat(txMinAmt));
+          if (txMaxAmt!=="")     txSales = txSales.filter(s=>s.total<=parseFloat(txMaxAmt));
+          if (txSearch.trim())   txSales = txSales.filter(s=>{
+            const q=txSearch.toLowerCase().trim();
+            return s.customerName?.toLowerCase().includes(q)||s._id.toString().slice(-6).toLowerCase()===q||s.items?.some(i=>i.name?.toLowerCase().includes(q));
+          });
+
+          // sort
+          txSales = [...txSales].sort((a,b)=>{
+            if (txSort==="newest")      return new Date(b.createdAt)-new Date(a.createdAt);
+            if (txSort==="oldest")      return new Date(a.createdAt)-new Date(b.createdAt);
+            if (txSort==="total_high")  return b.total-a.total;
+            if (txSort==="total_low")   return a.total-b.total;
+            if (txSort==="profit_high") return saleProfit(b)-saleProfit(a);
+            if (txSort==="profit_low")  return saleProfit(a)-saleProfit(b);
+            return 0;
+          });
+
+          const txTotal       = txSales.reduce((s,x)=>s+x.total,0);
           const txTotalProfit = txSales.reduce((s,x)=>s+saleProfit(x),0);
+
+          const filterChip = (active, onClick, label) => (
+            <button onClick={onClick}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${active?"bg-purple-600 text-white":"bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400"}`}>
+              {label}
+            </button>
+          );
+
           return (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {txSales.length} {t.transactionsDesc} · {t.total}: <span className="font-bold text-green-600">${txTotal.toFixed(2)}</span>
-                </p>
-                <div className="flex gap-2">
-                  {[["all","All"],["in_store","In-Store"],["delivery","🚚 Delivery"]].map(([val,label])=>(
-                    <button key={val} onClick={()=>setSaleTypeFilter(val)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saleTypeFilter===val?"bg-purple-600 text-white":"bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400"}`}>
-                      {label}
+            <div className="space-y-3">
+              {/* ── filter bar ── */}
+              <div className={`${CARD} p-4 space-y-3`}>
+                {/* row 1: search + sort */}
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    value={txSearch} onChange={e=>setTxSearch(e.target.value)}
+                    placeholder="Search customer, product, ID…"
+                    className="flex-1 min-w-[180px] px-3 py-1.5 rounded-xl text-sm border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1c1c1c] text-gray-700 dark:text-gray-300 outline-none focus:ring-2 focus:ring-purple-400"
+                  />
+                  <select value={txSort} onChange={e=>setTxSort(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 dark:border-white/10 bg-white dark:bg-[#141414] text-gray-700 dark:text-gray-300 outline-none cursor-pointer">
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="total_high">Highest total</option>
+                    <option value="total_low">Lowest total</option>
+                    <option value="profit_high">Highest profit</option>
+                    <option value="profit_low">Lowest profit</option>
+                  </select>
+                  <input type="number" value={txMinAmt} onChange={e=>setTxMinAmt(e.target.value)}
+                    placeholder="Min $" min="0"
+                    className="w-24 px-3 py-1.5 rounded-xl text-sm border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1c1c1c] text-gray-700 dark:text-gray-300 outline-none focus:ring-2 focus:ring-purple-400"/>
+                  <input type="number" value={txMaxAmt} onChange={e=>setTxMaxAmt(e.target.value)}
+                    placeholder="Max $" min="0"
+                    className="w-24 px-3 py-1.5 rounded-xl text-sm border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1c1c1c] text-gray-700 dark:text-gray-300 outline-none focus:ring-2 focus:ring-purple-400"/>
+                  {(txSearch||txMinAmt||txMaxAmt||txSort!=="newest"||txPayment!=="all"||txStatus!=="all"||saleTypeFilter!=="all")&&(
+                    <button onClick={()=>{setTxSearch("");setTxMinAmt("");setTxMaxAmt("");setTxSort("newest");setTxPayment("all");setTxStatus("all");setSaleTypeFilter("all");}}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-200 dark:border-red-800 transition hover:bg-red-100">
+                      Clear filters
                     </button>
-                  ))}
+                  )}
+                </div>
+                {/* row 2: type + payment + status chips */}
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-xs text-gray-400 self-center pr-1">Type:</span>
+                  {[["all","All"],["in_store","In-Store"],["delivery","🚚 Delivery"]].map(([v,l])=>filterChip(saleTypeFilter===v,()=>setSaleTypeFilter(v),l))}
+                  <span className="text-xs text-gray-400 self-center px-1">·</span>
+                  <span className="text-xs text-gray-400 self-center pr-1">Payment:</span>
+                  {[["all","All"],["cash","Cash"],["card","Card"],["paylater","Credit"],["bank_transfer","Bank"],["split","Split"],["cash_on_delivery","COD"]].map(([v,l])=>filterChip(txPayment===v,()=>setTxPayment(v),l))}
+                  <span className="text-xs text-gray-400 self-center px-1">·</span>
+                  <span className="text-xs text-gray-400 self-center pr-1">Status:</span>
+                  {[["all","All"],["completed","Completed"],["voided","Voided"],["partially_returned","Partial Return"],["fully_returned","Returned"]].map(([v,l])=>filterChip(txStatus===v,()=>setTxStatus(v),l))}
                 </div>
               </div>
+
+              {/* summary line */}
+              <p className="text-sm text-gray-500 dark:text-gray-400 px-1">
+                {txSales.length} {t.transactionsDesc} · {t.total}: <span className="font-bold text-green-600">${txTotal.toFixed(2)}</span>
+                {" · "}Profit: <span className="font-bold text-emerald-600">${txTotalProfit.toFixed(2)}</span>
+              </p>
+
               <div className={`${CARD} overflow-hidden`}>
                 {txSales.length===0?<Empty msg={t.noSales}/>:(
                   <div className="overflow-x-auto">
@@ -539,8 +633,12 @@ export default function Reports() {
                       <thead className="bg-gray-50 dark:bg-[#1c1c1c] text-xs text-gray-400"><tr>
                         <th className="px-5 py-3 text-left">{t.date}</th>
                         <th className="px-4 py-3 text-left">{t.items}</th>
-                        <th className="px-4 py-3 text-right">{t.total}</th>
-                        <th className="px-4 py-3 text-right">Profit</th>
+                        <th className="px-4 py-3 text-right cursor-pointer select-none hover:text-purple-500" onClick={()=>setTxSort(s=>s==="total_high"?"total_low":"total_high")}>
+                          {t.total} {txSort==="total_high"?"↓":txSort==="total_low"?"↑":""}
+                        </th>
+                        <th className="px-4 py-3 text-right cursor-pointer select-none hover:text-purple-500" onClick={()=>setTxSort(s=>s==="profit_high"?"profit_low":"profit_high")}>
+                          Profit {txSort==="profit_high"?"↓":txSort==="profit_low"?"↑":""}
+                        </th>
                         <th className="px-4 py-3 text-center">{t.payment}</th>
                         <th className="px-4 py-3 text-center">Type</th>
                         <th className="px-4 py-3 text-center">Status</th>

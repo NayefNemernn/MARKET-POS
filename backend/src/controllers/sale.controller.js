@@ -298,23 +298,34 @@ export const getProfitLoss = async (req, res) => {
     const grossProfit  = revenue - cogs - refunds;
     const grossMargin  = revenue > 0 ? ((grossProfit / revenue) * 100).toFixed(1) : 0;
 
-    // Per-product breakdown using current prices
+    // Per-product breakdown — group by productId (not name), subtract returned qty
     const productMap = {};
     for (const sale of sales) {
+      // build a returned-qty map for this sale
+      const returnedQty = {};
+      for (const r of (sale.returnedItems || [])) {
+        const k = String(r.productId);
+        returnedQty[k] = (returnedQty[k] || 0) + r.quantity;
+      }
+
       for (const item of sale.items) {
-        const key = item.name;
-        const current = priceMap[String(item.productId)];
+        const key     = String(item.productId);
+        const netQty  = Math.max(item.quantity - (returnedQty[key] || 0), 0);
+        if (netQty === 0) continue;
+
+        const current      = priceMap[key];
         const currentPrice = current !== undefined ? current.price : item.price;
         const currentCost  = current !== undefined ? current.cost  : (item.cost || 0);
-        if (!productMap[key]) productMap[key] = { name: key, revenue: 0, cost: 0, quantity: 0, profit: 0 };
-        productMap[key].revenue  += currentPrice * item.quantity;
-        productMap[key].cost     += currentCost  * item.quantity;
-        productMap[key].quantity += item.quantity;
-        productMap[key].profit   += (currentPrice - currentCost) * item.quantity;
+
+        if (!productMap[key]) productMap[key] = { name: item.name, revenue: 0, cost: 0, quantity: 0, profit: 0 };
+        productMap[key].revenue  += currentPrice * netQty;
+        productMap[key].cost     += currentCost  * netQty;
+        productMap[key].quantity += netQty;
+        productMap[key].profit   += (currentPrice - currentCost) * netQty;
       }
     }
     const productBreakdown = Object.values(productMap)
-      .map(p => ({ ...p, margin: p.revenue > 0 ? ((p.profit / p.revenue) * 100).toFixed(1) : 0 }))
+      .map(p => ({ ...p, revenue: +p.revenue.toFixed(2), cost: +p.cost.toFixed(2), profit: +p.profit.toFixed(2), margin: p.revenue > 0 ? ((p.profit / p.revenue) * 100).toFixed(1) : "0.0" }))
       .sort((a, b) => b.profit - a.profit);
 
     res.json({
