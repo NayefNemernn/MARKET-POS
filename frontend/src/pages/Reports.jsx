@@ -425,6 +425,13 @@ export default function Reports() {
                         </div>
                       ))}
                     </div>
+                    <div className={`${CARD} p-4 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-between`}>
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Total Inventory Cost</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Current stock × cost price for all products</p>
+                      </div>
+                      <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{formatUSD(plData.inventoryValue ?? 0)}</p>
+                    </div>
                     <div className={`${CARD} p-5 space-y-2`}>
                       {[{label:"Revenue",r:plData.revenue,s:"",c:"text-gray-700 dark:text-gray-300"},{label:"− Cost of goods",r:plData.cogs,s:"−",c:"text-red-500"},{label:"− Discounts",r:plData.discounts,s:"−",c:"text-amber-500"},{label:"− Refunds",r:plData.refunds,s:"−",c:"text-red-500"}].map(x=>(
                         <div key={x.label} className="flex justify-between text-sm">
@@ -435,6 +442,10 @@ export default function Reports() {
                       <div className="flex justify-between border-t border-dashed border-gray-200 dark:border-white/10 pt-3">
                         <span className="font-bold">Gross Profit</span>
                         <span className={`text-xl font-black ${plData.grossProfit>=0?"text-green-600 dark:text-green-400":"text-red-600"}`}>{formatUSD(plData.grossProfit)}</span>
+                      </div>
+                      <div className="flex justify-between border-t border-dashed border-gray-200 dark:border-white/10 pt-3">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Total Inventory Cost (on hand)</span>
+                        <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatUSD(plData.inventoryValue ?? 0)}</span>
                       </div>
                     </div>
                   </>

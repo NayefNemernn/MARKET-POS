@@ -272,9 +272,13 @@ export const getProfitLoss = async (req, res) => {
 
     // Build a map of current product prices so edits propagate to all historical reports
     const allProductIds = [...new Set(sales.flatMap(s => s.items.map(i => String(i.productId))))];
-    const currentProducts = await Product.find({ _id: { $in: allProductIds }, storeId }).select("price cost").lean();
+    const [currentProducts, allStoreProducts] = await Promise.all([
+      Product.find({ _id: { $in: allProductIds }, storeId }).select("price cost").lean(),
+      Product.find({ storeId }).select("cost stock").lean(),
+    ]);
     const priceMap = {};
     currentProducts.forEach(p => { priceMap[String(p._id)] = { price: p.price, cost: p.cost || 0 }; });
+    const inventoryValue = allStoreProducts.reduce((s, p) => s + (p.cost || 0) * (p.stock || 0), 0);
 
     let revenue = 0, cogs = 0, discounts = 0, refunds = 0;
 
@@ -314,13 +318,14 @@ export const getProfitLoss = async (req, res) => {
       .sort((a, b) => b.profit - a.profit);
 
     res.json({
-      revenue:      +revenue.toFixed(2),
-      cogs:         +cogs.toFixed(2),
-      discounts:    +discounts.toFixed(2),
-      refunds:      +refunds.toFixed(2),
-      grossProfit:  +grossProfit.toFixed(2),
-      grossMargin:  +grossMargin,
-      totalOrders:  sales.length,
+      revenue:        +revenue.toFixed(2),
+      cogs:           +cogs.toFixed(2),
+      discounts:      +discounts.toFixed(2),
+      refunds:        +refunds.toFixed(2),
+      grossProfit:    +grossProfit.toFixed(2),
+      grossMargin:    +grossMargin,
+      totalOrders:    sales.length,
+      inventoryValue: +inventoryValue.toFixed(2),
       productBreakdown,
     });
   } catch (error) { res.status(500).json({ message: error.message }); }
