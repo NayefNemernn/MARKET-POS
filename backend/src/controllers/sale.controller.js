@@ -270,31 +270,43 @@ export const getProfitLoss = async (req, res) => {
 
     const sales = await Sale.find(match);
 
+    // Build a map of current product prices so edits propagate to all historical reports
+    const allProductIds = [...new Set(sales.flatMap(s => s.items.map(i => String(i.productId))))];
+    const currentProducts = await Product.find({ _id: { $in: allProductIds }, storeId }).select("price cost").lean();
+    const priceMap = {};
+    currentProducts.forEach(p => { priceMap[String(p._id)] = { price: p.price, cost: p.cost || 0 }; });
+
     let revenue = 0, cogs = 0, discounts = 0, refunds = 0;
 
     for (const sale of sales) {
-      revenue   += sale.total;
       discounts += sale.discountAmount || 0;
       refunds   += sale.totalRefunded  || 0;
 
       for (const item of sale.items) {
-        cogs += (item.cost || 0) * item.quantity;
+        const current = priceMap[String(item.productId)];
+        const currentPrice = current !== undefined ? current.price : item.price;
+        const currentCost  = current !== undefined ? current.cost  : (item.cost || 0);
+        revenue += currentPrice * item.quantity;
+        cogs    += currentCost  * item.quantity;
       }
     }
 
     const grossProfit  = revenue - cogs - refunds;
     const grossMargin  = revenue > 0 ? ((grossProfit / revenue) * 100).toFixed(1) : 0;
 
-    // Per-product breakdown
+    // Per-product breakdown using current prices
     const productMap = {};
     for (const sale of sales) {
       for (const item of sale.items) {
         const key = item.name;
+        const current = priceMap[String(item.productId)];
+        const currentPrice = current !== undefined ? current.price : item.price;
+        const currentCost  = current !== undefined ? current.cost  : (item.cost || 0);
         if (!productMap[key]) productMap[key] = { name: key, revenue: 0, cost: 0, quantity: 0, profit: 0 };
-        productMap[key].revenue  += item.price * item.quantity;
-        productMap[key].cost     += (item.cost || 0) * item.quantity;
+        productMap[key].revenue  += currentPrice * item.quantity;
+        productMap[key].cost     += currentCost  * item.quantity;
         productMap[key].quantity += item.quantity;
-        productMap[key].profit   += (item.price - (item.cost || 0)) * item.quantity;
+        productMap[key].profit   += (currentPrice - currentCost) * item.quantity;
       }
     }
     const productBreakdown = Object.values(productMap)

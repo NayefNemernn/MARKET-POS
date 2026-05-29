@@ -68,28 +68,44 @@ export const getProfitabilityReport = async (req, res) => {
     const productMap = {};
     products.forEach(p => { productMap[String(p._id)] = p; });
 
+    // Aggregate only quantities — prices come from current product data so edits propagate to all history
     const salesAgg = await Sale.aggregate([
-      { $match: { storeId } },
+      { $match: { storeId, status: { $ne: "fully_returned" } } },
       { $unwind: "$items" },
       {
         $group: {
           _id:       "$items.productId",
           name:      { $first: "$items.name" },
           unitsSold: { $sum: "$items.quantity" },
-          revenue:   { $sum: "$items.subtotal" },
-          cogs:      { $sum: { $multiply: [{ $ifNull: ["$items.cost", 0] }, "$items.quantity"] } },
+          // Keep stored values as fallback for deleted products
+          storedPrice: { $first: "$items.price" },
+          storedCost:  { $first: "$items.cost" },
         }
       },
-      { $sort: { revenue: -1 } },
+      { $sort: { unitsSold: -1 } },
     ]);
 
     const rows = salesAgg.map(row => {
-      const prod    = productMap[String(row._id)] || {};
-      const revenue = row.revenue || 0;
-      const cogs    = row.cogs    || 0;
-      const profit  = revenue - cogs;
-      const margin  = revenue > 0 ? (profit / revenue) * 100 : 0;
-      return { productId: row._id, name: row.name, image: prod.image || "", price: prod.price || 0, cost: prod.cost || 0, stock: prod.stock || 0, unitsSold: row.unitsSold, revenue: +revenue.toFixed(2), cogs: +cogs.toFixed(2), profit: +profit.toFixed(2), margin: +margin.toFixed(1) };
+      const prod         = productMap[String(row._id)];
+      const currentPrice = prod ? prod.price       : (row.storedPrice || 0);
+      const currentCost  = prod ? (prod.cost || 0) : (row.storedCost  || 0);
+      const revenue      = currentPrice * row.unitsSold;
+      const cogs         = currentCost  * row.unitsSold;
+      const profit       = revenue - cogs;
+      const margin       = revenue > 0 ? (profit / revenue) * 100 : 0;
+      return {
+        productId: row._id,
+        name:      row.name,
+        image:     prod?.image || "",
+        price:     currentPrice,
+        cost:      currentCost,
+        stock:     prod?.stock || 0,
+        unitsSold: row.unitsSold,
+        revenue:   +revenue.toFixed(2),
+        cogs:      +cogs.toFixed(2),
+        profit:    +profit.toFixed(2),
+        margin:    +margin.toFixed(1),
+      };
     });
 
     const totals = rows.reduce((acc, r) => ({ revenue: acc.revenue + r.revenue, cogs: acc.cogs + r.cogs, profit: acc.profit + r.profit, units: acc.units + r.unitsSold }), { revenue: 0, cogs: 0, profit: 0, units: 0 });
